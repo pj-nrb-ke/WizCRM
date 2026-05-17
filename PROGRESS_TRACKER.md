@@ -4,7 +4,7 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled
 
-**Last updated:** 2026-05-17
+**Last updated:** 2026-05-17 (SRS v1.1)
 
 ---
 
@@ -12,13 +12,16 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 
 | Phase | Total | Done | In progress | Not started |
 |-------|------:|-----:|------------:|------------:|
-| Infrastructure | 4 | 1 | 0 | 3 |
+| Infrastructure | 7 | 3 | 0 | 4 |
 | Phase 1 — MVP | 24 | 0 | 0 | 24 |
 | Phase 2 — Field sales | 14 | 0 | 0 | 14 |
 | Phase 3 — Geofence | 12 | 0 | 0 | 12 |
 | Phase 4 — Scale | 13 | 0 | 0 | 13 |
+| Phase 5 — Multi-tenant SaaS | 17 | 0 | 0 | 17 |
+| Phase 5 — ScaleGate licensing | 14 | 0 | 0 | 14 |
+| Phase 6 — ERP integrations | 24 | 0 | 0 | 24 |
 | Nice-to-have | 35 | 0 | 0 | 35 |
-| Non-functional | 9 | 0 | 0 | 9 |
+| Non-functional | 11 | 0 | 0 | 11 |
 
 *Counts are manual; update when checking off items.*
 
@@ -35,6 +38,9 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 | ⬜ | INF-005 | Web app scaffold | |
 | ⬜ | INF-006 | CI (lint/test/build) | |
 | ⬜ | INF-007 | Docker compose local dev | |
+| ⬜ | INF-008 | `tenant_id` on all tenant tables (schema provision) | |
+| ⬜ | INF-009 | `LicenseService` abstraction + dev mock (ScaleGate) | |
+| ⬜ | INF-010 | `integrations/erp/` stub adapters + DB tables provision | |
 
 ---
 
@@ -160,6 +166,96 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 
 ---
 
+## Phase 5 — Multi-tenant SaaS
+
+| Status | ID | Requirement |
+|--------|-----|-------------|
+| ⬜ | FR-MT-001 | `tenant_id` on all business entities |
+| ⬜ | FR-MT-002 | Query isolation by tenant (API + DB) |
+| ⬜ | FR-MT-003 | No cross-tenant access (except platform admin) |
+| ⬜ | FR-MT-004 | Tenant record (slug, status, timezone, currency) |
+| ⬜ | FR-MT-005 | Web tenant routing (subdomain/slug) |
+| ⬜ | FR-MT-006 | Mobile tenant context from login |
+| ⬜ | FR-MT-007 | Tenant provisioning + first admin |
+| ⬜ | FR-MT-008 | Suspend tenant on invalid license |
+| ⬜ | FR-MT-009 | Per-tenant CRM settings and branding |
+| ⬜ | FR-MT-010 | Per-tenant ERP connector config |
+| ⬜ | FR-MT-011 | Feature flags from ScaleGate plan |
+| ⬜ | FR-MT-012 | User multi-tenant membership + switcher |
+| ⬜ | FR-MT-013 | Roles scoped per tenant |
+| ⬜ | FR-MT-014 | Seat limit enforcement |
+| ⬜ | FR-MT-015 | Tenant data export |
+| ⬜ | FR-MT-016 | Tenant delete / purge workflow |
+| ⬜ | FR-MT-017 | Usage metering hooks (ScaleGate) |
+
+---
+
+## Phase 5 — ScaleGate commercial licensing
+
+| Status | ID | Requirement |
+|--------|-----|-------------|
+| ⬜ | FR-SG-001 | ScaleGate as license system of record |
+| ⬜ | FR-SG-002 | Validate license on login / schedule |
+| ⬜ | FR-SG-003 | Cache validation result locally |
+| ⬜ | FR-SG-004 | Map plan codes to feature flags |
+| ⬜ | FR-SG-005 | Web block/renewal on invalid license |
+| ⬜ | FR-SG-006 | Mobile license check + cache TTL |
+| ⬜ | FR-SG-007 | API middleware on invalid license |
+| ⬜ | FR-SG-008 | Background re-validation job |
+| ⬜ | FR-SG-009 | Grace period + read-only mode |
+| ⬜ | FR-SG-010 | Mobile offline entitlement cache |
+| ⬜ | FR-SG-011 | Admin license status UI + portal link |
+| ⬜ | FR-SG-012 | ScaleGate secrets in env / vault |
+| ⬜ | FR-SG-013 | mTLS / signed requests (if required) |
+| ⬜ | FR-SG-014 | Safe license check logging |
+
+---
+
+## Phase 6 — ERP and accounting integrations
+
+| Status | ID | Requirement |
+|--------|-----|-------------|
+| ⬜ | FR-ERP-001 | ErpConnector framework |
+| ⬜ | FR-ERP-002 | One active connector per tenant (v1) |
+| ⬜ | FR-ERP-003 | Connector registry in admin UI |
+| ⬜ | FR-ERP-010 | Customer entity mapping + external_id |
+| ⬜ | FR-ERP-011 | Push customer to ERP |
+| ⬜ | FR-ERP-012 | Pull customers from ERP |
+| ⬜ | FR-ERP-013 | Bidirectional field mapping config |
+| ⬜ | FR-ERP-014 | Conflict resolution policy |
+| ⬜ | FR-ERP-015 | Duplicate prevention |
+| ⬜ | FR-ERP-020 | Quotations in WizCRM (header + lines) |
+| ⬜ | FR-ERP-021 | Push quotation to ERP |
+| ⬜ | FR-ERP-022 | Store ERP quote id and status |
+| ⬜ | FR-ERP-023 | Pull quote status from ERP |
+| ⬜ | FR-ERP-024 | Link quote to lead + ERP customer |
+| ⬜ | FR-ERP-025 | PDF / authoritative doc policy |
+| ⬜ | FR-ERP-030 | Scheduled sync |
+| ⬜ | FR-ERP-031 | Manual sync |
+| ⬜ | FR-ERP-032 | Sync job queue + retries |
+| ⬜ | FR-ERP-033 | Sync audit log |
+| ⬜ | FR-ERP-034 | Admin alert on sync failure |
+| ⬜ | FR-ERP-040 | Encrypted ERP credentials vault |
+| ⬜ | FR-ERP-041 | Test connection |
+| ⬜ | FR-ERP-042 | OAuth refresh (QuickBooks etc.) |
+| ⬜ | FR-ERP-043 | Disable sync without `erp_sync` license |
+| ⬜ | FR-ERP-050 | ERP item catalog cache (optional) |
+| ⬜ | FR-ERP-051 | Price list refresh (optional) |
+| ⬜ | FR-ERP-060 | Stub adapters: SAGE, SAP B1, QB, Tally |
+| ⬜ | FR-ERP-061 | ERP webhook endpoint provision |
+| ⬜ | FR-ERP-062 | DB tables: connections, links, quotes, logs |
+
+### ERP connectors (implement when SDK/API provided)
+
+| Status | System | Notes |
+|--------|--------|-------|
+| ⬜ | ERP-SAGE | SAGE Evolution 200 |
+| ⬜ | ERP-SAPB1 | SAP Business One |
+| ⬜ | ERP-QB | QuickBooks |
+| ⬜ | ERP-TALLY | Tally / TallyPrime |
+
+---
+
 ## Nice-to-have (FR-NTH-*)
 
 | Status | ID | Feature |
@@ -229,6 +325,8 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 | ⬜ | NFR-007 | Observability |
 | ⬜ | NFR-008 | i18n-ready strings |
 | ⬜ | NFR-009 | Mobile accessibility |
+| ⬜ | NFR-010 | ScaleGate graceful degradation |
+| ⬜ | NFR-011 | ERP async sync / idempotent jobs |
 
 ---
 

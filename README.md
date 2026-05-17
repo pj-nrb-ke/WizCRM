@@ -25,7 +25,7 @@ For stage definitions, transitions, and data you should capture at each step, se
 
 Full product requirements (SRS) and implementation tracking:
 
-- **[SRS.md](./SRS.md)** — Software requirements (features, post-call logging, meeting geofence, nice-to-haves)
+- **[SRS.md](./SRS.md)** — Software requirements (multi-tenant SaaS, ScaleGate licensing, ERP sync, post-call, geofence, nice-to-haves)
 - **[PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)** — Checklist of requirement IDs and completion status
 
 ## Project status
