@@ -4,10 +4,10 @@
 |-------|--------|
 | **Product** | WizCRM |
 | **Organization** | Wise & Agile Solutions Ltd (WIZAG) |
-| **Document version** | 1.1 |
+| **Document version** | 1.2 |
 | **Date** | 2026-05-17 |
 | **Status** | Approved for implementation planning |
-| **Related docs** | [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) |
+| **Related docs** | [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), [manager_tasks.md](./manager_tasks.md), [manager_task_tracker.md](./manager_task_tracker.md) |
 
 This document is the **single product and requirements reference** for WizCRM. Implementation agents and developers should treat requirement IDs (`FR-*`, `NFR-*`) as traceable items; completion status lives in **[PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)**.
 
@@ -917,17 +917,90 @@ Nice-to-have items are **not required for MVP** but are fully specified here for
 
 ---
 
-## 20. Traceability
+## 20. Technical add-ons, packages, and external services
 
-- **Progress:** [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — checkbox per requirement ID.
-- **Domain model detail:** [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md).
+Development MAY install libraries, Expo modules, and cloud services as features are built. Track installation status in **[PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)** (`TOOL-*` IDs). These are **not** end-user “addons”; they are engineering dependencies.
+
+### 20.1 Principle
+
+- Install packages **when the feature slice starts** (avoid unused native deps).
+- Every external service needs **credentials** from non-technical setup — see **[manager_tasks.md](./manager_tasks.md)** (`MGT-*` IDs) and **[manager_task_tracker.md](./manager_task_tracker.md)**.
+
+### 20.2 Package and tooling matrix
+
+| ID | Feature area | Typical install / service | Depends on (manager) |
+|----|--------------|---------------------------|----------------------|
+| TOOL-001 | Meeting map pin, navigate | `expo-maps` or `react-native-maps` + Expo config plugin | MGT-001–003 |
+| TOOL-002 | Address → coordinates | Google **Geocoding API** (or Mapbox alternative) | MGT-001–003 |
+| TOOL-003 | Geofence attendance | `expo-location`, `expo-task-manager` | MGT-001–005 |
+| TOOL-004 | API keys in app | `app.json` / env: `GOOGLE_MAPS_API_KEY_*`, EAS secrets | MGT-003 |
+| TOOL-005 | Push notifications | `expo-notifications` + **FCM** (Android) / **APNs** (iOS) | MGT-016–017 |
+| TOOL-006 | Auth token storage | `expo-secure-store` | — |
+| TOOL-007 | Post-call prompt (Android) | Call detection library (evaluate; may need custom dev client) | MGT-019 |
+| TOOL-008 | Production mobile builds | `eas-cli`, EAS project, credentials | MGT-016–017 |
+| TOOL-009 | Web maps / admin map picker | Google Maps JavaScript API or Mapbox GL | MGT-001–003 |
+| TOOL-010 | ScaleGate license client | Internal `LicenseService` + HTTP client to ScaleGate | MGT-006–008 |
+| TOOL-011 | ERP connectors | `integrations/erp/*` per vendor SDK when provided | MGT-011–015 |
+| TOOL-012 | Error monitoring (recommended) | Sentry or equivalent | Optional org account |
+
+### 20.3 Google Maps (required for map + geofence features)
+
+**Technical (development team):**
+
+1. Add chosen map library to `mobile/` (and web map component).
+2. Wire Android: package name + SHA-1 in Google Cloud console key restrictions.
+3. Wire iOS (when started): bundle identifier restrictions.
+4. Document env vars in `.env.example` (no secrets in git).
+
+**Non-technical:** fully specified under **MGT-001–MGT-005** in [manager_tasks.md](./manager_tasks.md).
+
+### 20.4 What is not required yet (current dev stage)
+
+- Maps API keys and billing — until map/geofence UI development starts.
+- ScaleGate production credentials — until Phase 5; use `LICENSE_DEV_MODE`.
+- ERP sandboxes — until Phase 6 and SDK handoff.
+- Play / App Store accounts — until moving beyond **Expo Go** to store builds.
+
+---
+
+## 21. Non-technical and manager-owned tasks
+
+Product, legal, and vendor account work **cannot** be completed by code alone. The canonical list is **[manager_tasks.md](./manager_tasks.md)** with IDs **`MGT-*`**. Status is tracked in **[manager_task_tracker.md](./manager_task_tracker.md)**.
+
+### 21.1 Categories (summary)
+
+| Category | Examples | When needed |
+|----------|----------|-------------|
+| **Maps & location** | Google Cloud project, billing, API keys, privacy policy, staff consent | Before geofence beta |
+| **Commercial / ScaleGate** | Plans, license API spec, plan→feature mapping, onboarding, Terms of Service | Before paid SaaS |
+| **ERP** | Priority ERP, developer/sandbox access per vendor, client IT cooperation | Before ERP Phase 6 |
+| **App stores** | Play + Apple developer accounts, listings, Data safety form | Before public app release |
+| **Brand & ops** | Domain, support contact, default geofence radius and grace rules | Ongoing |
+
+### 21.2 Suggested order for managers
+
+1. Confirm product defaults (geofence radius **X**, grace minutes, ERP priority) — MGT-022, MGT-023, MGT-011.
+2. Before geofence beta — complete Maps/location block (MGT-001–005).
+3. Before commercial launch — ScaleGate and legal block (MGT-006–010).
+4. Before ERP sync — vendor access block (MGT-012–015) plus pilot customer.
+5. Before store release — MGT-016–019 and MGT-020–021.
+
+---
+
+## 22. Traceability
+
+- **Engineering progress:** [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — `FR-*`, `INF-*`, `TOOL-*`, `NFR-*`.
+- **Manager progress:** [manager_task_tracker.md](./manager_task_tracker.md) — `MGT-*`.
+- **Manager task detail:** [manager_tasks.md](./manager_tasks.md).
+- **Domain model:** [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md).
 - **Mobile toolchain:** [MOBILE_DEV.md](./MOBILE_DEV.md).
 
 ---
 
-## 21. Document history
+## 23. Document history
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-05-17 | WizCRM / AI-assisted | Initial SRS including post-call, geofence, nice-to-haves |
 | 1.1 | 2026-05-17 | WizCRM / AI-assisted | Multi-tenant SaaS, ScaleGate licensing API, ERP integrations (SAGE, SAP B1, QuickBooks, Tally) |
+| 1.2 | 2026-05-17 | WizCRM / AI-assisted | Technical add-ons (TOOL-*), manager tasks (MGT-*), cross-links to manager docs |

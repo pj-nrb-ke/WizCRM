@@ -4,7 +4,9 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled
 
-**Last updated:** 2026-05-17 (SRS v1.1)
+**Last updated:** 2026-05-17 (SRS v1.2)
+
+**Manager (non-technical) tasks:** [manager_task_tracker.md](./manager_task_tracker.md) (`MGT-*`)
 
 ---
 
@@ -12,6 +14,7 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 
 | Phase | Total | Done | In progress | Not started |
 |-------|------:|-----:|------------:|------------:|
+| Technical add-ons (TOOL-*) | 12 | 0 | 0 | 12 |
 | Infrastructure | 7 | 3 | 0 | 4 |
 | Phase 1 — MVP | 24 | 0 | 0 | 24 |
 | Phase 2 — Field sales | 14 | 0 | 0 | 14 |
@@ -24,6 +27,27 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 | Non-functional | 11 | 0 | 0 | 11 |
 
 *Counts are manual; update when checking off items.*
+
+---
+
+## Technical add-ons and integrations (TOOL-*)
+
+Install when the related feature slice starts. Details in [SRS.md](./SRS.md) §20.
+
+| Status | ID | Package / service | Blocks on (manager) |
+|--------|-----|-------------------|---------------------|
+| ⬜ | TOOL-001 | `expo-maps` or `react-native-maps` + config plugin | MGT-001–003 |
+| ⬜ | TOOL-002 | Google Geocoding API (or Mapbox) | MGT-001–003 |
+| ⬜ | TOOL-003 | `expo-location` + `expo-task-manager` (geofence) | MGT-001–005 |
+| ⬜ | TOOL-004 | Map API keys in app / EAS secrets | MGT-003 |
+| ⬜ | TOOL-005 | `expo-notifications` + FCM / APNs | MGT-016–017 |
+| ⬜ | TOOL-006 | `expo-secure-store` | — |
+| ⬜ | TOOL-007 | Call detection (Android; evaluate library) | MGT-019 |
+| ⬜ | TOOL-008 | `eas-cli` + EAS production builds | MGT-016–017 |
+| ⬜ | TOOL-009 | Web maps (Maps JS API or Mapbox) | MGT-001–003 |
+| ⬜ | TOOL-010 | ScaleGate `LicenseService` HTTP client | MGT-007–008 |
+| ⬜ | TOOL-011 | `integrations/erp/` vendor adapters | MGT-012–015 |
+| ⬜ | TOOL-012 | Sentry (or error monitoring) | Optional |
 
 ---
 
@@ -342,6 +366,8 @@ Track implementation against **[SRS.md](./SRS.md)**. Update this file as feature
 
 ## Related
 
-- [SRS.md](./SRS.md) — Full requirements
+- [SRS.md](./SRS.md) — Full requirements (§20 TOOL-*, §21 MGT-*)
+- [manager_tasks.md](./manager_tasks.md) — Non-technical task descriptions
+- [manager_task_tracker.md](./manager_task_tracker.md) — Manager checklist (`MGT-*`)
 - [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md) — Domain reference
 - [README.md](./README.md) — Repo overview
