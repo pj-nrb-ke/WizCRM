@@ -19,6 +19,8 @@ npm run dev
 
 Health: `GET http://localhost:3000/health`
 
+**Postgres port:** `5434` on the host (avoids conflict with local PostgreSQL on 5432/5433). Use `127.0.0.1`, not `localhost`, if you have multiple listeners.
+
 ## Tests
 
 ```bash

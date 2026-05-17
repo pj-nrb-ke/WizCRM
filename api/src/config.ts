@@ -9,7 +9,7 @@ function required(name: string, fallback?: string): string {
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   host: process.env.HOST ?? '0.0.0.0',
-  databaseUrl: required('DATABASE_URL', 'postgresql://wizcrm:wizcrm_dev@localhost:5433/wizcrm'),
+  databaseUrl: required('DATABASE_URL', 'postgresql://wizcrm:wizcrm_dev@127.0.0.1:5434/wizcrm'),
   jwtSecret: required('JWT_SECRET', 'dev-jwt-secret-change-in-production'),
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
