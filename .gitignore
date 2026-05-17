@@ -5,6 +5,8 @@ node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
+mobile/android/
+mobile/.expo/
 *.jks
 *.p8
 *.p12
@@ -28,3 +30,6 @@ api/.env
 # Build
 shared/dist/
 api/dist/
+WizCRM-lite-debug.apk
+apk-build/
+build-apk.log
