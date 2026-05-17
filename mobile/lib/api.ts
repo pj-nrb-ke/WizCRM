@@ -36,7 +36,8 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error((data as { error?: string }).error ?? res.statusText) as Error & {
+    const body = data as { error?: string; message?: string };
+    const err = new Error(body.message ?? body.error ?? res.statusText) as Error & {
       status: number;
       data: unknown;
     };

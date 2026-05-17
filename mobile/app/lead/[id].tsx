@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { api, type Lead } from '../../lib/api';
-import { LEAD_STAGES } from '@wizcrm/shared';
+import { LEAD_STAGES } from '../../constants/stages';
 
 type Activity = {
   id: string;
