@@ -98,15 +98,15 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 |--------|-----|---------|
 | 🟡 | LITE-001 | Lead Inbox (minimal fields) |
 | 🟡 | LITE-002 | Duplicate detection |
-| ⬜ | LITE-003 | Business card capture |
+| 🟡 | LITE-003 | Business card capture |
 | 🟡 | LITE-004 | Lifecycle stages + AI suggest / user confirm |
 | 🟡 | LITE-005 | AI Sales Desk (basic) |
 | 🟡 | LITE-006 | AI Lead Summary |
 | 🟡 | LITE-007 | AI Next Action |
 | 🟡 | LITE-008 | Quick note + voice → AI timeline |
-| ⬜ | LITE-009 | Post-call prompt (Android) |
+| 🟡 | LITE-009 | Post-call prompt (Android) |
 | 🟡 | LITE-010 | Activity timeline |
-| ⬜ | LITE-011 | Follow-up tasks |
+| 🟡 | LITE-011 | Follow-up tasks |
 | 🟡 | LITE-012 | Simple pipeline by stage |
 | 🟡 | LITE-013 | Auth (single org, internal) |
 | 🟡 | LITE-014 | Mobile-first delivery |
@@ -248,7 +248,7 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 | Status | ID | Item | Lite | Pro | Ent |
 |--------|-----|------|:----:|:---:|:---:|
 | 🟡 | TOOL-001 | LLM / AI orchestration | ● | ● | ● |
-| ⬜ | TOOL-002 | Card scan (camera + OCR/vision) | ● | ● | ● |
+| 🟡 | TOOL-002 | Card scan (camera + OCR/vision) | ● | ● | ● |
 | 🟡 | TOOL-003 | `expo-secure-store` | ● | ● | ● |
 | ⬜ | TOOL-004 | Call detection (Android) | ● | ● | ● |
 | ⬜ | TOOL-005 | Push notifications | — | ● | ● |

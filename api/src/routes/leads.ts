@@ -54,6 +54,18 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     return { duplicates, hasDuplicates: duplicates.length > 0 };
   });
 
+  app.get('/:id/tasks', async (request, reply) => {
+    const { organizationId } = request.user;
+    const { id } = request.params as { id: string };
+    const lead = await prisma.lead.findFirst({ where: { id, organizationId } });
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    const tasks = await prisma.task.findMany({
+      where: { leadId: id, organizationId },
+      orderBy: { dueAt: 'asc' },
+    });
+    return { tasks };
+  });
+
   app.get('/:id', async (request, reply) => {
     const { organizationId } = request.user;
     const { id } = request.params as { id: string };

@@ -12,6 +12,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="lead/[id]" options={{ headerShown: true, title: 'Lead' }} />
         <Stack.Screen name="lead/new" options={{ headerShown: true, title: 'New lead' }} />
+        <Stack.Screen name="lead/post-call" options={{ headerShown: true, title: 'Log call' }} />
       </Stack>
     </AuthProvider>
   );

@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { api, type Lead } from '../../lib/api';
 import { LEAD_STAGES } from '../../constants/stages';
 
@@ -21,23 +21,34 @@ type Activity = {
   createdAt: string;
 };
 
+type Task = {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  completedAt: string | null;
+};
+
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [lead, setLead] = useState<Lead | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [summary, setSummary] = useState('');
   const [nextAction, setNextAction] = useState<{ action: string; reason: string } | null>(null);
   const [note, setNote] = useState('');
+  const [taskTitle, setTaskTitle] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [leadRes, actRes] = await Promise.all([
+    const [leadRes, actRes, taskRes] = await Promise.all([
       api<{ lead: Lead }>(`/leads/${id}`),
       api<{ activities: Activity[] }>(`/leads/${id}/activities`),
+      api<{ tasks: Task[] }>(`/leads/${id}/tasks`),
     ]);
     setLead(leadRes.lead);
     setActivities(actRes.activities);
+    setTasks(taskRes.tasks);
   }, [id]);
 
   useFocusEffect(
@@ -65,21 +76,54 @@ export default function LeadDetailScreen() {
 
   async function addNote() {
     if (!note.trim() || !id) return;
-    await api(`/leads/${id}/activities`, {
-      method: 'POST',
-      body: { type: 'NOTE', body: note.trim(), useAiClean: true },
-    });
-    setNote('');
-    load();
+    try {
+      await api(`/leads/${id}/activities`, {
+        method: 'POST',
+        body: { type: 'NOTE', body: note.trim(), useAiClean: true },
+      });
+      setNote('');
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not save note');
+    }
+  }
+
+  async function addTask() {
+    if (!taskTitle.trim() || !id) return;
+    const due = new Date();
+    due.setDate(due.getDate() + 1);
+    try {
+      await api('/tasks', {
+        method: 'POST',
+        body: { leadId: id, title: taskTitle.trim(), dueAt: due.toISOString() },
+      });
+      setTaskTitle('');
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not add task');
+    }
+  }
+
+  async function completeTask(taskId: string) {
+    try {
+      await api(`/tasks/${taskId}`, { method: 'PATCH', body: { completed: true } });
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not complete task');
+    }
   }
 
   async function confirmStage(toStage: string) {
     if (!id) return;
-    await api(`/leads/${id}`, {
-      method: 'PATCH',
-      body: { stage: toStage, confirmStageSuggestion: true },
-    });
-    load();
+    try {
+      await api(`/leads/${id}`, {
+        method: 'PATCH',
+        body: { stage: toStage, confirmStageSuggestion: true },
+      });
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not update stage');
+    }
   }
 
   if (!lead) {
@@ -95,6 +139,18 @@ export default function LeadDetailScreen() {
       <Text style={styles.name}>{lead.name}</Text>
       <Text style={styles.meta}>{lead.stage}</Text>
 
+      <Pressable
+        style={styles.callBtn}
+        onPress={() =>
+          router.push({
+            pathname: '/lead/post-call',
+            params: { leadId: id, leadName: lead.name },
+          })
+        }
+      >
+        <Text style={styles.callBtnText}>Log call (AI)</Text>
+      </Pressable>
+
       <Pressable style={styles.aiBtn} onPress={loadAi} disabled={loadingAi}>
         <Text style={styles.aiBtnText}>{loadingAi ? 'Loading AI…' : 'Refresh AI insight'}</Text>
       </Pressable>
@@ -105,6 +161,30 @@ export default function LeadDetailScreen() {
           <Text style={styles.nextReason}>{nextAction.reason}</Text>
         </View>
       ) : null}
+
+      <Text style={styles.section}>Follow-up tasks</Text>
+      {tasks.map((t) => (
+        <Pressable
+          key={t.id}
+          style={[styles.taskRow, t.completedAt && styles.taskDone]}
+          onPress={() => !t.completedAt && completeTask(t.id)}
+        >
+          <Text style={styles.taskTitle}>{t.completedAt ? '✓ ' : ''}{t.title}</Text>
+          {t.dueAt ? (
+            <Text style={styles.taskDue}>Due {new Date(t.dueAt).toLocaleDateString()}</Text>
+          ) : null}
+        </Pressable>
+      ))}
+      <TextInput
+        style={styles.taskInput}
+        value={taskTitle}
+        onChangeText={setTaskTitle}
+        placeholder="New task title…"
+        placeholderTextColor="#64748b"
+      />
+      <Pressable style={styles.aiBtn} onPress={addTask}>
+        <Text style={styles.aiBtnText}>Add task (due tomorrow)</Text>
+      </Pressable>
 
       <Text style={styles.section}>Stage</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -148,7 +228,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 16 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' },
   name: { fontSize: 24, fontWeight: '700', color: '#f8fafc' },
-  meta: { color: '#38bdf8', marginBottom: 12 },
+  meta: { color: '#38bdf8', marginBottom: 8 },
+  callBtn: {
+    backgroundColor: '#38bdf8',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  callBtnText: { color: '#0f172a', fontWeight: '700' },
   section: { color: '#94a3b8', fontWeight: '600', marginTop: 20, marginBottom: 8 },
   summary: { color: '#e2e8f0', lineHeight: 22 },
   nextBox: { backgroundColor: '#1e293b', padding: 12, borderRadius: 8, marginTop: 8 },
@@ -162,6 +250,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aiBtnText: { color: '#38bdf8', fontWeight: '600' },
+  taskRow: {
+    backgroundColor: '#1e293b',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  taskDone: { opacity: 0.6 },
+  taskTitle: { color: '#f8fafc' },
+  taskDue: { color: '#64748b', fontSize: 12, marginTop: 4 },
+  taskInput: {
+    backgroundColor: '#1e293b',
+    color: '#f8fafc',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
   stageChip: {
     backgroundColor: '#1e293b',
     paddingHorizontal: 12,

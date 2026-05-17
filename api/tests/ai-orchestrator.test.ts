@@ -1,14 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 describe('UT-INF-005 AI orchestrator', () => {
   beforeEach(() => {
     vi.resetModules();
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('returns 503 when OPENAI_API_KEY missing', async () => {
-    const prev = process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-    vi.resetModules();
+    vi.stubEnv('OPENAI_API_KEY', '');
     const { generateLeadSummary } = await import('../src/services/ai/orchestrator.js');
     const fakeLead = {
       id: '1',
@@ -31,6 +33,5 @@ describe('UT-INF-005 AI orchestrator', () => {
     await expect(generateLeadSummary(fakeLead, 'u')).rejects.toMatchObject({
       message: 'AI_UNAVAILABLE',
     });
-    if (prev) process.env.OPENAI_API_KEY = prev;
   });
 });

@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
 import { Redirect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
@@ -17,9 +18,33 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: '#64748b',
       }}
     >
-      <Tabs.Screen name="desk" options={{ title: 'Desk' }} />
-      <Tabs.Screen name="leads" options={{ title: 'Leads' }} />
-      <Tabs.Screen name="pipeline" options={{ title: 'Pipeline' }} />
+      <Tabs.Screen
+        name="desk"
+        options={{
+          title: 'Desk',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flash-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="leads"
+        options={{
+          title: 'Leads',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="pipeline"
+        options={{
+          title: 'Pipeline',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="git-branch-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

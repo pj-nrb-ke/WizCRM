@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -10,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { api } from '../../lib/api';
+import { pickBusinessCardImage } from '../../lib/card-scan';
 
 export default function NewLeadScreen() {
   const [name, setName] = useState('');
@@ -17,6 +19,24 @@ export default function NewLeadScreen() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  async function scanCard() {
+    setScanning(true);
+    try {
+      const fields = await pickBusinessCardImage();
+      if (!fields) return;
+      if (fields.name) setName(fields.name);
+      if (fields.company) setCompany(fields.company);
+      if (fields.email) setEmail(fields.email);
+      if (fields.phone) setPhone(fields.phone);
+      Alert.alert('Card scanned', 'Check the fields and tap Save lead.');
+    } catch (e) {
+      Alert.alert('Scan failed', e instanceof Error ? e.message : 'Could not read card');
+    } finally {
+      setScanning(false);
+    }
+  }
 
   async function save(force = false) {
     setSaving(true);
@@ -33,7 +53,7 @@ export default function NewLeadScreen() {
       });
       router.replace(`/lead/${lead.id}`);
     } catch (e) {
-      const err = e as Error & { status?: number; data?: { duplicates?: unknown[] } };
+      const err = e as Error & { status?: number };
       if (err.status === 409) {
         Alert.alert('Possible duplicate', 'A lead with this phone or email exists. Save anyway?', [
           { text: 'Cancel', style: 'cancel' },
@@ -49,6 +69,14 @@ export default function NewLeadScreen() {
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <Pressable style={styles.scanBtn} onPress={scanCard} disabled={scanning}>
+        {scanning ? (
+          <ActivityIndicator color="#38bdf8" />
+        ) : (
+          <Text style={styles.scanBtnText}>Scan business card (camera)</Text>
+        )}
+      </Pressable>
+
       <Text style={styles.label}>Name *</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor="#64748b" />
       <Text style={styles.label}>Company</Text>
@@ -63,7 +91,13 @@ export default function NewLeadScreen() {
         placeholderTextColor="#64748b"
       />
       <Text style={styles.label}>Phone</Text>
-      <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholderTextColor="#64748b" />
+      <TextInput
+        style={styles.input}
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+        placeholderTextColor="#64748b"
+      />
       <Text style={styles.hint}>Phone or email required</Text>
       <Pressable style={styles.button} onPress={() => save()} disabled={saving}>
         <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save lead'}</Text>
@@ -74,6 +108,15 @@ export default function NewLeadScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 16 },
+  scanBtn: {
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  scanBtnText: { color: '#38bdf8', fontWeight: '600' },
   label: { color: '#94a3b8', marginBottom: 6, marginTop: 12 },
   input: {
     backgroundColor: '#1e293b',

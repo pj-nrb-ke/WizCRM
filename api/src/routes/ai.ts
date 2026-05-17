@@ -11,6 +11,8 @@ import {
   processPostCall,
   suggestStage,
 } from '../services/ai/orchestrator.js';
+import { buildRulesDesk } from '../services/desk-rules.service.js';
+import { isAllowedStageTransition } from '@wizcrm/shared';
 
 export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -25,7 +27,10 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       },
       take: 30,
     });
-    const items = await generateSalesDesk(organizationId, userId, leads);
+    let items = await generateSalesDesk(organizationId, userId, leads);
+    if (items.length === 0 && leads.length > 0) {
+      items = buildRulesDesk(leads);
+    }
     return { items };
   });
 
@@ -81,6 +86,75 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       parsed.data.roughNote,
     );
     return result;
+  });
+
+  app.post('/post-call/confirm', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const body = request.body as {
+      leadId: string;
+      summary: string;
+      taskTitle?: string;
+      taskDueAt?: string;
+      suggestedStage?: string;
+    };
+    if (!body.leadId || !body.summary) {
+      return reply.status(400).send({ error: 'leadId and summary required' });
+    }
+    const lead = await prisma.lead.findFirst({
+      where: { id: body.leadId, organizationId },
+    });
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+
+    await prisma.activity.create({
+      data: {
+        leadId: body.leadId,
+        userId,
+        type: 'CALL',
+        subject: 'Call logged',
+        body: body.summary,
+      },
+    });
+
+    if (body.taskTitle) {
+      await prisma.task.create({
+        data: {
+          organizationId,
+          userId,
+          leadId: body.leadId,
+          title: body.taskTitle,
+          dueAt: body.taskDueAt
+            ? new Date(body.taskDueAt)
+            : new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+
+    if (
+      body.suggestedStage &&
+      body.suggestedStage !== lead.stage &&
+      isAllowedStageTransition(lead.stage, body.suggestedStage as never)
+    ) {
+      await prisma.lead.update({
+        where: { id: body.leadId },
+        data: { stage: body.suggestedStage as never, lastActivityAt: new Date() },
+      });
+      await prisma.stageChange.create({
+        data: {
+          leadId: body.leadId,
+          fromStage: lead.stage,
+          toStage: body.suggestedStage as never,
+          suggestedByAi: true,
+          userId,
+        },
+      });
+    } else {
+      await prisma.lead.update({
+        where: { id: body.leadId },
+        data: { lastActivityAt: new Date() },
+      });
+    }
+
+    return { ok: true };
   });
 
   app.post('/voice-note', async (request, reply) => {

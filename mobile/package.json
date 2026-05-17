@@ -10,9 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
     "@wizcrm/shared": "file:../shared",
     "expo": "~54.0.33",
     "expo-constants": "~18.0.9",
+    "expo-image-picker": "~17.0.11",
     "expo-linking": "~8.0.8",
     "expo-router": "~6.0.12",
     "expo-secure-store": "~15.0.7",
