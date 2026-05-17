@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { api } from '../../lib/api';
-import { pickBusinessCardImage } from '../../lib/card-scan';
+import { pickBusinessCardFromGallery, pickBusinessCardImage } from '../../lib/card-scan';
 
 export default function NewLeadScreen() {
   const [name, setName] = useState('');
@@ -21,10 +21,17 @@ export default function NewLeadScreen() {
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
 
-  async function scanCard() {
+  async function applyCardFields(
+    pick: () => Promise<{
+      name?: string;
+      company?: string;
+      email?: string;
+      phone?: string;
+    } | null>,
+  ) {
     setScanning(true);
     try {
-      const fields = await pickBusinessCardImage();
+      const fields = await pick();
       if (!fields) return;
       if (fields.name) setName(fields.name);
       if (fields.company) setCompany(fields.company);
@@ -69,12 +76,23 @@ export default function NewLeadScreen() {
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <Pressable style={styles.scanBtn} onPress={scanCard} disabled={scanning}>
+      <Pressable
+        style={styles.scanBtn}
+        onPress={() => applyCardFields(pickBusinessCardImage)}
+        disabled={scanning}
+      >
         {scanning ? (
           <ActivityIndicator color="#38bdf8" />
         ) : (
           <Text style={styles.scanBtnText}>Scan business card (camera)</Text>
         )}
+      </Pressable>
+      <Pressable
+        style={styles.scanBtn}
+        onPress={() => applyCardFields(pickBusinessCardFromGallery)}
+        disabled={scanning}
+      >
+        <Text style={styles.scanBtnText}>Choose photo from gallery</Text>
       </Pressable>
 
       <Text style={styles.label}>Name *</Text>
