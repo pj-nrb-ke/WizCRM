@@ -116,3 +116,5 @@ Use this when building features:
 ## Related
 
 - [README.md](./README.md) — Project overview, repo, and Docker notes
+- [SRS.md](./SRS.md) — Full software requirements (including mobile call logging and meeting geofence)
+- [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — Implementation status by requirement ID

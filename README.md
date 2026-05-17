@@ -23,26 +23,30 @@ WizCRM is a **standalone Git repository**. It is not part of the WIZAG public we
 
 For stage definitions, transitions, and data you should capture at each step, see **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)**.
 
+Full product requirements (SRS) and implementation tracking:
+
+- **[SRS.md](./SRS.md)** — Software requirements (features, post-call logging, meeting geofence, nice-to-haves)
+- **[PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)** — Checklist of requirement IDs and completion status
+
 ## Project status
 
-The repository is in **early setup**. Application code, API, database schema, and deployment configuration are not yet in the tree. Documentation here describes the **intended product** so development can align on scope before implementation.
+The repository is in **early setup**. The mobile app has an Expo welcome screen; API, database, and web UI are not implemented yet. Use **SRS.md** and **PROGRESS_TRACKER.md** to drive delivery.
 
-## Planned structure (high level)
-
-As the app is built, the repo is expected to grow along these lines:
+## Repository layout
 
 ```
 WizCRM/
-├── README.md              # This file
-├── LEAD_LIFECYCLE.md      # Lead stages and CRM behaviour
-├── MOBILE_DEV.md          # Android emulator and mobile toolchain
-├── mobile/                # React Native (Expo) app — WizCRM on Android/iOS
-├── src/                   # Web / API source (TBD)
-├── tests/
-└── docker/                # Container definitions (when stack is chosen)
+├── README.md
+├── SRS.md                 # Software requirements specification
+├── PROGRESS_TRACKER.md    # Feature completion tracking
+├── LEAD_LIFECYCLE.md
+├── MOBILE_DEV.md
+├── mobile/                # React Native (Expo)
+├── web/                   # Browser app (placeholder)
+├── shared/                # Shared types / logic
+├── scripts/
+└── docker/                # Containers (when stack is chosen)
 ```
-
-Exact folders and technologies will be documented here once the stack is decided (e.g. Node/React, .NET, Python/Django, etc.).
 
 ## Development workflow
 
@@ -90,6 +94,8 @@ WizCRM includes a **mobile app** (Android first, iOS later) alongside the web CR
 
 ## Related documentation
 
+- [SRS.md](./SRS.md) — Product and software requirements
+- [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — Implementation progress by requirement ID
 - [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md) — Lead stages, transitions, and fields to track
 - [MOBILE_DEV.md](./MOBILE_DEV.md) — Android Studio, emulator, and mobile development
 
