@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  leads     Lead[]
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           UserRole     @default(SALES)
+  createdAt      DateTime     @default(now())
+  ownedLeads     Lead[]       @relation("LeadOwner")
+  activities     Activity[]
+  tasks          Task[]
+  aiAuditLogs    AiAuditLog[]
+
+  @@index([organizationId])
+}
+
+enum UserRole {
+  SALES
+  MANAGER
+  ADMIN
+}
+
+model Lead {
+  id               String     @id @default(uuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  ownerId          String
+  owner            User       @relation("LeadOwner", fields: [ownerId], references: [id])
+  name             String
+  company          String?
+  email            String?
+  emailNormalized  String?
+  phone            String?
+  phoneNormalized  String?
+  source           String?
+  stage            LeadStage  @default(NEW)
+  lastActivityAt   DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  activities       Activity[]
+  tasks            Task[]
+  stageChanges     StageChange[]
+  aiSuggestions    AiSuggestion[]
+
+  @@index([organizationId, stage])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, emailNormalized])
+  @@index([organizationId, phoneNormalized])
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+model StageChange {
+  id           String    @id @default(uuid())
+  leadId       String
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStage    LeadStage
+  toStage      LeadStage
+  note         String?
+  suggestedByAi Boolean  @default(false)
+  userId       String
+  createdAt    DateTime  @default(now())
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+  STAGE_CHANGE
+}
+
+model Activity {
+  id        String       @id @default(uuid())
+  leadId    String
+  lead      Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  type      ActivityType
+  subject   String?
+  body      String
+  metadata  Json?
+  createdAt DateTime     @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  organizationId String
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  title       String
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, dueAt])
+  @@index([organizationId])
+}
+
+model AiSuggestion {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  kind      String
+  payload   Json
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model AiAuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id])
+  feature        String
+  model          String?
+  promptVersion  String   @default("v1")
+  inputSummary   String?
+  outputSummary  String?
+  approved       Boolean?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt(sort: Desc)])
+}

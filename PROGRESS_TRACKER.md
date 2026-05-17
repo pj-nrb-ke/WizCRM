@@ -4,7 +4,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled · ➖ Waived (QA only, with reason in notes)
 
-**Last updated:** 2026-05-17 (SRS v2.2 — Task IDs + QA/Testing)
+**Last updated:** 2026-05-17 (Lite foundation — Node API + LLM + mobile shell)
 
 **Manager tasks:** [manager_task_tracker.md](./manager_task_tracker.md) (`MGT-*`)
 
@@ -31,8 +31,8 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 | Area | Total | Done | In progress | Not started |
 |------|------:|-----:|------------:|------------:|
-| Infrastructure | 10 | 3 | 0 | 7 |
-| **Lite** features | 14 | 0 | 0 | 14 |
+| Infrastructure | 10 | 4 | 2 | 4 |
+| **Lite** features | 14 | 0 | 8 | 6 |
 | **Lite** unit tests (`UT-LITE-*`) | 14 | 0 | 0 | 14 |
 | **Lite** QA (`QA-LITE-*`) | 16 | 0 | 0 | 16 |
 | **Lite** E2E (`E2E-LITE-*`) | 6 | 0 | 0 | 6 |
@@ -76,18 +76,18 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | ✅ | INF-001 | Git repo + `development` branch | All |
 | ✅ | INF-002 | Expo mobile scaffold | All |
 | ✅ | INF-003 | Folder layout `web/`, `shared/`, `docker/` | All |
-| ⬜ | INF-004 | Backend API + database | Lite+ |
-| ⬜ | INF-005 | AI orchestration / LLM service layer | Lite+ |
+| 🟡 | INF-004 | Backend API + database | Lite+ |
+| 🟡 | INF-005 | AI orchestration / LLM service layer (OpenAI) | Lite+ |
 | ⬜ | INF-006 | Web app scaffold | Pro+ |
 | ⬜ | INF-007 | CI (lint/test/build) | Pro+ |
 | ⬜ | INF-008 | `tenant_id` schema (design for Pro) | Pro+ |
-| ⬜ | INF-009 | Test runners: API + `shared/` + `mobile/` (`npm test`) | Lite+ |
+| ✅ | INF-009 | Test runners: API + `shared/` + `mobile/` (`npm test`) | Lite+ |
 | ⬜ | INF-010 | Pre-push or CI runs `UT-*` for touched packages | Lite+ |
 
 | Status | ID | Item | Pairs with |
 |--------|-----|------|------------|
-| ⬜ | UT-INF-004 | API route tests: auth, leads CRUD, activities, tasks | INF-004 |
-| ⬜ | UT-INF-005 | AI service: mock LLM, fallback, audit log shape | INF-005 |
+| 🟡 | UT-INF-004 | API route tests: auth, leads CRUD, activities, tasks | INF-004 |
+| ✅ | UT-INF-005 | AI service: mock LLM, fallback, audit log shape | INF-005 |
 | ⬜ | QA-INF-004 | Smoke: API up via Docker, health + login + one lead | INF-004 |
 
 ---
@@ -96,20 +96,20 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 | Status | ID | Feature |
 |--------|-----|---------|
-| ⬜ | LITE-001 | Lead Inbox (minimal fields) |
-| ⬜ | LITE-002 | Duplicate detection |
+| 🟡 | LITE-001 | Lead Inbox (minimal fields) |
+| 🟡 | LITE-002 | Duplicate detection |
 | ⬜ | LITE-003 | Business card capture |
-| ⬜ | LITE-004 | Lifecycle stages + AI suggest / user confirm |
-| ⬜ | LITE-005 | AI Sales Desk (basic) |
-| ⬜ | LITE-006 | AI Lead Summary |
-| ⬜ | LITE-007 | AI Next Action |
-| ⬜ | LITE-008 | Quick note + voice → AI timeline |
+| 🟡 | LITE-004 | Lifecycle stages + AI suggest / user confirm |
+| 🟡 | LITE-005 | AI Sales Desk (basic) |
+| 🟡 | LITE-006 | AI Lead Summary |
+| 🟡 | LITE-007 | AI Next Action |
+| 🟡 | LITE-008 | Quick note + voice → AI timeline |
 | ⬜ | LITE-009 | Post-call prompt (Android) |
-| ⬜ | LITE-010 | Activity timeline |
+| 🟡 | LITE-010 | Activity timeline |
 | ⬜ | LITE-011 | Follow-up tasks |
-| ⬜ | LITE-012 | Simple pipeline by stage |
-| ⬜ | LITE-013 | Auth (single org, internal) |
-| ⬜ | LITE-014 | Mobile-first delivery |
+| 🟡 | LITE-012 | Simple pipeline by stage |
+| 🟡 | LITE-013 | Auth (single org, internal) |
+| 🟡 | LITE-014 | Mobile-first delivery |
 
 ---
 
@@ -247,9 +247,9 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 
 | Status | ID | Item | Lite | Pro | Ent |
 |--------|-----|------|:----:|:---:|:---:|
-| ⬜ | TOOL-001 | LLM / AI orchestration | ● | ● | ● |
+| 🟡 | TOOL-001 | LLM / AI orchestration | ● | ● | ● |
 | ⬜ | TOOL-002 | Card scan (camera + OCR/vision) | ● | ● | ● |
-| ⬜ | TOOL-003 | `expo-secure-store` | ● | ● | ● |
+| 🟡 | TOOL-003 | `expo-secure-store` | ● | ● | ● |
 | ⬜ | TOOL-004 | Call detection (Android) | ● | ● | ● |
 | ⬜ | TOOL-005 | Push notifications | — | ● | ● |
 | ⬜ | TOOL-006 | ScaleGate HTTP client | — | ● | ● |

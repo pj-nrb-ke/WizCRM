@@ -23,3 +23,8 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+api/.env
+
+# Build
+shared/dist/
+api/dist/

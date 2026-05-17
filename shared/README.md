@@ -1,10 +1,8 @@
-# WizCRM Shared
+# WizCRM Shared (`@wizcrm/shared`)
 
-Cross-platform code shared by **web** and **mobile** (TypeScript types, API contracts, validation, constants). Add packages here when both clients need the same definitions.
+TypeScript types, Zod validation, and pure helpers used by **api** and **mobile**.
 
-## Layout
-
-```
-shared/
-└── (packages or modules added as the stack is chosen)
+```bash
+npm run build -w shared
+npm run test -w shared
 ```

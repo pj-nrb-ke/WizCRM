@@ -1,0 +1,17 @@
+{
+  "name": "wizcrm",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "api",
+    "mobile"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "api:dev": "npm run dev -w api",
+    "api:test": "npm run test -w api",
+    "shared:test": "npm run test -w shared",
+    "db:up": "docker compose -f docker/docker-compose.yml up -d",
+    "db:down": "docker compose -f docker/docker-compose.yml down"
+  }
+}
