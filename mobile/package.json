@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
-    "@wizcrm/shared": "file:../shared",
     "expo": "~54.0.33",
     "expo-constants": "~18.0.9",
     "expo-image-picker": "~17.0.11",

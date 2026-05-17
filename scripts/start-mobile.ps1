@@ -13,6 +13,9 @@ if ($on8081) {
   }
 }
 
-Write-Host "Starting Expo (Android emulator: press a)" -ForegroundColor Cyan
-Write-Host "Terminal logs here are normal. Ignore unless you see a red ERROR." -ForegroundColor DarkGray
+Write-Host "Installing mobile packages (if needed)..." -ForegroundColor Cyan
+npm install
+
+Write-Host "Starting Expo with a clean cache (Android: press a once)..." -ForegroundColor Cyan
+Write-Host "If you see 'Unable to resolve module', wait for bundling to finish or press r to reload." -ForegroundColor DarkGray
 npx.cmd expo start --clear

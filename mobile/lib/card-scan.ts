@@ -1,4 +1,3 @@
-import * as ImagePicker from 'expo-image-picker';
 import { api } from './api';
 
 export async function pickBusinessCardImage(): Promise<{
@@ -7,6 +6,8 @@ export async function pickBusinessCardImage(): Promise<{
   email?: string;
   phone?: string;
 } | null> {
+  const ImagePicker = await import('expo-image-picker');
+
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) {
     throw new Error('Camera permission is required to scan a business card.');
