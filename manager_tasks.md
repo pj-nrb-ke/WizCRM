@@ -2,8 +2,10 @@
 
 Tasks listed here are **outside the codebase**: accounts, legal, vendor access, product decisions, and operations. Engineering cannot complete them.
 
+**Product tiers:** **Lite** (internal, ~1 week) · **Pro** (~1 month) · **Enterprise** (full platform). See [SRS.md](./SRS.md) and [WizCRM Features.md](./WizCRM%20Features.md).
+
 **Track status in:** [manager_task_tracker.md](./manager_task_tracker.md)  
-**Related:** [SRS.md](./SRS.md) (§20–21), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) (`TOOL-*` technical items)
+**Related:** [SRS.md](./SRS.md), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) (`TOOL-*`)
 
 **Legend for owners:** Product = business/product owner · Legal = counsel or delegated · IT = WIZAG or customer IT · Vendor = external portal signup
 
@@ -88,11 +90,12 @@ Required when moving **beyond Expo Go** to store builds.
 
 | When | Complete these IDs |
 |------|---------------------|
-| **Now** | MGT-011, MGT-022, MGT-023 |
-| **Before geofence beta** | MGT-001 – MGT-005 |
-| **Before commercial SaaS** | MGT-006 – MGT-010 |
-| **Before ERP Phase 6** | MGT-012 – MGT-015, MGT-015b |
-| **Before store release** | MGT-016 – MGT-021 |
+| **Now (all tiers)** | MGT-011, MGT-022, MGT-023 |
+| **Lite internal pilot** | Optional: defer Maps/ScaleGate until Pro |
+| **Before Pro launch** | MGT-006 – MGT-010 (ScaleGate + legal) |
+| **Before Enterprise geofence** | MGT-001 – MGT-005 |
+| **Before Enterprise ERP** | MGT-012 – MGT-015, MGT-015b |
+| **Before store release (Pro+)** | MGT-016 – MGT-021 |
 
 ---
 

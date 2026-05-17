@@ -2,6 +2,8 @@
 
 This document defines how WizCRM models a **lead** and the **stages** it passes through from first touch to customer (or closed-lost). Use it as the product reference when designing the database, UI, and APIs.
 
+**SRS v2.0 (AI-first):** Stage changes are typically **suggested by AI** from activity; the user **confirms** before the stage updates (all tiers). See [SRS.md](./SRS.md) and plans in [WizCRM Features.md](./WizCRM%20Features.md).
+
 ## Lead
 
 A **lead** is a person or organization that may become a customer. At minimum, WizCRM should store:
@@ -116,5 +118,6 @@ Use this when building features:
 ## Related
 
 - [README.md](./README.md) — Project overview, repo, and Docker notes
-- [SRS.md](./SRS.md) — Full software requirements (including mobile call logging and meeting geofence)
-- [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — Implementation status by requirement ID
+- [SRS.md](./SRS.md) — Software requirements v2.0 (Lite / Pro / Enterprise)
+- [WizCRM Features.md](./WizCRM%20Features.md) — Features by plan
+- [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — Implementation status

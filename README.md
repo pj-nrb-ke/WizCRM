@@ -1,6 +1,8 @@
 # WizCRM
 
-**WizCRM** is a customer relationship management (CRM) application built for [Wise & Agile Solutions Ltd](https://github.com/pj-nrb-ke) (WIZAG). It is designed to track the **full lifecycle of every lead**—from first contact through qualification, engagement, conversion, and ongoing customer relationship—so sales and operations teams have one place to see status, history, and next actions.
+**WizCRM** is an **AI-driven sales operating system** built for [Wise & Agile Solutions Ltd](https://github.com/pj-nrb-ke) (WIZAG). Reps sell; AI captures activity, updates the CRM, recommends next actions, and supports managers—with human approval where it matters.
+
+**Plans:** **Lite** (internal pilot, ~1 week) · **Pro** (mainstream, ~1 month) · **Enterprise** (full platform: field geofence, ERP, advanced integrations).
 
 ## Repository
 
@@ -15,33 +17,40 @@ WizCRM is a **standalone Git repository**. It is not part of the WIZAG public we
 
 ## What WizCRM does
 
-- **Lead capture** — Record inbound leads (web forms, referrals, manual entry) with source and contact details.
-- **Lifecycle tracking** — Move leads through defined stages with timestamps, owners, and notes at each step.
-- **Activity history** — Log calls, emails, meetings, and tasks tied to a lead so nothing is lost between handoffs.
-- **Pipeline visibility** — See where leads sit in the funnel and which need follow-up.
-- **Outcome recording** — Mark leads as won or lost with reasons; convert won leads into accounts for post-sale tracking.
+- **AI Lead Capture** — Quick add, business card scan, duplicate checks.
+- **AI Sales Desk** — Daily priorities: who to call, follow-ups, stale leads.
+- **AI Activity Capture** — Post-call logging, voice/quick notes turned into structured timeline entries.
+- **AI Follow-up & communication** — Tasks and draft messages (Pro+); you approve before sending.
+- **AI Pipeline & manager insight** — Stage suggestions, forecasts, team summaries (Pro+).
+- **Field & ERP** — Geofence visit proof and accounting sync (**Enterprise**).
 
-For stage definitions, transitions, and data you should capture at each step, see **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)**.
+Lead stages and domain rules: **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)** (AI suggests stage changes; user confirms).
 
-Full product requirements (SRS) and implementation tracking:
+## Documentation
 
-- **[SRS.md](./SRS.md)** — Software requirements (multi-tenant SaaS, ScaleGate licensing, ERP sync, post-call, geofence, technical add-ons)
-- **[PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)** — Engineering checklist (`FR-*`, `TOOL-*`, `INF-*`)
-- **[manager_tasks.md](./manager_tasks.md)** — Non-technical / business tasks (accounts, legal, vendors)
-- **[manager_task_tracker.md](./manager_task_tracker.md)** — Manager task status (`MGT-*`)
-- **[WizCRM Features.md](./WizCRM%20Features.md)** — Product feature list for brochures and marketing
+| Document | Purpose |
+|----------|---------|
+| [SRS.md](./SRS.md) | Software requirements v2.0 (Lite / Pro / Enterprise) |
+| [WizCRM Features.md](./WizCRM%20Features.md) | Brochure feature lists by plan |
+| [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) | Engineering progress (`LITE-*`, `PRO-*`, `ENT-*`) |
+| [manager_tasks.md](./manager_tasks.md) | Non-technical tasks (Google Cloud, ScaleGate, ERP, stores) |
+| [manager_task_tracker.md](./manager_task_tracker.md) | Manager checklist (`MGT-*`) |
+| [MOBILE_DEV.md](./MOBILE_DEV.md) | Android emulator and Expo |
 
 ## Project status
 
-The repository is in **early setup**. The mobile app has an Expo welcome screen; API, database, and web UI are not implemented yet. Use **SRS.md** and **PROGRESS_TRACKER.md** to drive delivery.
+**Lite** development is next (~1 week internal pilot). Mobile has an Expo welcome screen; backend and AI services are not implemented yet. Track work in **PROGRESS_TRACKER.md**.
 
 ## Repository layout
 
 ```
 WizCRM/
 ├── README.md
-├── SRS.md                 # Software requirements specification
-├── PROGRESS_TRACKER.md    # Feature completion tracking
+├── SRS.md                 # Software requirements v2.0 (AI-first, Lite/Pro/Enterprise)
+├── WizCRM Features.md     # Brochure features by plan
+├── PROGRESS_TRACKER.md    # Engineering progress by tier
+├── manager_tasks.md       # Non-technical prerequisites
+├── manager_task_tracker.md
 ├── LEAD_LIFECYCLE.md
 ├── MOBILE_DEV.md
 ├── mobile/                # React Native (Expo)
