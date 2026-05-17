@@ -4,7 +4,7 @@
 |-------|--------|
 | **Product** | WizCRM — AI-driven CRM for sales and field teams |
 | **Organization** | Wise & Agile Solutions Ltd (WIZAG) |
-| **Document version** | 2.1 |
+| **Document version** | 2.2 |
 | **Date** | 2026-05-17 |
 | **Status** | Active — AI-first product; tiered Lite / Pro / Enterprise |
 | **Related docs** | [WizCRM Features.md](./WizCRM%20Features.md), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md), [manager_tasks.md](./manager_tasks.md), [manager_task_tracker.md](./manager_task_tracker.md) |
@@ -236,17 +236,91 @@ Manager prerequisites: [manager_tasks.md](./manager_tasks.md).
 
 | Phase | Tier | Target | Tracker prefix |
 |-------|------|--------|----------------|
-| 1 | **Lite** | ~1 week | `LITE-*`, `INF-*`, `TOOL-*` (subset) |
-| 2 | **Pro** | ~1 month | `PRO-*`, `SG-*`, multi-tenant |
-| 3 | **Enterprise** | Ongoing | `ENT-*`, ERP, geofence |
+| 1 | **Lite** | ~1 week | `LITE-*`, `UT-*`, `QA-*`, `E2E-*`, `INF-*`, `TOOL-*` (subset) |
+| 2 | **Pro** | ~1 month | `PRO-*`, `UT-PRO-*`, `QA-PRO-*`, `SG-*`, multi-tenant |
+| 3 | **Enterprise** | Ongoing | `ENT-*`, `UT-ENT-*`, `QA-ENT-*`, ERP, geofence |
 
 ---
 
-## 11. Traceability
+## 11. Task IDs, quality assurance, and testing
+
+All delivery work is tracked by **Task ID** in [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md). Use IDs in commits, PRs, and discussions (e.g. “`UT-LITE-002` is failing”).
+
+### 11.1 Task ID prefixes
+
+| Prefix | Meaning | Example |
+|--------|---------|---------|
+| `INF-*` | Infrastructure / platform | `INF-004` backend API |
+| `LITE-*` / `PRO-*` / `ENT-*` | Product requirement (this SRS) | `LITE-001` Lead Inbox |
+| `UT-*` | **Unit / automated tests** for a requirement | `UT-LITE-001` tests for `LITE-001` |
+| `QA-*` | **Manual acceptance / QA** checklist | `QA-LITE-001` verifies SRS acceptance |
+| `E2E-*` | **End-to-end** tests (mobile or API journey) | `E2E-LITE-LOGIN` |
+| `TOOL-*` | Packages and external services | `TOOL-002` card scan |
+| `NFR-*` | Non-functional requirements | `NFR-004` AI degradation |
+| `MGT-*` | Manager / non-technical ([manager_tasks.md](./manager_tasks.md)) | `MGT-011` ERP sandbox |
+
+**Naming:** `UT-LITE-001` pairs with `LITE-001`. Same pattern for Pro and Enterprise when that tier starts.
+
+### 11.2 Definition of done (per feature)
+
+A requirement **`LITE-*`** (or `PRO-*` / `ENT-*`) is **Done** only when:
+
+1. Implementation merged on `development`.
+2. Paired **`UT-*`** exists, runs in CI or documented local command, and **passes**.
+3. Paired **`QA-*`** executed and marked pass (or waived in tracker with reason).
+4. **`E2E-*`** pass where listed for that feature (Lite: critical journeys only).
+
+### 11.3 Unit testing policy
+
+| Layer | Tooling (target) | What to unit-test |
+|-------|------------------|-------------------|
+| **API / domain** | Jest or Vitest + test DB or in-memory | Validation, duplicate rules, stage rules, desk ranking, auth, AI fallback paths |
+| **Shared** | Same runner | Types, pure helpers, stage enums, phone/email normalizers |
+| **Mobile** | Jest + React Native Testing Library | Form validation, API client mappers, reducers/hooks, desk list logic |
+| **AI orchestration** | Mocked LLM | Prompt builders, parse responses, audit log writes, degrade-to-manual |
+
+Unit tests run **at every critical point**: when a module is introduced or changed, add or update the matching `UT-*` in the same PR.
+
+**Critical points for Lite (minimum `UT-*` set):** auth, lead create/validation, duplicate detection, stage transitions, timeline ordering, task due logic, Sales Desk rules, AI summary/next-action with mock LLM, card-parse mapper, post-call payload builder.
+
+### 11.4 QA and acceptance testing
+
+`QA-*` tasks are **human or scripted acceptance** checks tied to SRS acceptance columns—not optional polish.
+
+| ID | Scope |
+|----|--------|
+| `QA-LITE-PILOT` | Full internal pilot script: add/scan lead → desk → log call → read summary → pipeline view |
+| `QA-LITE-ANDROID` | Android emulator/device smoke on each release candidate |
+| `QA-LITE-001` … `QA-LITE-014` | One QA task per `LITE-*` requirement (see tracker) |
+| `QA-PRO-PILOT` / `QA-ENT-PILOT` | Tier sign-off when Pro / Enterprise starts |
+
+### 11.5 End-to-end testing (Lite)
+
+| ID | Journey |
+|----|---------|
+| `E2E-LITE-LOGIN` | Login → token stored → authorized API calls |
+| `E2E-LITE-LEAD` | Create lead → appears in list and pipeline |
+| `E2E-LITE-TIMELINE` | Add note → visible on timeline in order |
+| `E2E-LITE-DESK` | Desk shows due follow-up after task created |
+| `E2E-LITE-CARD` | Card photo → prefill → save lead (mock or real vision API) |
+| `E2E-LITE-POSTCALL` | Post-call flow on Android emulator |
+
+E2E may use Detox, Maestro, or API-level supertest plus mobile smoke—chosen at `INF-009` setup.
+
+### 11.6 Test infrastructure (`INF-*`)
+
+| ID | Requirement |
+|----|-------------|
+| INF-009 | Test runners configured: API (`npm test`), mobile (`npm test` in `mobile/`), shared package |
+| INF-010 | CI or pre-push script runs `UT-*` for touched packages (full CI at `INF-007` for Pro) |
+
+---
+
+## 12. Traceability
 
 | Document | Purpose |
 |----------|---------|
-| [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) | Engineering status (`LITE-*`, `PRO-*`, `ENT-*`) |
+| [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) | Status: `LITE-*` / `PRO-*` / `ENT-*`, `UT-*`, `QA-*`, `E2E-*` |
 | [WizCRM Features.md](./WizCRM%20Features.md) | Brochure / sales feature lists by tier |
 | SRS Appendix A | Deferred backlog (`FR-NTH-*`, non-MVP) |
 | [manager_task_tracker.md](./manager_task_tracker.md) | Non-technical tasks (`MGT-*`) |
@@ -376,10 +450,11 @@ All other rows below remain **deferred** unless a future SRS revision promotes t
 
 ---
 
-## 12. Document history
+## 13. Document history
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0–1.2 | 2026-05-17 | User-driven CRM; geofence; ScaleGate; ERP; manager tasks |
 | 2.0 | 2026-05-17 | AI-first product; tiers **Lite** / **Pro** / **Enterprise** |
 | 2.1 | 2026-05-17 | Appendix A: deferred `FR-NTH-*` backlog (Option A) |
+| 2.2 | 2026-05-17 | Task IDs; `UT-*` / `QA-*` / `E2E-*`; unit testing and QA policy |
