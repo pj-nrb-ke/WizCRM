@@ -13,7 +13,6 @@ export default function PipelineScreen() {
 
   const load = useCallback(async (isPull = false) => {
     if (isPull) setRefreshing(true);
-  else setInitialLoading((prev) => prev && Object.keys(pipeline).length === 0);
     setError('');
     try {
       const data = await api<{ pipeline: Record<string, Lead[]> }>('/leads/pipeline');
@@ -25,7 +24,7 @@ export default function PipelineScreen() {
       setInitialLoading(false);
       setRefreshing(false);
     }
-  }, [pipeline]);
+  }, []);
 
   useRefreshOnFocus(useCallback(() => load(false), [load]));
 
