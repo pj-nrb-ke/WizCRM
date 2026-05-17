@@ -29,6 +29,7 @@ Full product requirements (SRS) and implementation tracking:
 - **[PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)** — Engineering checklist (`FR-*`, `TOOL-*`, `INF-*`)
 - **[manager_tasks.md](./manager_tasks.md)** — Non-technical / business tasks (accounts, legal, vendors)
 - **[manager_task_tracker.md](./manager_task_tracker.md)** — Manager task status (`MGT-*`)
+- **[WizCRM Features.md](./WizCRM%20Features.md)** — Product feature list for brochures and marketing
 
 ## Project status
 
