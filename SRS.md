@@ -4,7 +4,7 @@
 |-------|--------|
 | **Product** | WizCRM — AI-driven CRM for sales and field teams |
 | **Organization** | Wise & Agile Solutions Ltd (WIZAG) |
-| **Document version** | 2.0 |
+| **Document version** | 2.1 |
 | **Date** | 2026-05-17 |
 | **Status** | Active — AI-first product; tiered Lite / Pro / Enterprise |
 | **Related docs** | [WizCRM Features.md](./WizCRM%20Features.md), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md), [manager_tasks.md](./manager_tasks.md), [manager_task_tracker.md](./manager_task_tracker.md) |
@@ -248,8 +248,131 @@ Manager prerequisites: [manager_tasks.md](./manager_tasks.md).
 |----------|---------|
 | [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) | Engineering status (`LITE-*`, `PRO-*`, `ENT-*`) |
 | [WizCRM Features.md](./WizCRM%20Features.md) | Brochure / sales feature lists by tier |
+| SRS Appendix A | Deferred backlog (`FR-NTH-*`, non-MVP) |
 | [manager_task_tracker.md](./manager_task_tracker.md) | Non-technical tasks (`MGT-*`) |
 | [MOBILE_DEV.md](./MOBILE_DEV.md) | Android / Expo toolchain |
+
+---
+
+## Appendix A — Deferred / nice-to-have (`FR-NTH-*`)
+
+**Status:** Not required for **Lite**, **Pro**, or **Enterprise** MVP. Kept for backlog prioritization after tier delivery.
+
+**Promoted to core in SRS v2.0** (do not plan as `FR-NTH-*`; use tier IDs instead):
+
+| FR-NTH-* | Now covered by |
+|----------|----------------|
+| FR-NTH-023 | Business card scan → `LITE-003` |
+| FR-NTH-040 | Timeline / lead summary → `LITE-006`, `PRO-003` |
+| FR-NTH-041 | Next action → `LITE-007`, `PRO-003` |
+| FR-NTH-044 | Voice note → activity → `LITE-008`, `PRO-004` |
+| FR-NTH-072 | Quotas / goals → `PRO-010` |
+| FR-NTH-073 | Weighted forecast (basic) → `PRO-007` |
+| FR-NTH-084 | Arrival photo (optional) → `ENT-002` |
+| FR-NTH-090–092 | SSO, 2FA, IP allowlist → `ENT-010` |
+| FR-NTH-022 | E-signature → `ENT-012` (optional roadmap) |
+
+All other rows below remain **deferred** unless a future SRS revision promotes them.
+
+### A.1 UX and personalization
+
+| ID | Feature | Description | Acceptance hint |
+|----|---------|-------------|-----------------|
+| FR-NTH-001 | Dark / light theme | User or system setting; persist per device. | All main screens respect theme. |
+| FR-NTH-002 | Customizable home | User orders widgets: tasks, pipeline, stale. | Drag reorder saved. |
+| FR-NTH-003 | Pinned leads | Quick access list. | Pin/unpin from detail. |
+| FR-NTH-004 | Recent searches | Last 10 searches. | Tap to re-run. |
+| FR-NTH-005 | Haptic feedback | On stage change, task complete. | Toggle in settings. |
+| FR-NTH-006 | Accessibility | Dynamic type, screen reader labels, contrast. | WCAG 2.1 AA target on web. |
+
+### A.2 Collaboration
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-010 | @mention in notes | Notify user; deep link to lead. |
+| FR-NTH-011 | Lead thread chat | Internal messages per lead, not SMS to customer. |
+| FR-NTH-012 | Handoff checklist | Template when reassigning owner. |
+| FR-NTH-013 | Shared team views | Manager publishes filter to team. |
+| FR-NTH-014 | Activity feed | Global “team updates” stream. |
+
+### A.3 Documents
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-020 | File attachments | PDF/images on lead; size limits. |
+| FR-NTH-021 | Document templates | Merge fields from lead. |
+| FR-NTH-022 | E-signature integration | DocuSign / similar webhook. *(See `ENT-012`.)* |
+
+### A.4 Communication
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-030 | Email templates | Variables: `{{name}}`, `{{company}}`. |
+| FR-NTH-031 | SMS / WhatsApp log | Manual log or API integration. |
+| FR-NTH-032 | Voicemail link | URL in call activity. |
+
+### A.5 Intelligence (AI) — deferred only
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-042 | Lead scoring | 0–100; configurable weights. *(Pro has priority scores in `PRO-003`.)* |
+| FR-NTH-043 | Sentiment on notes | Optional tag positive/negative/neutral. |
+
+### A.6 Productivity
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-050 | Snooze lead | Hide until datetime. |
+| FR-NTH-051 | Web keyboard shortcuts | j/k navigate, / search. |
+| FR-NTH-052 | Calendar week view | Meetings + tasks. |
+| FR-NTH-053 | Working hours DND | Suppress non-urgent push outside hours. |
+
+### A.7 Integrations (extended)
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-060 | Contact sync | Device contacts ↔ leads (opt-in). |
+| FR-NTH-061 | Accounting export | Manual export when ERP connector not enabled. |
+| FR-NTH-062 | Marketing handoff | Webhook to HubSpot-style systems. |
+
+### A.8 Reporting (extended)
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-070 | Report builder | User-defined columns and charts. *(Enterprise: `ENT-009`.)* |
+| FR-NTH-071 | Scheduled email reports | Cron weekly PDF/CSV. |
+
+### A.9 Mobile extended
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-080 | Home screen widget | Tasks due today. |
+| FR-NTH-081 | Wear OS / Watch | Next task glance. |
+| FR-NTH-082 | Share lead PDF | Internal summary export. |
+| FR-NTH-083 | Driving mode | Voice-only logging; minimal UI. |
+
+### A.10 Enterprise and trust — deferred only
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-093 | Data retention job | Auto-archive leads older than N years. |
+| FR-NTH-094 | Encrypt sensitive notes | Field-level at rest. *(Enterprise: `ENT-010` optional field encryption.)* |
+
+### A.11 Gamification
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-100 | Leaderboard | Calls logged, meetings attended, deals won. |
+| FR-NTH-101 | Badges | Milestones; opt-out for org. |
+
+### A.12 Geofence extensions
+
+| ID | Feature | Description |
+|----|---------|-------------|
+| FR-NTH-110 | Map draw geofence (web) | Circle editor when creating meeting. |
+| FR-NTH-111 | Visitor log export | Compliance PDF per meeting. |
+
+**Source:** SRS v1.2 §17; reproduced in v2.0 for backlog traceability.
 
 ---
 
@@ -259,3 +382,4 @@ Manager prerequisites: [manager_tasks.md](./manager_tasks.md).
 |---------|------|---------|
 | 1.0–1.2 | 2026-05-17 | User-driven CRM; geofence; ScaleGate; ERP; manager tasks |
 | 2.0 | 2026-05-17 | AI-first product; tiers **Lite** / **Pro** / **Enterprise** |
+| 2.1 | 2026-05-17 | Appendix A: deferred `FR-NTH-*` backlog (Option A) |
