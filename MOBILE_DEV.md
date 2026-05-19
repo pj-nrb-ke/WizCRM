@@ -94,10 +94,40 @@ If you see `could not connect to TCP port 5554` or `adb protocol fault`:
 3. Run `.\scripts\start-emulator.ps1`
 4. Run `.\scripts\start-mobile.ps1` and press **`a`**
 
+## APK for a physical phone (no Metro)
+
+The API health URL (`http://YOUR_PC_IP:3000/health`) is **not** the Metro bundler. A plain **debug** APK expects JavaScript from Metro on port **8081** and shows “Unable to load script” without it.
+
+Build a **standalone** APK (JS embedded):
+
+```powershell
+cd c:\Users\pj\WizCRM
+.\scripts\build-apk.ps1
+# or: .\scripts\build-apk.ps1 -ApiUrl "http://192.168.68.53:3000"
+```
+
+Output: **`WizCRM-lite.apk`** at the repo root. Uninstall any older APK before installing.
+
+**Temporary workaround** (old debug APK): Metro must reach your PC on port **8081**, not just the API on 3000.
+
+```powershell
+.\scripts\start-metro-for-phone.ps1
+```
+
+From the phone browser, open `http://YOUR_PC_IP:8081/status` — it must say `packager-status:running`. If not, allow Node through Windows Firewall or use USB:
+
+```powershell
+adb reverse tcp:8081 tcp:8081
+adb reverse tcp:3000 tcp:3000
+```
+
+Then force-close the app and open it again.
+
 ## Useful commands
 
 | Task | Command |
 |------|---------|
+| Build phone APK | `.\scripts\build-apk.ps1` |
 | Reset ADB + ports | `.\scripts\reset-android.ps1` |
 | Start emulator (5556) | `.\scripts\start-emulator.ps1` |
 | List emulators | `emulator -list-avds` |

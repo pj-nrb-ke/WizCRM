@@ -1,4 +1,4 @@
-# Builds a debug APK you can install on a physical Android phone (same Wi‑Fi as this PC).
+# Builds a standalone APK for a physical Android phone (JS bundle embedded; no Metro required).
 # Usage: .\scripts\build-apk.ps1
 # Optional: .\scripts\build-apk.ps1 -ApiUrl "http://192.168.1.50:3000"
 
@@ -39,8 +39,8 @@ function Set-JavaHome {
 
 function Test-AndroidProjectValid {
   param([string]$Dir)
-  Test-Path (Join-Path $Dir "gradlew.bat") -and
-    Test-Path (Join-Path $Dir "app\src\main\AndroidManifest.xml")
+  (Test-Path (Join-Path $Dir "gradlew.bat")) -and
+    (Test-Path (Join-Path $Dir "app\src\main\AndroidManifest.xml"))
 }
 
 function Use-TempAndroidWorkspace {
@@ -70,6 +70,23 @@ function Set-PhoneGradleArchitectures {
   $props = $props -replace 'org.gradle.parallel=.*', 'org.gradle.parallel=false'
   if ($props -notmatch 'org.gradle.parallel=') { $props += "`norg.gradle.parallel=false`n" }
   Set-Content -Path $GradlePropsPath -Value $props.TrimEnd()
+}
+
+# Release APK uses bundleCommand export:embed (Expo). Sign with debug keystore for local install.
+function Enable-LocalReleaseSigning {
+  param([string]$AndroidDir)
+  $appGradle = Join-Path $AndroidDir "app\build.gradle"
+  if (-not (Test-Path $appGradle)) { return }
+  $c = Get-Content $appGradle -Raw
+  if ($c -match 'bundleInDebug') {
+    $c = $c -replace '\s*bundleInDebug\s*=\s*true\s*\r?\n', "`n"
+    Write-Host "Removed unsupported bundleInDebug from build.gradle" -ForegroundColor DarkGray
+  }
+  if ($c -match 'release\s*\{' -and $c -notmatch 'release\s*\{[^}]*signingConfig\s+signingConfigs\.debug') {
+    $c = $c -replace '(release\s*\{)', "`$1`n            signingConfig signingConfigs.debug"
+    Write-Host "Release build will use debug signing (local install only)" -ForegroundColor DarkGray
+  }
+  Set-Content -Path $appGradle -Value $c.TrimEnd() -NoNewline
 }
 
 function Get-LanIp {
@@ -113,15 +130,41 @@ $env:NODE_ENV = "production"
 Set-JavaHome
 Set-AndroidSdk
 
+function Restore-AndroidFromStash {
+  param([string]$MobileRoot)
+  $androidDir = Join-Path $MobileRoot "android"
+  $androidStash = Join-Path $MobileRoot ".android-apk-stash"
+  if (Test-AndroidProjectValid $androidDir) { return $true }
+  if (-not (Test-Path $androidStash)) { return $false }
+
+  Write-Host "Restoring android/ from .android-apk-stash (copy, not move)..." -ForegroundColor Yellow
+  if (Test-Path $androidDir) {
+    Remove-Item $androidDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  $robocopy = robocopy $androidStash $androidDir /E /NFL /NDL /NJH /NJS /NC /NS
+  if ($LASTEXITCODE -ge 8) {
+    Write-Host "Stash copy failed (exit $LASTEXITCODE). Will run expo prebuild instead." -ForegroundColor Yellow
+    return $false
+  }
+  return (Test-AndroidProjectValid $androidDir)
+}
+
+# Stop Metro so it does not lock mobile/android or .android-apk-stash
+$on8081 = Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue
+if ($on8081) {
+  $pid8081 = $on8081.OwningProcess | Select-Object -First 1
+  $proc = Get-Process -Id $pid8081 -ErrorAction SilentlyContinue
+  if ($proc -and $proc.ProcessName -match 'node') {
+    Write-Host "Stopping Metro on port 8081 (close this before building APK)..." -ForegroundColor Yellow
+    Stop-Process -Id $pid8081 -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+  }
+}
+
 $androidDir = Join-Path $Mobile "android"
 $buildMobile = $Mobile
 
-# Restore native project if start-mobile.ps1 stashed it for Expo Go.
-$androidStash = Join-Path $Mobile ".android-apk-stash"
-if ((Test-Path $androidStash) -and -not (Test-Path $androidDir)) {
-  Rename-Item $androidStash "android"
-  Write-Host "Restored android/ from .android-apk-stash" -ForegroundColor DarkGray
-}
+Restore-AndroidFromStash $Mobile | Out-Null
 
 $needsPrebuild = -not $SkipPrebuild -or -not (Test-AndroidProjectValid $androidDir)
 $useTemp = $false
@@ -133,6 +176,7 @@ if ($needsPrebuild) {
 
   if (-not (Test-AndroidProjectValid $androidDir)) {
     Write-Host "Generating native Android project (expo prebuild)..." -ForegroundColor Cyan
+    Write-Host "  (Stop Metro / close Android Studio if prebuild fails with access denied)" -ForegroundColor DarkGray
     $prebuildArgs = @("prebuild", "--platform", "android", "--clean")
     npx.cmd expo @prebuildArgs
     if ($LASTEXITCODE -ne 0) {
@@ -153,33 +197,42 @@ if ($useTemp) {
 }
 
 Set-PhoneGradleArchitectures (Join-Path $androidDir "gradle.properties")
+Enable-LocalReleaseSigning $androidDir
 
-Write-Host "Building debug APK (may take 10-20 minutes)..." -ForegroundColor Cyan
+Write-Host "Building standalone release APK (bundles JS; no Metro on phone)..." -ForegroundColor Cyan
 Write-Host "  EXPO_PUBLIC_API_URL=$env:EXPO_PUBLIC_API_URL" -ForegroundColor DarkGray
+Write-Host "  (First build may take 10-20 minutes)" -ForegroundColor DarkGray
 Set-Location $androidDir
-& .\gradlew.bat assembleDebug
+& .\gradlew.bat assembleRelease
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$apk = Join-Path $androidDir "app\build\outputs\apk\debug\app-debug.apk"
+$apk = Join-Path $androidDir "app\build\outputs\apk\release\app-release.apk"
+if (-not (Test-Path $apk)) {
+  $apk = Join-Path $androidDir "app\build\outputs\apk\debug\app-debug.apk"
+}
 if (Test-Path $apk) {
-  $dest = Join-Path $Root "WizCRM-lite-debug.apk"
+  $dest = Join-Path $Root "WizCRM-lite.apk"
   Copy-Item $apk $dest -Force
+  # Keep legacy name for scripts/docs that reference it
+  Copy-Item $apk (Join-Path $Root "WizCRM-lite-debug.apk") -Force
   Write-Host ""
   Write-Host "SUCCESS" -ForegroundColor Green
   $sizeMb = [math]::Round((Get-Item $dest).Length / 1MB, 2)
   Write-Host "  APK: $dest ($sizeMb MB)" -ForegroundColor Green
   Write-Host "  API URL baked in: $env:EXPO_PUBLIC_API_URL" -ForegroundColor Green
+  Write-Host "  JS bundle is inside the APK (Metro not required on phone)" -ForegroundColor Green
   Write-Host ""
   Write-Host "Install on phone:" -ForegroundColor Cyan
-  Write-Host "  1. Copy WizCRM-lite-debug.apk to the phone (USB, email, or cloud)."
-  Write-Host "  2. On phone: allow Install from unknown sources if asked."
-  Write-Host "  3. Open the APK and install."
-  Write-Host "  4. Keep API running on PC: scripts\start-api.ps1"
-  Write-Host "  5. Login: rep@wizag.local / wizcrm123"
+  Write-Host "  1. Uninstall the old WizCRM APK if installed."
+  Write-Host "  2. Copy WizCRM-lite.apk to the phone (USB, email, or cloud)."
+  Write-Host "  3. On phone: allow Install from unknown sources if asked."
+  Write-Host "  4. Open the APK and install."
+  Write-Host "  5. Keep API running on PC: scripts\start-api.ps1"
+  Write-Host "  6. Login: rep@wizag.local / wizcrm123"
   Write-Host ""
   Write-Host "To use Expo Go in the emulator again, run: scripts\start-mobile.ps1" -ForegroundColor DarkGray
 } else {
-  Write-Host "APK not found at expected path: $apk" -ForegroundColor Red
+  Write-Host "APK not found under app/build/outputs/apk/" -ForegroundColor Red
   exit 1
 }
 
