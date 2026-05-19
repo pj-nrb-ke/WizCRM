@@ -81,6 +81,17 @@ export const assignTeamMembersSchema = z.object({
   userIds: z.array(z.string().uuid()),
 });
 
+export const transcribeAudioSchema = z.object({
+  audioBase64: z.string().min(10),
+  mimeType: z
+    .enum(['audio/m4a', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/webm'])
+    .optional(),
+});
+
+export const nextActionFeedbackSchema = z.object({
+  action: z.string().min(1).max(500),
+});
+
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;

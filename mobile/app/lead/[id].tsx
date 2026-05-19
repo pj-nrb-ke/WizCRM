@@ -13,6 +13,9 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { api, type Lead } from '../../lib/api';
 import { LEAD_STAGES } from '../../constants/stages';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
+import { VoiceNoteButton } from '../../components/VoiceNoteButton';
+import { useAuth } from '../../context/AuthContext';
+import { isManagerRole } from '../../lib/roles';
 
 type Activity = {
   id: string;
@@ -29,13 +32,22 @@ type Task = {
   completedAt: string | null;
 };
 
+type StageSuggestion = {
+  suggestedStage: string;
+  reason: string;
+};
+
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
+  const readOnly = isManagerRole(user?.role);
+
   const [lead, setLead] = useState<Lead | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [summary, setSummary] = useState('');
   const [nextAction, setNextAction] = useState<{ action: string; reason: string } | null>(null);
+  const [stageSuggestion, setStageSuggestion] = useState<StageSuggestion | null>(null);
   const [note, setNote] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
@@ -66,15 +78,25 @@ export default function LeadDetailScreen() {
   );
 
   async function loadAi() {
-    if (!id) return;
+    if (!id || !lead) return;
     setLoadingAi(true);
     try {
-      const [s, n] = await Promise.all([
+      const [s, n, st] = await Promise.all([
         api<{ summary: string }>(`/ai/leads/${id}/summary`),
-        api<{ action: string; reason: string }>(`/ai/leads/${id}/next-action`),
+        api<{ action: string; reason: string; dismissed?: boolean }>(`/ai/leads/${id}/next-action`),
+        api<StageSuggestion>(`/ai/leads/${id}/stage-suggestion`).catch(() => null),
       ]);
       setSummary(s.summary);
-      setNextAction(n);
+      if (n.dismissed || !n.action) {
+        setNextAction(null);
+      } else {
+        setNextAction({ action: n.action, reason: n.reason });
+      }
+      if (st && st.suggestedStage !== lead.stage) {
+        setStageSuggestion(st);
+      } else {
+        setStageSuggestion(null);
+      }
     } catch (e) {
       Alert.alert('AI', e instanceof Error ? e.message : 'AI unavailable');
     } finally {
@@ -82,16 +104,32 @@ export default function LeadDetailScreen() {
     }
   }
 
-  async function addNote() {
+  async function addNote(useAiClean: boolean) {
     if (!note.trim() || !id) return;
+    const body = note.trim();
     try {
       await api(`/leads/${id}/activities`, {
         method: 'POST',
-        body: { type: 'NOTE', body: note.trim(), useAiClean: true },
+        body: { type: 'NOTE', body, useAiClean },
       });
       setNote('');
       load();
     } catch (e) {
+      if (useAiClean) {
+        try {
+          await api(`/leads/${id}/activities`, {
+            method: 'POST',
+            body: { type: 'NOTE', body },
+          });
+          setNote('');
+          load();
+          Alert.alert('Saved', 'Note saved without AI cleanup (AI or network unavailable).');
+          return;
+        } catch (inner) {
+          Alert.alert('Error', inner instanceof Error ? inner.message : 'Could not save note');
+          return;
+        }
+      }
       Alert.alert('Error', e instanceof Error ? e.message : 'Could not save note');
     }
   }
@@ -127,13 +165,6 @@ export default function LeadDetailScreen() {
   }
 
   function openDueDatePicker(task: Task) {
-    if (task.dueAt) {
-      const initial = new Date(task.dueAt);
-      if (Number.isNaN(initial.getTime())) {
-        Alert.alert('Error', 'This task has an invalid due date.');
-        return;
-      }
-    }
     setDueDateEdit({ taskId: task.id, title: task.title });
   }
 
@@ -165,9 +196,37 @@ export default function LeadDetailScreen() {
         method: 'PATCH',
         body: { stage: toStage, confirmStageSuggestion: true },
       });
+      setStageSuggestion(null);
       load();
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Could not update stage');
+    }
+  }
+
+  async function dismissNextAction() {
+    if (!id || !nextAction) return;
+    try {
+      await api(`/ai/leads/${id}/next-action/dismiss`, {
+        method: 'POST',
+        body: { action: nextAction.action },
+      });
+      setNextAction(null);
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not dismiss');
+    }
+  }
+
+  async function completeNextAction() {
+    if (!id || !nextAction) return;
+    try {
+      await api(`/ai/leads/${id}/next-action/complete`, {
+        method: 'POST',
+        body: { action: nextAction.action },
+      });
+      setNextAction(null);
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not complete');
     }
   }
 
@@ -181,29 +240,65 @@ export default function LeadDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {readOnly ? (
+        <Text style={styles.readOnlyBadge}>Manager view (read-only)</Text>
+      ) : null}
       <Text style={styles.name}>{lead.name}</Text>
       <Text style={styles.meta}>{lead.stage}</Text>
 
-      <Pressable
-        style={styles.callBtn}
-        onPress={() =>
-          router.push({
-            pathname: '/lead/post-call',
-            params: { leadId: id, leadName: lead.name },
-          })
-        }
-      >
-        <Text style={styles.callBtnText}>Log call (AI)</Text>
-      </Pressable>
+      {!readOnly ? (
+        <Pressable
+          style={styles.callBtn}
+          onPress={() =>
+            router.push({
+              pathname: '/lead/post-call',
+              params: { leadId: id, leadName: lead.name },
+            })
+          }
+        >
+          <Text style={styles.callBtnText}>Log call (AI)</Text>
+        </Pressable>
+      ) : null}
 
       <Pressable style={styles.aiBtn} onPress={loadAi} disabled={loadingAi}>
         <Text style={styles.aiBtnText}>{loadingAi ? 'Loading AI…' : 'Refresh AI insight'}</Text>
       </Pressable>
       {summary ? <Text style={styles.summary}>{summary}</Text> : null}
+
       {nextAction ? (
         <View style={styles.nextBox}>
           <Text style={styles.nextTitle}>{nextAction.action}</Text>
           <Text style={styles.nextReason}>{nextAction.reason}</Text>
+          {!readOnly ? (
+            <View style={styles.nextActions}>
+              <Pressable style={styles.nextActionBtn} onPress={completeNextAction}>
+                <Text style={styles.nextActionBtnText}>Done</Text>
+              </Pressable>
+              <Pressable style={styles.nextDismissBtn} onPress={dismissNextAction}>
+                <Text style={styles.nextDismissText}>Dismiss</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {stageSuggestion && stageSuggestion.suggestedStage !== lead.stage ? (
+        <View style={styles.stageSuggestBox}>
+          <Text style={styles.stageSuggestTitle}>AI suggests stage: {stageSuggestion.suggestedStage}</Text>
+          <Text style={styles.stageSuggestReason}>{stageSuggestion.reason}</Text>
+          {!readOnly ? (
+            <View style={styles.nextActions}>
+              <Pressable
+                style={styles.nextActionBtn}
+                onPress={() => confirmStage(stageSuggestion.suggestedStage)}
+              >
+                <Text style={styles.nextActionBtnText}>Confirm stage</Text>
+              </Pressable>
+              <Pressable style={styles.nextDismissBtn} onPress={() => setStageSuggestion(null)}>
+                <Text style={styles.nextDismissText}>Not now</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -212,35 +307,40 @@ export default function LeadDetailScreen() {
         <Pressable
           key={t.id}
           style={[styles.taskRow, t.completedAt && styles.taskDone]}
-          onPress={() => openTaskMenu(t)}
+          onPress={() => !readOnly && openTaskMenu(t)}
+          disabled={readOnly}
         >
           <Text style={styles.taskTitle}>{t.completedAt ? '✓ ' : ''}{t.title}</Text>
           {t.dueAt ? <Text style={styles.taskDue}>{formatDue(t.dueAt)}</Text> : null}
-          {!t.completedAt ? (
+          {!t.completedAt && !readOnly ? (
             <Text style={styles.taskHint}>Tap to change due date or complete</Text>
           ) : null}
         </Pressable>
       ))}
-      <DueDatePickerModal
-        visible={dueDateEdit !== null}
-        title={dueDateEdit?.title}
-        onClose={() => setDueDateEdit(null)}
-        onSelect={(date) => {
-          if (dueDateEdit) {
-            void updateTaskDue(dueDateEdit.taskId, date);
-          }
-        }}
-      />
-      <TextInput
-        style={styles.taskInput}
-        value={taskTitle}
-        onChangeText={setTaskTitle}
-        placeholder="New task title…"
-        placeholderTextColor="#64748b"
-      />
-      <Pressable style={styles.aiBtn} onPress={addTask}>
-        <Text style={styles.aiBtnText}>Add task (due tomorrow)</Text>
-      </Pressable>
+      {!readOnly ? (
+        <>
+          <DueDatePickerModal
+            visible={dueDateEdit !== null}
+            title={dueDateEdit?.title}
+            onClose={() => setDueDateEdit(null)}
+            onSelect={(date) => {
+              if (dueDateEdit) {
+                void updateTaskDue(dueDateEdit.taskId, date);
+              }
+            }}
+          />
+          <TextInput
+            style={styles.taskInput}
+            value={taskTitle}
+            onChangeText={setTaskTitle}
+            placeholder="New task title…"
+            placeholderTextColor="#64748b"
+          />
+          <Pressable style={styles.aiBtn} onPress={addTask}>
+            <Text style={styles.aiBtnText}>Add task (due tomorrow)</Text>
+          </Pressable>
+        </>
+      ) : null}
 
       <Text style={styles.section}>Stage</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -248,9 +348,12 @@ export default function LeadDetailScreen() {
           <Pressable
             key={s}
             style={[styles.stageChip, lead.stage === s && styles.stageChipActive]}
-            onPress={() => confirmStage(s)}
+            onPress={() => !readOnly && confirmStage(s)}
+            disabled={readOnly}
           >
-            <Text style={styles.stageChipText}>{s}</Text>
+            <Text style={[styles.stageChipText, lead.stage === s && styles.stageChipTextActive]}>
+              {s}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -260,13 +363,22 @@ export default function LeadDetailScreen() {
         style={styles.noteInput}
         value={note}
         onChangeText={setNote}
-        placeholder="Type or paste voice transcript…"
+        placeholder={readOnly ? 'Read-only' : 'Type a note or use voice…'}
         placeholderTextColor="#64748b"
         multiline
+        editable={!readOnly}
       />
-      <Pressable style={styles.aiBtn} onPress={addNote}>
-        <Text style={styles.aiBtnText}>Save note (AI clean)</Text>
-      </Pressable>
+      {!readOnly ? (
+        <>
+          <VoiceNoteButton onTranscript={(text) => setNote((prev) => (prev ? `${prev}\n${text}` : text))} />
+          <Pressable style={styles.aiBtn} onPress={() => addNote(true)}>
+            <Text style={styles.aiBtnText}>Save note (AI clean)</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryBtn} onPress={() => addNote(false)}>
+            <Text style={styles.secondaryBtnText}>Save note (manual)</Text>
+          </Pressable>
+        </>
+      ) : null}
 
       <Text style={styles.section}>Timeline</Text>
       {activities.map((a) => (
@@ -283,6 +395,13 @@ export default function LeadDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 16 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' },
+  readOnlyBadge: {
+    color: '#fbbf24',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
   name: { fontSize: 24, fontWeight: '700', color: '#f8fafc' },
   meta: { color: '#38bdf8', marginBottom: 8 },
   callBtn: {
@@ -298,6 +417,33 @@ const styles = StyleSheet.create({
   nextBox: { backgroundColor: '#1e293b', padding: 12, borderRadius: 8, marginTop: 8 },
   nextTitle: { color: '#f8fafc', fontWeight: '600' },
   nextReason: { color: '#94a3b8', marginTop: 4 },
+  stageSuggestBox: {
+    backgroundColor: '#172033',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  stageSuggestTitle: { color: '#38bdf8', fontWeight: '700' },
+  stageSuggestReason: { color: '#94a3b8', marginTop: 6, lineHeight: 20 },
+  nextActions: { flexDirection: 'row', marginTop: 12, gap: 8 },
+  nextActionBtn: {
+    backgroundColor: '#38bdf8',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  nextActionBtnText: { color: '#0f172a', fontWeight: '700' },
+  nextDismissBtn: {
+    borderWidth: 1,
+    borderColor: '#64748b',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  nextDismissText: { color: '#94a3b8', fontWeight: '600' },
   aiBtn: {
     backgroundColor: '#334155',
     padding: 12,
@@ -306,6 +452,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aiBtnText: { color: '#38bdf8', fontWeight: '600' },
+  secondaryBtn: {
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  secondaryBtnText: { color: '#94a3b8', fontWeight: '600' },
   taskRow: {
     backgroundColor: '#1e293b',
     padding: 12,
@@ -332,6 +487,7 @@ const styles = StyleSheet.create({
   },
   stageChipActive: { backgroundColor: '#38bdf8' },
   stageChipText: { color: '#f8fafc', fontSize: 12 },
+  stageChipTextActive: { color: '#0f172a', fontSize: 12, fontWeight: '700' },
   noteInput: {
     backgroundColor: '#1e293b',
     color: '#f8fafc',

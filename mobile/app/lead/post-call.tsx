@@ -41,7 +41,7 @@ export default function PostCallScreen() {
     }
   }
 
-  async function confirmSave() {
+  async function confirmSave(applyStage: boolean) {
     if (!leadId || !result) return;
     setSaving(true);
     try {
@@ -53,9 +53,10 @@ export default function PostCallScreen() {
           taskTitle: result.suggestedTask?.title,
           taskDueAt: result.suggestedTask?.dueAt,
           suggestedStage: result.suggestedStage,
+          applyStage,
         },
       });
-      Alert.alert('Saved', 'Call logged to CRM.', [
+      Alert.alert('Saved', applyStage ? 'Call logged and stage updated.' : 'Call logged to CRM.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e) {
@@ -64,6 +65,10 @@ export default function PostCallScreen() {
       setSaving(false);
     }
   }
+
+  const hasStageSuggestion =
+    Boolean(result?.suggestedStage) &&
+    result?.suggestedStage !== undefined;
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
@@ -98,15 +103,26 @@ export default function PostCallScreen() {
               <Text style={styles.body}>{result.suggestedTask.title}</Text>
             </>
           ) : null}
-          {result.suggestedStage ? (
+          {hasStageSuggestion ? (
             <>
-              <Text style={styles.section}>Suggested stage</Text>
+              <Text style={styles.section}>Suggested stage (confirm separately)</Text>
               <Text style={styles.body}>{result.suggestedStage}</Text>
             </>
           ) : null}
-          <Pressable style={styles.primaryBtn} onPress={confirmSave} disabled={saving}>
-            <Text style={styles.primaryText}>{saving ? 'Saving…' : 'Confirm & save to CRM'}</Text>
+          <Pressable style={styles.primaryBtn} onPress={() => confirmSave(false)} disabled={saving}>
+            <Text style={styles.primaryText}>
+              {saving ? 'Saving…' : 'Confirm & save call'}
+            </Text>
           </Pressable>
+          {hasStageSuggestion ? (
+            <Pressable
+              style={styles.stageBtn}
+              onPress={() => confirmSave(true)}
+              disabled={saving}
+            >
+              <Text style={styles.stageBtnText}>Save call + apply stage change</Text>
+            </Pressable>
+          ) : null}
           <Pressable style={styles.secondaryBtn} onPress={() => setResult(null)}>
             <Text style={styles.secondaryText}>Edit note and try again</Text>
           </Pressable>
@@ -138,6 +154,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   primaryText: { color: '#0f172a', fontWeight: '700' },
+  stageBtn: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  stageBtnText: { color: '#38bdf8', fontWeight: '600' },
   secondaryBtn: { padding: 16, alignItems: 'center' },
   secondaryText: { color: '#94a3b8' },
 });

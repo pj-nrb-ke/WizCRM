@@ -1,9 +1,16 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { cardParseSchema, postCallSchema, voiceNoteSchema } from '@wizcrm/shared';
+import {
+  cardParseSchema,
+  nextActionFeedbackSchema,
+  postCallSchema,
+  transcribeAudioSchema,
+  voiceNoteSchema,
+} from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { loadLeadContext } from '../services/lead.service.js';
 import {
   cleanVoiceNote,
+  transcribeVoiceNote,
   generateLeadSummary,
   generateNextAction,
   generateSalesDesk,
@@ -58,8 +65,68 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     const { leadId } = request.params as { leadId: string };
     const lead = await loadLeadContext(leadId, organizationId);
     if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    const dismissed = await prisma.aiSuggestion.findFirst({
+      where: { leadId, kind: 'NEXT_ACTION', status: 'DISMISSED' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (dismissed && dismissed.createdAt >= (lead.lastActivityAt ?? lead.createdAt)) {
+      return { action: '', reason: '', dismissed: true };
+    }
     const nextAction = await generateNextAction(lead, userId);
-    return nextAction;
+    return { ...nextAction, dismissed: false };
+  });
+
+  app.post('/leads/:leadId/next-action/dismiss', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const { leadId } = request.params as { leadId: string };
+    const parsed = nextActionFeedbackSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    await prisma.aiSuggestion.create({
+      data: {
+        leadId,
+        kind: 'NEXT_ACTION',
+        payload: parsed.data,
+        status: 'DISMISSED',
+      },
+    });
+    return { ok: true };
+  });
+
+  app.post('/leads/:leadId/next-action/complete', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const { leadId } = request.params as { leadId: string };
+    const parsed = nextActionFeedbackSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    await prisma.activity.create({
+      data: {
+        leadId,
+        userId,
+        type: 'NOTE',
+        subject: 'Next action completed',
+        body: `Completed: ${parsed.data.action}`,
+      },
+    });
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: { lastActivityAt: new Date() },
+    });
+    await prisma.aiSuggestion.create({
+      data: {
+        leadId,
+        kind: 'NEXT_ACTION',
+        payload: parsed.data,
+        status: 'COMPLETED',
+      },
+    });
+    return { ok: true };
   });
 
   app.get('/leads/:leadId/stage-suggestion', async (request, reply) => {
@@ -96,6 +163,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       taskTitle?: string;
       taskDueAt?: string;
       suggestedStage?: string;
+      applyStage?: boolean;
     };
     if (!body.leadId || !body.summary) {
       return reply.status(400).send({ error: 'leadId and summary required' });
@@ -130,6 +198,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     }
 
     if (
+      body.applyStage &&
       body.suggestedStage &&
       body.suggestedStage !== lead.stage &&
       isAllowedStageTransition(lead.stage, body.suggestedStage as never)
@@ -155,6 +224,32 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     }
 
     return { ok: true };
+  });
+
+  app.post('/transcribe', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const parsed = transcribeAudioSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    try {
+      const result = await transcribeVoiceNote(
+        organizationId,
+        userId,
+        parsed.data.audioBase64,
+        parsed.data.mimeType,
+      );
+      return result;
+    } catch (e) {
+      const err = e as Error;
+      if (err.message === 'AI_UNAVAILABLE') {
+        return reply.status(503).send({
+          error: 'AI_UNAVAILABLE',
+          message: 'Set OPENAI_API_KEY for voice transcription',
+        });
+      }
+      throw e;
+    }
   });
 
   app.post('/voice-note', async (request, reply) => {

@@ -2,7 +2,7 @@ import type { Lead, Activity, Task, LeadStage } from '@prisma/client';
 import type OpenAI from 'openai';
 import { config } from '../../config.js';
 import { prisma } from '../../lib/prisma.js';
-import { createOpenAIClient, chatJson } from './openai.provider.js';
+import { createOpenAIClient, chatJson, transcribeAudio } from './openai.provider.js';
 import { isAllowedStageTransition } from '@wizcrm/shared';
 
 type LeadContext = Lead & {
@@ -272,6 +272,26 @@ export async function processPostCall(
     approved: false,
   });
   return result;
+}
+
+export async function transcribeVoiceNote(
+  organizationId: string,
+  userId: string,
+  audioBase64: string,
+  mimeType?: string,
+): Promise<{ transcript: string }> {
+  const client = ensureClient();
+  const ext =
+    mimeType?.includes('webm') ? 'webm' : mimeType?.includes('wav') ? 'wav' : 'm4a';
+  const transcript = await transcribeAudio(client, audioBase64, ext);
+  await audit({
+    organizationId,
+    userId,
+    feature: 'voice_transcribe',
+    inputSummary: `audio:${ext}`,
+    outputSummary: transcript.slice(0, 200),
+  });
+  return { transcript };
 }
 
 export async function cleanVoiceNote(
