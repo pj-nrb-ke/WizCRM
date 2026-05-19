@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../lib/config';
+import { isManagerRole } from '../lib/roles';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -24,10 +25,11 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
-      router.replace('/(tabs)/desk');
+      const u = await signIn(email.trim(), password);
+      router.replace(isManagerRole(u.role) ? '/(tabs)/team' : '/(tabs)/desk');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Login failed');
+      const msg = e instanceof Error ? e.message : 'Login failed';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -62,6 +64,9 @@ export default function LoginScreen() {
         {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.buttonText}>Sign in</Text>}
       </Pressable>
       <Text style={styles.hint}>API: {API_URL}</Text>
+      <Text style={styles.accounts}>
+        Try: rep@wizag.local or manager@wizag.local{'\n'}Password: wizcrm123
+      </Text>
     </KeyboardAvoidingView>
   );
 }
@@ -93,4 +98,11 @@ const styles = StyleSheet.create({
   buttonText: { color: '#0f172a', fontWeight: '700', fontSize: 16 },
   error: { color: '#f87171', marginBottom: 8 },
   hint: { color: '#475569', fontSize: 12, marginTop: 24, textAlign: 'center' },
+  accounts: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });

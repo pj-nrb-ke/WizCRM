@@ -32,6 +32,7 @@ const config: ExpoConfig = {
     package: 'com.wizag.wizcrm',
     versionCode: 1,
     edgeToEdgeEnabled: true,
+    usesCleartextTraffic: true,
   },
   web: {
     favicon: './assets/favicon.png',

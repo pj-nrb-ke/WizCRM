@@ -16,21 +16,73 @@ async function main() {
 
   const passwordHash = await bcrypt.hash('wizcrm123', 10);
 
+  const fieldTeam = await prisma.team.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: org.id,
+        name: 'Field Sales',
+      },
+    },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: 'Field Sales',
+    },
+  });
+
+  const insideTeam = await prisma.team.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: org.id,
+        name: 'Inside Sales',
+      },
+    },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: 'Inside Sales',
+    },
+  });
+
   await prisma.user.upsert({
     where: { email: 'rep@wizag.local' },
-    update: { passwordHash, name: 'Sales Rep', role: UserRole.SALES },
+    update: {
+      passwordHash,
+      name: 'Sales Rep',
+      role: UserRole.SALES,
+      teamId: fieldTeam.id,
+    },
     create: {
       email: 'rep@wizag.local',
       passwordHash,
       name: 'Sales Rep',
       role: UserRole.SALES,
       organizationId: org.id,
+      teamId: fieldTeam.id,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: 'rep2@wizag.local' },
+    update: {
+      passwordHash,
+      name: 'Jordan Lee',
+      role: UserRole.SALES,
+      teamId: insideTeam.id,
+    },
+    create: {
+      email: 'rep2@wizag.local',
+      passwordHash,
+      name: 'Jordan Lee',
+      role: UserRole.SALES,
+      organizationId: org.id,
+      teamId: insideTeam.id,
     },
   });
 
   await prisma.user.upsert({
     where: { email: 'manager@wizag.local' },
-    update: { passwordHash, name: 'Sales Manager', role: UserRole.MANAGER },
+    update: { passwordHash, name: 'Sales Manager', role: UserRole.MANAGER, teamId: null },
     create: {
       email: 'manager@wizag.local',
       passwordHash,
@@ -40,7 +92,10 @@ async function main() {
     },
   });
 
-  console.log('Seed complete: rep@wizag.local / manager@wizag.local (password: wizcrm123)');
+  console.log('Seed complete:');
+  console.log('  rep@wizag.local / rep2@wizag.local / manager@wizag.local');
+  console.log('  password: wizcrm123');
+  console.log('  Teams: Field Sales, Inside Sales');
 }
 
 main()

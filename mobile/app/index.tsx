@@ -12,5 +12,6 @@ export default function Index() {
     );
   }
   if (!user) return <Redirect href="/login" />;
-  return <Redirect href="/(tabs)/desk" />;
+  const home = user.role === 'MANAGER' || user.role === 'ADMIN' ? '/(tabs)/team' : '/(tabs)/desk';
+  return <Redirect href={home} />;
 }

@@ -6,7 +6,7 @@ const SESSION_TIMEOUT_MS = 8_000;
 type AuthState = {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<User>;
   signOut: () => Promise<void>;
 };
 
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const u = await apiLogin(email, password);
     setUser(u);
+    return u;
   }, []);
 
   const signOut = useCallback(async () => {

@@ -13,12 +13,28 @@ model Organization {
   createdAt DateTime @default(now())
   users     User[]
   leads     Lead[]
+  teams     Team[]
+}
+
+model Team {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  members        User[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model User {
   id             String       @id @default(uuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  teamId         String?
+  team           Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
   email          String       @unique
   passwordHash   String
   name           String
@@ -30,6 +46,7 @@ model User {
   aiAuditLogs    AiAuditLog[]
 
   @@index([organizationId])
+  @@index([teamId])
 }
 
 enum UserRole {

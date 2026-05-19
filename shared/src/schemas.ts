@@ -69,6 +69,18 @@ export const voiceNoteSchema = z.object({
   transcript: z.string().min(1).max(10000),
 });
 
+export const createTeamSchema = z.object({
+  name: z.string().min(1).max(100),
+});
+
+export const updateTeamSchema = z.object({
+  name: z.string().min(1).max(100),
+});
+
+export const assignTeamMembersSchema = z.object({
+  userIds: z.array(z.string().uuid()),
+});
+
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;

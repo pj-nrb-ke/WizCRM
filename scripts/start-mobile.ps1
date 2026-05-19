@@ -1,6 +1,10 @@
 $Root = Split-Path -Parent $PSScriptRoot
+. "$PSScriptRoot\android-env.ps1"
 Set-Location "$Root\mobile"
 $env:EXPO_PUBLIC_API_URL = "http://10.0.2.2:3000"
+
+# Use WizCRM ADB port so Expo does not fight Android Studio on 5037
+$env:ANDROID_ADB_SERVER_PORT = "$WizCRM_AdbPort"
 
 # A hoisted metro at repo root breaks Expo CLI (TerminalReporter export error).
 $rogueMetro = Join-Path $Root "node_modules\metro"
@@ -38,16 +42,16 @@ if ($on8081) {
 
 Clear-MetroNativeArtifacts
 
-# Expo Go does not use mobile/android; Gradle caches there break Metro's file watcher.
+# Expo Go does not use mobile/android; Gradle caches there break Metro file watcher.
 $androidDir = Join-Path (Get-Location) "android"
 $androidStash = Join-Path (Get-Location) ".android-apk-stash"
 if (Test-Path $androidDir) {
   try {
     if (Test-Path $androidStash) { Remove-Item $androidStash -Recurse -Force }
     Rename-Item $androidDir ".android-apk-stash" -ErrorAction Stop
-    Write-Host "Moved android/ -> .android-apk-stash (Expo Go only; APK builds restore via build-apk.ps1)" -ForegroundColor DarkGray
+    Write-Host "Moved android/ to .android-apk-stash (Expo Go only)" -ForegroundColor DarkGray
   } catch {
-    Write-Host "Could not move android/ (Gradle may be running). Metro will ignore it via metro.config.js." -ForegroundColor Yellow
+    Write-Host "Could not move android/. Metro will ignore it via metro.config.js." -ForegroundColor Yellow
   }
 }
 
@@ -55,10 +59,22 @@ try {
   $null = Invoke-RestMethod -Uri "http://127.0.0.1:3000/health" -Method GET -TimeoutSec 2
   Write-Host "API is up at http://127.0.0.1:3000 (emulator uses http://10.0.2.2:3000)" -ForegroundColor Green
 } catch {
-  Write-Host "API is not reachable on port 3000. In another terminal run: scripts\start-api.ps1" -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "API is NOT running - login will fail with Network request failed." -ForegroundColor Red
+  Write-Host "Start this FIRST in another terminal: .\scripts\start-api.ps1" -ForegroundColor Yellow
+  Write-Host ""
 }
 
-Write-Host "Starting Expo (Android emulator: press a after Metro is ready)" -ForegroundColor Cyan
-Write-Host "Terminal logs here are normal. Ignore unless you see a red ERROR." -ForegroundColor DarkGray
-Write-Host "If the emulator shows 'No apps connected', press a (not r) once Metro is running." -ForegroundColor DarkGray
+$serial = "emulator-$WizCRM_EmulatorPort"
+$adbDevices = & $WizCRM_Adb devices 2>&1 | Out-String
+if ($adbDevices -notmatch "${serial}\s+device") {
+  Write-Host "No emulator on $serial yet. In another terminal run:" -ForegroundColor Yellow
+  Write-Host "  .\scripts\start-emulator.ps1" -ForegroundColor Yellow
+} else {
+  Write-Host "Emulator $serial is connected (ADB port $WizCRM_AdbPort)." -ForegroundColor Green
+}
+
+Write-Host "Starting Expo - press a after Metro is ready" -ForegroundColor Cyan
+Write-Host "Ports: Metro 8081, ADB $WizCRM_AdbPort, Emulator $WizCRM_EmulatorPort" -ForegroundColor DarkGray
+Write-Host "If Android fails: .\scripts\reset-android.ps1 then .\scripts\start-emulator.ps1" -ForegroundColor DarkGray
 npx.cmd expo start --clear

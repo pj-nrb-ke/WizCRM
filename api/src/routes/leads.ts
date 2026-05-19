@@ -7,28 +7,64 @@ import {
   findDuplicateLeads,
   loadLeadContext,
 } from '../services/lead.service.js';
+import { getTeamMemberIds } from '../services/team.service.js';
+
+const ownerSelect = {
+  id: true,
+  name: true,
+  email: true,
+  team: { select: { id: true, name: true } },
+} as const;
 
 export const leadRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
 
-  app.get('/', async (request) => {
-    const { organizationId, sub: userId } = request.user;
-    const stage = (request.query as { stage?: string }).stage;
+  app.get('/', async (request, reply) => {
+    const { organizationId } = request.user;
+    const q = request.query as { stage?: string; teamId?: string; ownerId?: string };
+    let ownerFilter: { ownerId?: string | { in: string[] } } = {};
+    if (q.ownerId) {
+      ownerFilter = { ownerId: q.ownerId };
+    } else if (q.teamId) {
+      const memberIds = await getTeamMemberIds(q.teamId, organizationId);
+      if (!memberIds) {
+        return reply.status(404).send({ error: 'Team not found' });
+      }
+      if (memberIds.length === 0) {
+        return { leads: [] };
+      }
+      ownerFilter = { ownerId: { in: memberIds } };
+    }
     const leads = await prisma.lead.findMany({
       where: {
         organizationId,
-        ...(stage ? { stage: stage as never } : {}),
+        ...(q.stage ? { stage: q.stage as never } : {}),
+        ...ownerFilter,
       },
+      include: { owner: { select: ownerSelect } },
       orderBy: { updatedAt: 'desc' },
       take: 200,
     });
     return { leads };
   });
 
-  app.get('/pipeline', async (request) => {
+  app.get('/pipeline', async (request, reply) => {
     const { organizationId } = request.user;
+    const q = request.query as { teamId?: string };
+    let ownerFilter: { ownerId?: { in: string[] } } = {};
+    if (q.teamId) {
+      const memberIds = await getTeamMemberIds(q.teamId, organizationId);
+      if (!memberIds) {
+        return reply.status(404).send({ error: 'Team not found' });
+      }
+      if (memberIds.length === 0) {
+        return { pipeline: {} };
+      }
+      ownerFilter = { ownerId: { in: memberIds } };
+    }
     const leads = await prisma.lead.findMany({
-      where: { organizationId, stage: { notIn: ['WON', 'LOST'] } },
+      where: { organizationId, stage: { notIn: ['WON', 'LOST'] }, ...ownerFilter },
+      include: { owner: { select: ownerSelect } },
       orderBy: { updatedAt: 'desc' },
     });
     const pipeline = leads.reduce<Record<string, typeof leads>>((acc, lead) => {

@@ -29,4 +29,12 @@ npm run test -w api
 RUN_INTEGRATION_TESTS=1 npm run test -w api   # needs DB + seed
 ```
 
-Seed users: `rep@wizag.local` / `wizcrm123`, `manager@wizag.local` / `wizcrm123`
+Seed users (password `wizcrm123`):
+
+| Email | Role | Team |
+|-------|------|------|
+| `rep@wizag.local` | Sales | Field Sales |
+| `rep2@wizag.local` | Sales | Inside Sales |
+| `manager@wizag.local` | Manager | — |
+
+Teams API (`MANAGER` / `ADMIN`): `GET /teams`, `POST /teams`, `PUT /teams/:id/members`, etc.

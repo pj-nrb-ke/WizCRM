@@ -40,5 +40,14 @@ if ($Restart) {
   exit 0
 }
 
+Write-Host "Building shared package..." -ForegroundColor DarkGray
+Set-Location "$PSScriptRoot\.."
+npm run build -w shared 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "shared build failed. Run: npm run build -w shared" -ForegroundColor Red
+  exit 1
+}
+Set-Location "$PSScriptRoot\..\api"
+
 Write-Host "Starting WizCRM API on http://127.0.0.1:3000" -ForegroundColor Cyan
 npm run dev

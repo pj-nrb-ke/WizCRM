@@ -26,9 +26,11 @@ type ApiOptions = {
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const headers: Record<string, string> = {};
+  const hasBody = options.body !== undefined && options.body !== null;
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (options.auth !== false) {
     const token = await getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -41,13 +43,18 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     res = await fetch(`${API_URL}${path}`, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
+      body: hasBody ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
       throw new Error(
         `Request timed out (${timeoutMs / 1000}s). Is the API running at ${API_URL}?`,
+      );
+    }
+    if (e instanceof Error && e.message === 'Network request failed') {
+      throw new Error(
+        `Cannot reach the API at ${API_URL}. On your PC run: .\\scripts\\start-api.ps1 (and keep that window open).`,
       );
     }
     throw e;
@@ -76,6 +83,13 @@ export type User = {
   organizationId: string;
 };
 
+export type LeadOwner = {
+  id: string;
+  name: string;
+  email: string;
+  team?: { id: string; name: string } | null;
+};
+
 export type Lead = {
   id: string;
   name: string;
@@ -84,6 +98,34 @@ export type Lead = {
   phone?: string | null;
   stage: string;
   lastActivityAt?: string | null;
+  owner?: LeadOwner;
+};
+
+export type MemberStats = {
+  openLeads: number;
+  overdueTasks: number;
+  staleLeads: number;
+  lastActivityAt: string | null;
+};
+
+export type TeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  stats: MemberStats;
+};
+
+export type TeamOverview = {
+  id: string;
+  name: string;
+  memberCount: number;
+  stats: MemberStats & { memberCount: number; wonLeads: number };
+  members: TeamMember[];
+};
+
+export type TeamsResponse = {
+  teams: TeamOverview[];
+  unassigned: { id: string; name: string; email: string; stats: MemberStats }[];
 };
 
 export async function login(email: string, password: string) {
