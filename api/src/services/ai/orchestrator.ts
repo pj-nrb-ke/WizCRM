@@ -161,35 +161,68 @@ export async function generateSalesDesk(
   return result.items.slice(0, 5);
 }
 
+function pickString(obj: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const v = obj[key];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return undefined;
+}
+
+function normalizeCardFields(parsed: Record<string, unknown>) {
+  return {
+    name: pickString(parsed, ['name', 'fullName', 'full_name', 'contactName', 'contact_name']),
+    company: pickString(parsed, [
+      'company',
+      'organization',
+      'organisation',
+      'employer',
+      'business',
+      'companyName',
+      'company_name',
+    ]),
+    email: pickString(parsed, ['email', 'emailAddress', 'email_address']),
+    phone: pickString(parsed, ['phone', 'phoneNumber', 'phone_number', 'mobile', 'telephone', 'tel']),
+  };
+}
+
 export async function parseBusinessCard(
   organizationId: string,
   userId: string,
-  input: { imageBase64?: string; ocrText?: string },
+  input: { imageBase64?: string; imageMimeType?: string; ocrText?: string },
 ): Promise<{ name?: string; company?: string; email?: string; phone?: string }> {
   const client = ensureClient();
-  const userContent =
-    input.ocrText ??
-    'Extract contact fields from the business card image provided as base64 in the request context.';
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
       role: 'system',
       content:
-        'Extract business card fields. Return JSON: { "name", "company", "email", "phone" } with string or null values.',
+        'You read business card photos. Extract visible contact fields. Return JSON only: { "name", "company", "email", "phone" } using string or null. name = person name; company = employer or bank/organization on the card; include country code on phone when shown.',
     },
-    { role: 'user', content: userContent },
   ];
+
   if (input.imageBase64) {
+    const raw = input.imageBase64.replace(/^data:image\/[a-z+]+;base64,/, '');
+    const mime = input.imageMimeType ?? 'image/jpeg';
     messages.push({
       role: 'user',
       content: [
-        { type: 'text', text: 'Business card image:' },
+        {
+          type: 'text',
+          text: 'Extract name, company, email, and phone from this business card image.',
+        },
         {
           type: 'image_url',
-          image_url: { url: `data:image/jpeg;base64,${input.imageBase64}` },
+          image_url: { url: `data:${mime};base64,${raw}`, detail: 'high' },
         },
       ],
     } as OpenAI.Chat.ChatCompletionMessageParam);
+  } else if (input.ocrText) {
+    messages.push({
+      role: 'user',
+      content: `Extract fields from this OCR text:\n${input.ocrText}`,
+    });
   }
+
   const res = await client.chat.completions.create({
     model: config.openaiModel,
     messages,
@@ -197,7 +230,8 @@ export async function parseBusinessCard(
     temperature: 0.1,
   });
   const text = res.choices[0]?.message?.content ?? '{}';
-  const parsed = JSON.parse(text) as Record<string, string | null>;
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  const fields = normalizeCardFields(parsed);
   await audit({
     organizationId,
     userId,
@@ -205,12 +239,7 @@ export async function parseBusinessCard(
     inputSummary: input.ocrText?.slice(0, 500) ?? '[image]',
     outputSummary: text,
   });
-  return {
-    name: parsed.name ?? undefined,
-    company: parsed.company ?? undefined,
-    email: parsed.email ?? undefined,
-    phone: parsed.phone ?? undefined,
-  };
+  return fields;
 }
 
 export async function processPostCall(

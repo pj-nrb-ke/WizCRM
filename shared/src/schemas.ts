@@ -50,6 +50,9 @@ export const updateTaskSchema = z.object({
 
 export const cardParseSchema = z.object({
   imageBase64: z.string().min(10).optional(),
+  imageMimeType: z
+    .enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+    .optional(),
   ocrText: z.string().min(1).optional(),
 }).refine((d) => d.imageBase64 || d.ocrText, {
   message: 'imageBase64 or ocrText required',

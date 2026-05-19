@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, clearToken, getToken, login as apiLogin, type User } from '../lib/api';
 
+const SESSION_TIMEOUT_MS = 8_000;
+
 type AuthState = {
   user: User | null;
   loading: boolean;
@@ -15,18 +17,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
         const token = await getToken();
         if (!token) return;
-        const { user: me } = await api<{ user: User }>('/auth/me');
-        setUser(me);
+
+        const { user: me } = await api<{ user: User }>('/auth/me', {
+          timeoutMs: SESSION_TIMEOUT_MS,
+        });
+        if (!cancelled) setUser(me);
       } catch {
         await clearToken();
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {

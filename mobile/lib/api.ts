@@ -19,7 +19,11 @@ type ApiOptions = {
   method?: string;
   body?: unknown;
   auth?: boolean;
+  /** Abort request after this many ms (default 20s). */
+  timeoutMs?: number;
 };
+
+const DEFAULT_TIMEOUT_MS = 20_000;
 
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -29,11 +33,27 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     const token = await getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
-  const res = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error(
+        `Request timed out (${timeoutMs / 1000}s). Is the API running at ${API_URL}?`,
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const body = data as { error?: string; message?: string };

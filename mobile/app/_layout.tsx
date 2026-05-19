@@ -1,10 +1,22 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from '../context/AuthContext';
+import * as SplashScreen from 'expo-splash-screen';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 
-export default function RootLayout() {
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function RootNavigator() {
+  const { loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loading]);
+
   return (
-    <AuthProvider>
+    <>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
@@ -14,6 +26,14 @@ export default function RootLayout() {
         <Stack.Screen name="lead/new" options={{ headerShown: true, title: 'New lead' }} />
         <Stack.Screen name="lead/post-call" options={{ headerShown: true, title: 'Log call' }} />
       </Stack>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootNavigator />
     </AuthProvider>
   );
 }

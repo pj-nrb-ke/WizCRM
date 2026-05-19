@@ -10,7 +10,11 @@ import { aiRoutes } from './routes/ai.js';
 import { healthRoutes } from './routes/health.js';
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: true,
+    // Business card photos are sent as base64 from the mobile app.
+    bodyLimit: 15 * 1024 * 1024,
+  });
 
   await app.register(cors, { origin: true });
   await app.register(jwt, { secret: config.jwtSecret });

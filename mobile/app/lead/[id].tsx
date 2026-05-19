@@ -12,6 +12,7 @@ import {
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { api, type Lead } from '../../lib/api';
 import { LEAD_STAGES } from '../../constants/stages';
+import { DueDatePickerModal } from '../../components/DueDatePickerModal';
 
 type Activity = {
   id: string;
@@ -38,6 +39,13 @@ export default function LeadDetailScreen() {
   const [note, setNote] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
+  const [dueDateEdit, setDueDateEdit] = useState<{ taskId: string; title: string } | null>(null);
+
+  function formatDue(iso: string) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return 'Due date unknown';
+    return `Due ${d.toLocaleDateString()}`;
+  }
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -104,6 +112,43 @@ export default function LeadDetailScreen() {
     }
   }
 
+  async function updateTaskDue(taskId: string, dueAt: Date) {
+    const normalized = new Date(dueAt);
+    normalized.setHours(12, 0, 0, 0);
+    try {
+      await api(`/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: { dueAt: normalized.toISOString() },
+      });
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not update due date');
+    }
+  }
+
+  function openDueDatePicker(task: Task) {
+    if (task.dueAt) {
+      const initial = new Date(task.dueAt);
+      if (Number.isNaN(initial.getTime())) {
+        Alert.alert('Error', 'This task has an invalid due date.');
+        return;
+      }
+    }
+    setDueDateEdit({ taskId: task.id, title: task.title });
+  }
+
+  function openTaskMenu(task: Task) {
+    if (task.completedAt) {
+      Alert.alert(task.title, 'This task is already complete.');
+      return;
+    }
+    Alert.alert(task.title, undefined, [
+      { text: 'Change due date', onPress: () => openDueDatePicker(task) },
+      { text: 'Mark complete', onPress: () => completeTask(task.id) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
   async function completeTask(taskId: string) {
     try {
       await api(`/tasks/${taskId}`, { method: 'PATCH', body: { completed: true } });
@@ -167,14 +212,25 @@ export default function LeadDetailScreen() {
         <Pressable
           key={t.id}
           style={[styles.taskRow, t.completedAt && styles.taskDone]}
-          onPress={() => !t.completedAt && completeTask(t.id)}
+          onPress={() => openTaskMenu(t)}
         >
           <Text style={styles.taskTitle}>{t.completedAt ? '✓ ' : ''}{t.title}</Text>
-          {t.dueAt ? (
-            <Text style={styles.taskDue}>Due {new Date(t.dueAt).toLocaleDateString()}</Text>
+          {t.dueAt ? <Text style={styles.taskDue}>{formatDue(t.dueAt)}</Text> : null}
+          {!t.completedAt ? (
+            <Text style={styles.taskHint}>Tap to change due date or complete</Text>
           ) : null}
         </Pressable>
       ))}
+      <DueDatePickerModal
+        visible={dueDateEdit !== null}
+        title={dueDateEdit?.title}
+        onClose={() => setDueDateEdit(null)}
+        onSelect={(date) => {
+          if (dueDateEdit) {
+            void updateTaskDue(dueDateEdit.taskId, date);
+          }
+        }}
+      />
       <TextInput
         style={styles.taskInput}
         value={taskTitle}
@@ -259,6 +315,7 @@ const styles = StyleSheet.create({
   taskDone: { opacity: 0.6 },
   taskTitle: { color: '#f8fafc' },
   taskDue: { color: '#64748b', fontSize: 12, marginTop: 4 },
+  taskHint: { color: '#475569', fontSize: 11, marginTop: 6 },
   taskInput: {
     backgroundColor: '#1e293b',
     color: '#f8fafc',
