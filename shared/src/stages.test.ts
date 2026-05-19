@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { isAllowedStageTransition } from './stages.js';
+import { isAllowedStageTransition, LEAD_STAGES } from './stages.js';
 
 describe('UT-LITE-004 stage transitions', () => {
+  it('defines all 7 lifecycle stages', () => {
+    expect(LEAD_STAGES).toHaveLength(7);
+    expect(LEAD_STAGES).toEqual([
+      'NEW',
+      'CONTACTED',
+      'QUALIFIED',
+      'PROPOSAL',
+      'NEGOTIATION',
+      'WON',
+      'LOST',
+    ]);
+  });
   it('allows forward progression', () => {
     expect(isAllowedStageTransition('NEW', 'CONTACTED')).toBe(true);
     expect(isAllowedStageTransition('CONTACTED', 'QUALIFIED')).toBe(true);

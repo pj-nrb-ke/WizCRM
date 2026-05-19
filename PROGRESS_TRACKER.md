@@ -4,7 +4,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled · ➖ Waived (QA only, with reason in notes)
 
-**Last updated:** 2026-05-17 (Lite foundation — Node API + LLM + mobile shell)
+**Last updated:** 2026-05-19 (Cluster 2 — UT/E2E for stage, next-action, notes, post-call)
 
 **Manager tasks:** [manager_task_tracker.md](./manager_task_tracker.md) (`MGT-*`)
 
@@ -122,12 +122,12 @@ Run with project test command after `INF-009`. Add/update in the **same PR** as 
 | ⬜ | UT-LITE-001 | Name required; phone OR email; company optional; API 400 on invalid | LITE-001 |
 | ⬜ | UT-LITE-002 | Duplicate match on normalized phone/email; no false positive on new | LITE-002 |
 | ⬜ | UT-LITE-003 | Card parse mapper: OCR/vision JSON → lead fields; empty safe | LITE-003 |
-| ⬜ | UT-LITE-004 | Stage enum; allowed transitions; AI suggestion does not apply without confirm | LITE-004 |
+| ✅ | UT-LITE-004 | Stage enum; allowed transitions; AI suggestion does not apply without confirm | LITE-004 |
 | ⬜ | UT-LITE-005 | Desk ranking: due tasks, stale rules, max 3–5 items | LITE-005 |
 | ⬜ | UT-LITE-006 | Summary generator with mock LLM; regen on new activity id | LITE-006 |
-| ⬜ | UT-LITE-007 | Next action: one suggestion; dismiss / complete flags | LITE-007 |
-| ⬜ | UT-LITE-008 | Note create; voice transcript → cleaned body (mock AI) | LITE-008 |
-| ⬜ | UT-LITE-009 | Post-call DTO: call metadata + summary + suggested task | LITE-009 |
+| ✅ | UT-LITE-007 | Next action: one suggestion; dismiss / complete flags | LITE-007 |
+| ✅ | UT-LITE-008 | Note create; voice transcript → cleaned body (mock AI) | LITE-008 |
+| ✅ | UT-LITE-009 | Post-call DTO: call metadata + summary + suggested task | LITE-009 |
 | ⬜ | UT-LITE-010 | Timeline sort DESC by time; filter by lead | LITE-010 |
 | ⬜ | UT-LITE-011 | Task create/complete; overdue included in desk input | LITE-011 |
 | ⬜ | UT-LITE-012 | Pipeline groups by stage; empty stage hidden or shown per spec | LITE-012 |
@@ -145,11 +145,11 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 | ⬜ | QA-LITE-001 | Create lead in &lt; 20 s with name + phone or email |
 | ⬜ | QA-LITE-002 | Saving duplicate phone/email shows warning; can cancel or proceed |
 | ⬜ | QA-LITE-003 | Photo → prefill → edit → save; fields correct on detail |
-| ⬜ | QA-LITE-004 | All 7 stages available; AI suggestion requires tap to confirm |
+| 🟡 | QA-LITE-004 | All 7 stages available; AI suggestion requires tap to confirm — **manual on device** |
 | ⬜ | QA-LITE-005 | Desk opens to 3–5 relevant items (hot / due follow-up) |
 | ⬜ | QA-LITE-006 | Lead detail shows plain-language summary; updates after new activity |
-| ⬜ | QA-LITE-007 | One next action shown; dismiss and complete work |
-| ⬜ | QA-LITE-008 | Quick note on timeline; voice note becomes readable entry |
+| 🟡 | QA-LITE-007 | One next action shown; dismiss and complete work — **manual on device** |
+| 🟡 | QA-LITE-008 | Quick note on timeline; voice note becomes readable entry — **manual on device** |
 | ⬜ | QA-LITE-009 | After call: attach lead, rough input, AI summary + task, user confirms |
 | ⬜ | QA-LITE-010 | Timeline shows notes, calls, stage changes in order |
 | ⬜ | QA-LITE-011 | Task with due date; complete removes from desk due list |
@@ -163,7 +163,7 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 
 | Status | ID | Check |
 |--------|-----|-------|
-| ⬜ | QA-NFR-004 | Airplane mode / API down: save manual note and minimal lead fields |
+| 🟡 | QA-NFR-004 | Airplane mode / API down: save manual note and minimal lead fields — **manual on device** |
 | ⬜ | QA-NFR-003 | AI suggest/approve logged (or stub documented until INF-005) |
 
 ---
@@ -174,10 +174,10 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 |--------|-----|---------|
 | ⬜ | E2E-LITE-LOGIN | Login → authenticated home |
 | ⬜ | E2E-LITE-LEAD | Create lead → list + pipeline |
-| ⬜ | E2E-LITE-TIMELINE | Add note → visible on lead timeline |
+| ✅ | E2E-LITE-TIMELINE | Add note → visible on lead timeline |
 | ⬜ | E2E-LITE-DESK | Task due → appears on Sales Desk |
 | ⬜ | E2E-LITE-CARD | Card capture flow → saved lead |
-| ⬜ | E2E-LITE-POSTCALL | Android post-call flow end-to-end |
+| 🟡 | E2E-LITE-POSTCALL | Android post-call flow end-to-end (API confirm gate covered in UT) |
 
 ---
 

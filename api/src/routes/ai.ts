@@ -19,7 +19,7 @@ import {
   suggestStage,
 } from '../services/ai/orchestrator.js';
 import { buildRulesDesk } from '../services/desk-rules.service.js';
-import { isAllowedStageTransition } from '@wizcrm/shared';
+import { isNextActionSuppressed, shouldApplySuggestedStage } from '@wizcrm/shared';
 
 export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -69,7 +69,13 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       where: { leadId, kind: 'NEXT_ACTION', status: 'DISMISSED' },
       orderBy: { createdAt: 'desc' },
     });
-    if (dismissed && dismissed.createdAt >= (lead.lastActivityAt ?? lead.createdAt)) {
+    if (
+      isNextActionSuppressed(
+        dismissed?.createdAt,
+        lead.lastActivityAt,
+        lead.createdAt,
+      )
+    ) {
       return { action: '', reason: '', dismissed: true };
     }
     const nextAction = await generateNextAction(lead, userId);
@@ -197,12 +203,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    if (
-      body.applyStage &&
-      body.suggestedStage &&
-      body.suggestedStage !== lead.stage &&
-      isAllowedStageTransition(lead.stage, body.suggestedStage as never)
-    ) {
+    if (shouldApplySuggestedStage(body.applyStage, lead.stage, body.suggestedStage)) {
       await prisma.lead.update({
         where: { id: body.leadId },
         data: { stage: body.suggestedStage as never, lastActivityAt: new Date() },

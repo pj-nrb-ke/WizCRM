@@ -69,6 +69,90 @@ describe.runIf(runIntegration)('UT-INF-004 API integration', () => {
     expect(res.statusCode).toBe(409);
     expect(res.json().error).toBe('DUPLICATE');
   });
+
+  it('E2E-LITE-TIMELINE note saved and listed newest first', async () => {
+    const create = await app.inject({
+      method: 'POST',
+      url: '/leads',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Timeline Lead', email: 'timeline@test.local' },
+    });
+    expect(create.statusCode).toBe(201);
+    const leadId = create.json().lead.id as string;
+
+    const note = await app.inject({
+      method: 'POST',
+      url: `/leads/${leadId}/activities`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { type: 'NOTE', body: 'Cluster 2 timeline note' },
+    });
+    expect(note.statusCode).toBe(201);
+
+    const list = await app.inject({
+      method: 'GET',
+      url: `/leads/${leadId}/activities`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(list.statusCode).toBe(200);
+    const activities = list.json().activities as Array<{ body: string; createdAt: string }>;
+    expect(activities[0].body).toContain('Cluster 2 timeline note');
+    for (let i = 1; i < activities.length; i++) {
+      expect(new Date(activities[i - 1].createdAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(activities[i].createdAt).getTime(),
+      );
+    }
+  });
+
+  it('E2E-LITE-POSTCALL confirm without applyStage keeps stage', async () => {
+    const create = await app.inject({
+      method: 'POST',
+      url: '/leads',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'PostCall Lead', phone: '+27828887777' },
+    });
+    expect(create.statusCode).toBe(201);
+    const leadId = create.json().lead.id as string;
+    const initialStage = create.json().lead.stage as string;
+
+    const confirm = await app.inject({
+      method: 'POST',
+      url: '/ai/post-call/confirm',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        leadId,
+        summary: 'Discussed pricing',
+        suggestedStage: 'CONTACTED',
+        applyStage: false,
+      },
+    });
+    expect(confirm.statusCode).toBe(200);
+
+    const get = await app.inject({
+      method: 'GET',
+      url: `/leads/${leadId}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(get.json().lead.stage).toBe(initialStage);
+  });
+
+  it('UT-LITE-007 next-action dismiss endpoint persists', async () => {
+    const create = await app.inject({
+      method: 'POST',
+      url: '/leads',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Dismiss Lead', email: 'dismiss@test.local' },
+    });
+    const leadId = create.json().lead.id as string;
+
+    const dismiss = await app.inject({
+      method: 'POST',
+      url: `/ai/leads/${leadId}/next-action/dismiss`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { action: 'Send proposal' },
+    });
+    expect(dismiss.statusCode).toBe(200);
+    expect(dismiss.json().ok).toBe(true);
+  });
 });
 
 describe('UT-INF-004 auth validation (no DB)', () => {

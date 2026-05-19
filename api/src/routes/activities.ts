@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { createActivitySchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { cleanVoiceNote } from '../services/ai/orchestrator.js';
+import { resolveActivityNoteBody } from '../services/note-body.service.js';
 
 export const activityRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -30,18 +31,16 @@ export const activityRoutes: FastifyPluginAsync = async (app) => {
     const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
     if (!lead) return reply.status(404).send({ error: 'Lead not found' });
 
-    let body = parsed.data.body;
-    let subject = parsed.data.subject;
     const useAi = (request.body as { useAiClean?: boolean }).useAiClean;
-    if (useAi && parsed.data.type === 'NOTE') {
-      try {
-        const cleaned = await cleanVoiceNote(organizationId, userId, body);
-        body = cleaned.cleanedBody;
-        subject = cleaned.subject ?? subject;
-      } catch {
-        // NFR-004: keep raw body on AI failure
-      }
-    }
+    const { body, subject } = await resolveActivityNoteBody(
+      {
+        useAiClean: useAi,
+        type: parsed.data.type,
+        body: parsed.data.body,
+        subject: parsed.data.subject,
+      },
+      (raw) => cleanVoiceNote(organizationId, userId, raw),
+    );
 
     const activity = await prisma.activity.create({
       data: {
