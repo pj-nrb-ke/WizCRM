@@ -98,13 +98,16 @@ If you see `could not connect to TCP port 5554` or `adb protocol fault`:
 
 The API health URL (`http://YOUR_PC_IP:3000/health`) is **not** the Metro bundler. A plain **debug** APK expects JavaScript from Metro on port **8081** and shows “Unable to load script” without it.
 
-Build a **standalone** APK (JS embedded):
+Build a **standalone** APK (JS embedded). Pass your PC’s LAN IP so it is **baked into** the app (login screen shows `API: http://…`):
 
 ```powershell
 cd c:\Users\pj\WizCRM
-.\scripts\build-apk.ps1
-# or: .\scripts\build-apk.ps1 -ApiUrl "http://192.168.68.53:3000"
+.\scripts\build-apk.ps1 -PcIp 192.168.68.58
+# or full URL: .\scripts\build-apk.ps1 -ApiUrl "http://192.168.68.58:3000"
+# or auto-detect Wi-Fi IP: .\scripts\build-apk.ps1
 ```
+
+The script runs `clean assembleRelease` and **verifies** the IP is inside the APK bundle. If the footer still shows an old IP after install, you copied an old APK file.
 
 Output: **`WizCRM-lite.apk`** at the repo root. Uninstall any older APK before installing.
 
@@ -136,9 +139,15 @@ Then force-close the app and open it again.
 | Reload app in Expo | `r` in Expo terminal |
 | Clear Metro cache | `npx expo start -c` |
 
+## Login fails but phone browser `/health` works
+
+The browser can open `http://YOUR_PC_IP:3000/health` while the app shows **Cannot reach the API**. The release APK must allow **HTTP (cleartext)** to your PC on the LAN. `build-apk.ps1` enables this in `AndroidManifest.xml`. Rebuild and reinstall **`WizCRM-lite.apk`**.
+
+When sign-in works, the API terminal shows **`POST /auth/login`** (not only `GET /health`).
+
 ## Troubleshooting
 
-- **`adb` not found** — Add `%LOCALAPPDATA%\Android\Sdk\platform-tools` to Path; reopen terminal.
+- **`adb` not found** - Add `%LOCALAPPDATA%\Android\Sdk\platform-tools` to Path; reopen terminal.
 - **No emulators listed** — Create an AVD in Android Studio Device Manager.
 - **Emulator won’t start** — Enable virtualization in BIOS (Intel VT-x / AMD-V); in Windows turn off conflicting hypervisors if needed.
 - **JAVA_HOME not set** — Point to Microsoft OpenJDK 17 install under `C:\Program Files\Microsoft\`.
