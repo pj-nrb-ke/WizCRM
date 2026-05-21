@@ -78,7 +78,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | ✅ | INF-003 | Folder layout `web/`, `shared/`, `docker/` | All |
 | 🟡 | INF-004 | Backend API + database | Lite+ |
 | 🟡 | INF-005 | AI orchestration / LLM service layer (OpenAI) | Lite+ |
-| ⬜ | INF-006 | Web app scaffold | Pro+ |
+| 🟡 | INF-006 | Web app scaffold (`WEB-001`–`004`) | Pro+ — **Cluster A** |
 | ⬜ | INF-007 | CI (lint/test/build) | Pro+ |
 | ⬜ | INF-008 | `tenant_id` schema (design for Pro) | Pro+ |
 | ✅ | INF-009 | Test runners: API + `shared/` + `mobile/` (`npm test`) | Lite+ |
@@ -182,6 +182,31 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 ---
 
 ## WizCRM Pro (~1 month)
+
+## WizCRM Web — phased (`WEB-*`)
+
+See **[SRS-WEB.md](./SRS-WEB.md)**. Recommended next work: **Cluster A** (foundation + central settings).
+
+| Status | ID | Feature |
+|--------|-----|---------|
+| 🟡 | WEB-001 | Web scaffold + deploy `app.wizcrm.app` |
+| 🟡 | WEB-002 | Auth (JWT, roles) |
+| 🟡 | WEB-003 | App shell + role-based nav |
+| 🟡 | WEB-004 | API client (`VITE_API_URL`) |
+| 🟡 | WEB-010 | Organization profile |
+| 🟡 | WEB-011 | Users admin (PRO-013 slice) |
+| 🟡 | WEB-012 | Teams admin |
+| 🟡 | WEB-013 | AI & platform settings (desk mode, health) |
+| 🟡 | WEB-014 | Connection info for mobile |
+| 🟡 | WEB-015 | AI audit log (read-only) |
+| 🟡 | API-WEB-001..004 | Admin settings API routes |
+
+| Cluster | IDs | When |
+|---------|-----|------|
+| **A — Foundation + settings** | INF-006, WEB-001–015, API-WEB-* | **Next** |
+| **B — Manager workspace** | WEB-020–023 | After A |
+| **C — Pro platform** | PRO-014, PRO-015, INF-008 | Before external SaaS |
+| **D — Sales CRM on web** | WEB-030–033 | Defer |
 
 *Add `UT-PRO-*` and `QA-PRO-*` when Pro development starts (same pairing rules as Lite).*
 

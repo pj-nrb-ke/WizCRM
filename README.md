@@ -31,6 +31,7 @@ Lead stages and domain rules: **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)** (AI s
 | Document | Purpose |
 |----------|---------|
 | [SRS.md](./SRS.md) | Software requirements v2.0 (Lite / Pro / Enterprise) |
+| [SRS-WEB.md](./SRS-WEB.md) | Web app layer — admin settings, manager desk, phased `WEB-*` |
 | [WizCRM Features.md](./WizCRM%20Features.md) | Brochure feature lists by plan |
 | [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) | Progress by Task ID: `LITE-*`, `UT-*`, `QA-*`, `E2E-*` |
 | [manager_tasks.md](./manager_tasks.md) | Non-technical tasks (Google Cloud, ScaleGate, ERP, stores) |

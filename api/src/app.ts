@@ -9,6 +9,7 @@ import { taskRoutes } from './routes/tasks.js';
 import { aiRoutes } from './routes/ai.js';
 import { healthRoutes } from './routes/health.js';
 import { teamRoutes } from './routes/teams.js';
+import { adminRoutes } from './routes/admin.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -35,6 +36,7 @@ export async function buildApp() {
   await app.register(taskRoutes, { prefix: '/tasks' });
   await app.register(aiRoutes, { prefix: '/ai' });
   await app.register(teamRoutes, { prefix: '/teams' });
+  await app.register(adminRoutes, { prefix: '/admin' });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error as Error & { statusCode?: number };

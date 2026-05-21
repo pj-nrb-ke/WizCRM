@@ -10,6 +10,7 @@ datasource db {
 model Organization {
   id        String   @id @default(uuid())
   name      String
+  settings  Json     @default("{}")
   createdAt DateTime @default(now())
   users     User[]
   leads     Lead[]

@@ -92,6 +92,29 @@ export const nextActionFeedbackSchema = z.object({
   action: z.string().min(1).max(500),
 });
 
+export const updateOrganizationSchema = z.object({
+  name: z.string().min(1).max(200),
+});
+
+export const orgSettingsSchema = z.object({
+  deskUseAi: z.boolean().optional(),
+});
+
+export const createAdminUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1).max(200),
+  password: z.string().min(6).max(100),
+  role: z.enum(['SALES', 'MANAGER', 'ADMIN']),
+  teamId: z.string().uuid().nullable().optional(),
+});
+
+export const updateAdminUserSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  role: z.enum(['SALES', 'MANAGER', 'ADMIN']).optional(),
+  teamId: z.string().uuid().nullable().optional(),
+});
+
+export type OrgSettings = z.infer<typeof orgSettingsSchema>;
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;

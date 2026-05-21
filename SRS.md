@@ -7,7 +7,7 @@
 | **Document version** | 2.2 |
 | **Date** | 2026-05-17 |
 | **Status** | Active — AI-first product; tiered Lite / Pro / Enterprise |
-| **Related docs** | [WizCRM Features.md](./WizCRM%20Features.md), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md), [manager_tasks.md](./manager_tasks.md), [manager_task_tracker.md](./manager_task_tracker.md) |
+| **Related docs** | [WizCRM Features.md](./WizCRM%20Features.md), [SRS-WEB.md](./SRS-WEB.md), [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md), [manager_tasks.md](./manager_tasks.md), [manager_task_tracker.md](./manager_task_tracker.md) |
 
 **Supersedes:** SRS v1.x (user-driven CRM feature list). v1 scope is archived in git history (commit before v2.0).
 
@@ -146,6 +146,21 @@ Multi-tenant, ScaleGate, manager AI cockpit, quotations, geofence, ERP, email/Wh
 ### 4.2 Explicitly not in Pro
 
 Geofence/field attendance, ERP sync (beyond quotation data model ready), full email inbox sync, SSO/SAML, workflow builder, e-signature, advanced report builder, campaign ROI, post-sale account AI (→ Enterprise).
+
+### 4.3 Web application layer (phased)
+
+**Goal:** Browser app at **`app.wizcrm.app`** — **admin settings and manager workspace first**; mobile remains the primary rep experience in the field.
+
+| Phase | Scope | Requirement IDs |
+|-------|--------|-----------------|
+| **1 — Admin console** | Auth, org/users/teams, AI/platform toggles, health | `INF-006`, `WEB-001`–`WEB-015`, `API-WEB-*` |
+| **2 — Manager desk** | Pipeline board, team reports, CSV | `WEB-020`–`WEB-023`, `PRO-009`, `PRO-012` |
+| **3 — Pro platform** | Multi-tenant, ScaleGate, branding | `PRO-014`, `PRO-015` |
+| **4 — Sales parity** | Full CRM in browser (optional) | `WEB-030`–`WEB-033` |
+
+Full detail, acceptance criteria, and architecture: **[SRS-WEB.md](./SRS-WEB.md)**.
+
+**Lite note:** Web phase 1 does not change LITE-014 (mobile-first); it adds a **settings control plane** so API URL, desk mode, and users are not edited only via SSH.
 
 ---
 

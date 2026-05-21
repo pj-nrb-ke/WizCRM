@@ -20,6 +20,7 @@ import {
 } from '../services/ai/orchestrator.js';
 import { config } from '../config.js';
 import { buildRulesDesk } from '../services/desk-rules.service.js';
+import { resolveDeskUseAi } from '../services/org-settings.service.js';
 import { isNextActionSuppressed, shouldApplySuggestedStage } from '@wizcrm/shared';
 
 export const aiRoutes: FastifyPluginAsync = async (app) => {
@@ -36,7 +37,8 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       take: 30,
     });
     const rulesItems = buildRulesDesk(leads);
-    if (!config.deskUseAi || !config.aiEnabled) {
+    const deskUseAi = await resolveDeskUseAi(organizationId);
+    if (!deskUseAi || !config.aiEnabled) {
       return { items: rulesItems, source: 'rules' as const };
     }
     try {

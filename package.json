@@ -3,13 +3,16 @@
   "private": true,
   "workspaces": [
     "shared",
-    "api"
+    "api",
+    "web"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "api:dev": "npm run dev -w api",
     "api:test": "npm run test -w api",
     "shared:test": "npm run test -w shared",
+    "web:dev": "npm run dev -w web",
+    "web:build": "npm run build -w web",
     "db:up": "docker compose -f docker/docker-compose.yml up -d",
     "db:down": "docker compose -f docker/docker-compose.yml down"
   }

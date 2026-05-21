@@ -92,8 +92,20 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { email: 'admin@wizag.local' },
+    update: { passwordHash, name: 'WizCRM Admin', role: UserRole.ADMIN, teamId: null },
+    create: {
+      email: 'admin@wizag.local',
+      passwordHash,
+      name: 'WizCRM Admin',
+      role: UserRole.ADMIN,
+      organizationId: org.id,
+    },
+  });
+
   console.log('Seed complete:');
-  console.log('  rep@wizag.local / rep2@wizag.local / manager@wizag.local');
+  console.log('  rep@wizag.local / rep2@wizag.local / manager@wizag.local / admin@wizag.local');
   console.log('  password: wizcrm123');
   console.log('  Teams: Field Sales, Inside Sales');
 }
