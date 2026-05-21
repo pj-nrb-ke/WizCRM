@@ -1,5 +1,6 @@
 # Builds a standalone APK for a physical Android phone (JS bundle embedded; no Metro required).
-# Bakes EXPO_PUBLIC_API_URL into the JS bundle at build time (not changeable after install).
+# Bakes EXPO_PUBLIC_API_URL into the JS bundle as fallback. Override at runtime via
+# Download/WizCRM/api-url.txt on the phone (see MOBILE_DEV.md, scripts/push-api-url.ps1).
 #
 # Usage (pick one):
 #   .\scripts\build-apk.ps1 -PcIp 192.168.68.58

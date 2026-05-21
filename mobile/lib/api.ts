@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { API_URL } from './config';
+import { getApiUrl } from './api-url-file';
 
 const TOKEN_KEY = 'wizcrm_token';
 
@@ -35,12 +35,13 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     const token = await getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
+  const apiUrl = await getApiUrl();
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetch(`${apiUrl}${path}`, {
       method: options.method ?? 'GET',
       headers,
       body: hasBody ? JSON.stringify(options.body) : undefined,
@@ -49,12 +50,12 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
       throw new Error(
-        `Request timed out (${timeoutMs / 1000}s). Is the API running at ${API_URL}?`,
+        `Request timed out (${timeoutMs / 1000}s). Is the API running at ${apiUrl}?`,
       );
     }
     if (e instanceof Error && e.message === 'Network request failed') {
       throw new Error(
-        `Cannot reach the API at ${API_URL}. On your PC run: .\\scripts\\start-api.ps1 (and keep that window open).`,
+        `Cannot reach the API at ${apiUrl}. On your PC run: .\\scripts\\start-api.ps1 (and keep that window open).`,
       );
     }
     throw e;

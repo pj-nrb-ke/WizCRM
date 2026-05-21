@@ -98,7 +98,7 @@ If you see `could not connect to TCP port 5554` or `adb protocol fault`:
 
 The API health URL (`http://YOUR_PC_IP:3000/health`) is **not** the Metro bundler. A plain **debug** APK expects JavaScript from Metro on port **8081** and shows “Unable to load script” without it.
 
-Build a **standalone** APK (JS embedded). Pass your PC’s LAN IP so it is **baked into** the app (login screen shows `API: http://…`):
+Build a **standalone** APK (JS embedded) **once** (or when app code changes—not when only your Wi‑Fi IP changes):
 
 ```powershell
 cd c:\Users\pj\WizCRM
@@ -107,9 +107,42 @@ cd c:\Users\pj\WizCRM
 # or auto-detect Wi-Fi IP: .\scripts\build-apk.ps1
 ```
 
-The script runs `clean assembleRelease` and **verifies** the IP is inside the APK bundle. If the footer still shows an old IP after install, you copied an old APK file.
-
 Output: **`WizCRM-lite.apk`** at the repo root. Uninstall any older APK before installing.
+
+### Change API IP without rebuilding the APK
+
+When your laptop and phone are on a new network, put your PC’s API URL in a text file on the phone. The app reads it on startup (login screen shows the active URL and source).
+
+| Location on phone | Path |
+|-------------------|------|
+| **Recommended** | `Android/data/com.wizag.wizcrm/files/api-url.txt` (no extra permission; `push-api-url.ps1` writes here) |
+| Also supported | `Download/WizCRM/api-url.txt` (Files app — app will ask for storage permission) |
+| Alternate | `Documents/WizCRM/api-url.txt` |
+
+**File format** (one line; `#` starts a comment):
+
+```text
+http://192.168.1.10:3000
+```
+
+Shorthand also works: `192.168.1.10:3000` or `192.168.1.10` (port defaults to `3000`).
+
+**From your PC (USB debugging):**
+
+```powershell
+.\scripts\push-api-url.ps1
+# or: .\scripts\push-api-url.ps1 -PcIp 192.168.1.10
+```
+
+**On the phone (Android 13+):** a file in **Documents/WizCRM** cannot be read automatically (storage permission). Either:
+- On the login screen: paste `http://YOUR_PC_IP:3000` → **Save API URL**, or tap **Import api-url.txt** and pick your file in Documents/WizCRM, or
+- Use the Files app + **Import** as above (recommended if you already created the file there).
+
+Then force-close WizCRM and reopen, or on the login screen tap **Reload API URL from file**.
+
+If no file is found, the app uses the URL baked in at build time (`EXPO_PUBLIC_API_URL`). The login screen lists paths it tried (helps debug wrong folder or permission denied).
+
+**If Reload still shows “build (APK default)”:** rebuild the APK once after pulling the latest code (older builds used a broken file reader). Then run `.\scripts\push-api-url.ps1` with the phone on USB.
 
 **Temporary workaround** (old debug APK): Metro must reach your PC on port **8081**, not just the API on 3000.
 

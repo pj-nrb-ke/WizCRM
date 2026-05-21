@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
 
 /**
- * Emulator default: 10.0.2.2:3000. Physical phone APK: set at build time via EXPO_PUBLIC_API_URL (your PC LAN IP).
+ * Fallback when no api-url.txt on the device (see MOBILE_DEV.md).
+ * Emulator: 10.0.2.2:3000. Physical phone APK: EXPO_PUBLIC_API_URL at build time, or override via file.
  */
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??

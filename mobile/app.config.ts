@@ -33,12 +33,14 @@ const config: ExpoConfig = {
     versionCode: 1,
     edgeToEdgeEnabled: true,
     usesCleartextTraffic: true,
+    permissions: ['READ_EXTERNAL_STORAGE'],
   },
   web: {
     favicon: './assets/favicon.png',
   },
   plugins: [
     'expo-router',
+    'expo-document-picker',
     'expo-audio',
     'expo-secure-store',
     [
