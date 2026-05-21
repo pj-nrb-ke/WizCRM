@@ -16,4 +16,9 @@ export const config = {
   aiPromptVersion: 'v1',
   /** When false and no API key, AI routes return 503 with fallback hints. */
   aiEnabled: Boolean(process.env.OPENAI_API_KEY),
+  /**
+   * Sales Desk uses rules-only (fast) unless WIZCRM_DESK_USE_AI=1.
+   * LLM desk can take 10–30s on each tab open.
+   */
+  deskUseAi: process.env.WIZCRM_DESK_USE_AI === '1',
 };

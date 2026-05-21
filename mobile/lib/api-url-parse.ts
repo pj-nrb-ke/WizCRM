@@ -13,6 +13,10 @@ export function parseApiUrlFromFileContents(raw: string): string | null {
 
   try {
     const u = new URL(s);
+    // Port 3000 is for LAN dev (http://192.168.x.x:3000). Public HTTPS uses 443.
+    if (u.protocol === 'https:' && u.port === '3000') {
+      u.port = '';
+    }
     return u.origin;
   } catch {
     return null;

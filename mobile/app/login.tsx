@@ -134,7 +134,7 @@ export default function LoginScreen() {
         <Text style={styles.sectionLabel}>PC API URL (when Wi‑Fi IP changes)</Text>
         <TextInput
           style={styles.input}
-          placeholder="http://192.168.x.x:3000"
+          placeholder="https://api.wizcrm.app"
           placeholderTextColor="#64748b"
           autoCapitalize="none"
           autoCorrect={false}

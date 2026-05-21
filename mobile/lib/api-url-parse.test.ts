@@ -13,4 +13,8 @@ describe('parseApiUrlFromFileContents', () => {
   it('skips comments and uses first real line', () => {
     expect(parseApiUrlFromFileContents('# dev\n\n192.168.1.5:4000')).toBe('http://192.168.1.5:4000');
   });
+
+  it('strips :3000 from https cloud URLs', () => {
+    expect(parseApiUrlFromFileContents('https://api.wizcrm.app:3000')).toBe('https://api.wizcrm.app');
+  });
 });

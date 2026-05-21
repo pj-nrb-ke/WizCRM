@@ -18,6 +18,7 @@ import {
   processPostCall,
   suggestStage,
 } from '../services/ai/orchestrator.js';
+import { config } from '../config.js';
 import { buildRulesDesk } from '../services/desk-rules.service.js';
 import { isNextActionSuppressed, shouldApplySuggestedStage } from '@wizcrm/shared';
 
@@ -34,11 +35,19 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       },
       take: 30,
     });
-    let items = await generateSalesDesk(organizationId, userId, leads);
-    if (items.length === 0 && leads.length > 0) {
-      items = buildRulesDesk(leads);
+    const rulesItems = buildRulesDesk(leads);
+    if (!config.deskUseAi || !config.aiEnabled) {
+      return { items: rulesItems, source: 'rules' as const };
     }
-    return { items };
+    try {
+      let items = await generateSalesDesk(organizationId, userId, leads);
+      if (items.length === 0 && leads.length > 0) {
+        items = rulesItems;
+      }
+      return { items, source: 'ai' as const };
+    } catch {
+      return { items: rulesItems, source: 'rules' as const };
+    }
   });
 
   app.post('/card-parse', async (request, reply) => {
