@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -6,6 +6,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -39,6 +40,7 @@ export default function LeadsScreen() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   const load = useCallback(
     async (isPull = false) => {
@@ -53,11 +55,7 @@ export default function LeadsScreen() {
         setLeads(data.leads);
       } catch (e) {
         const err = e as Error;
-        setError(
-          err.message === 'Network request failed'
-            ? 'Cannot reach the API. Start scripts\\start-api.ps1 first.'
-            : err.message,
-        );
+        setError(err.message);
         setLeads([]);
       } finally {
         setInitialLoading(false);
@@ -80,6 +78,18 @@ export default function LeadsScreen() {
   function goToAllTeams() {
     router.replace('/(tabs)/team');
   }
+
+  const filteredLeads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return leads;
+    return leads.filter((l) => {
+      const hay = [l.name, l.company, l.email, l.phone, l.stage, l.owner?.name, l.owner?.team?.name]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [leads, search]);
 
   const screenTitle = filterTitle
     ? `Leads: ${filterTitle}`
@@ -114,12 +124,22 @@ export default function LeadsScreen() {
           ) : null}
         </View>
       </View>
+      <TextInput
+        style={styles.search}
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search leads…"
+        placeholderTextColor="#64748b"
+        autoCapitalize="none"
+        autoCorrect={false}
+        clearButtonMode="while-editing"
+      />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {initialLoading && leads.length === 0 ? (
         <ActivityIndicator color="#38bdf8" style={{ marginTop: 24 }} />
       ) : (
         <FlatList
-          data={leads}
+          data={filteredLeads}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl
@@ -130,7 +150,11 @@ export default function LeadsScreen() {
           }
           ListEmptyComponent={
             <Text style={styles.empty}>
-              {hasFilter ? 'No leads for this filter.' : 'No leads yet.'}
+              {search.trim()
+                ? 'No leads match your search.'
+                : hasFilter
+                  ? 'No leads for this filter.'
+                  : 'No leads yet.'}
             </Text>
           }
           renderItem={({ item }) => (
@@ -185,6 +209,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addBtnText: { color: '#0f172a', fontWeight: '700' },
+  search: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    padding: 12,
+    color: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
   error: { color: '#f87171', paddingHorizontal: 16, marginBottom: 8 },
   empty: { color: '#64748b', textAlign: 'center', marginTop: 40, paddingHorizontal: 24 },
   row: {

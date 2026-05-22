@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { HeaderActions } from '../components/HeaderActions';
 import { LogoutButton } from '../components/LogoutButton';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 
@@ -23,6 +24,16 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
+        <Stack.Screen
+          name="settings"
+          options={{
+            headerShown: true,
+            title: 'Settings',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <LogoutButton />,
+          }}
+        />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="lead/[id]"
@@ -31,7 +42,7 @@ function RootNavigator() {
             title: 'Lead',
             headerStyle: { backgroundColor: '#0f172a' },
             headerTintColor: '#f8fafc',
-            headerRight: () => <LogoutButton />,
+            headerRight: () => <HeaderActions />,
           }}
         />
         <Stack.Screen
@@ -41,7 +52,7 @@ function RootNavigator() {
             title: 'New lead',
             headerStyle: { backgroundColor: '#0f172a' },
             headerTintColor: '#f8fafc',
-            headerRight: () => <LogoutButton />,
+            headerRight: () => <HeaderActions />,
           }}
         />
         <Stack.Screen
@@ -51,7 +62,7 @@ function RootNavigator() {
             title: 'Log call',
             headerStyle: { backgroundColor: '#0f172a' },
             headerTintColor: '#f8fafc',
-            headerRight: () => <LogoutButton />,
+            headerRight: () => <HeaderActions />,
           }}
         />
         <Stack.Screen
@@ -61,7 +72,7 @@ function RootNavigator() {
             title: 'Team',
             headerStyle: { backgroundColor: '#0f172a' },
             headerTintColor: '#f8fafc',
-            headerRight: () => <LogoutButton />,
+            headerRight: () => <HeaderActions />,
           }}
         />
         <Stack.Screen
@@ -71,7 +82,7 @@ function RootNavigator() {
             title: 'Design team',
             headerStyle: { backgroundColor: '#0f172a' },
             headerTintColor: '#f8fafc',
-            headerRight: () => <LogoutButton />,
+            headerRight: () => <HeaderActions />,
           }}
         />
       </Stack>

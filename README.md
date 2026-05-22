@@ -39,6 +39,7 @@ Lead stages and domain rules: **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)** (AI s
 | [manager_tasks.md](./manager_tasks.md) | Non-technical tasks (Google Cloud, ScaleGate, ERP, stores) |
 | [manager_task_tracker.md](./manager_task_tracker.md) | Manager checklist (`MGT-*`) |
 | [MOBILE_DEV.md](./MOBILE_DEV.md) | Android emulator and Expo |
+| [docs/MOBILE-PILOT.md](./docs/MOBILE-PILOT.md) | Production pilot checklist (5 min) |
 
 ## Project status
 

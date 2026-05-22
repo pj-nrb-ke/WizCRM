@@ -33,8 +33,8 @@ export default function DeskScreen() {
         setError(
           'AI is not configured on the server yet (OPENAI_API_KEY). Use the Leads tab — everything else works.',
         );
-      } else if (err.message === 'Network request failed') {
-        setError('Cannot reach the API. Is start-api.ps1 running? (http://10.0.2.2:3000)');
+      } else if (err.message === 'Network request failed' || err.message.includes('Cannot reach')) {
+        setError(err.message.includes('Cannot reach') ? err.message : 'Cannot reach the API. Check Settings → API URL.');
       } else {
         setError(err.message || 'Failed to load desk');
       }

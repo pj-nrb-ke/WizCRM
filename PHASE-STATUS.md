@@ -7,8 +7,8 @@ Single view of **where the programme is by phase**. Task-level detail: [OUTSTAND
 | Phase | Name | Status | Delivered / live today | Remaining to close phase |
 |-------|------|--------|-------------------------|---------------------------|
 | **P0** | **Production hosting** | ✅ **Done** | VPS (Contabo), `https://api.wizcrm.app`, `https://app.wizcrm.app`, Docker Postgres, Caddy TLS, deploy scripts, SSH git push | — |
-| **P1** | **Lite mobile (build)** | 🟡 **In progress** | APK, desk/leads/pipeline/teams, AI panels, post-call, API URL flow, hosted API | Formal ✅ on all **LITE-001–014** (needs UT + QA per DoD) |
-| **P2** | **Lite sign-off (quality)** | 🟡 **In progress** | **UT:** 4/14 · **QA:** 0/16 pass · **E2E:** 1/6 | **UT-LITE-*** (10 open), **QA-LITE-*** + **PILOT** + **ANDROID**, **E2E-LITE-*** (5 open) |
+| **P1** | **Lite mobile (build)** | 🟡 **In progress** | Production APK path (`-Production`), Settings, lead search, pilot doc | **QA-LITE-PILOT** on device |
+| **P2** | **Lite sign-off (quality)** | 🟡 **In progress** | Pilot script: [docs/MOBILE-PILOT.md](./docs/MOBILE-PILOT.md) | UT/QA/E2E rows after pilot pass |
 | **P3** | **Web — Cluster A (admin)** | ✅ **Done** | Login, org, users, platform, connection, audit, `/admin` API | — |
 | **P4** | **Web — Cluster B (manager)** | ✅ **Done** | Manager home, pipeline, leads table, reports/CSV | — |
 | **P5** | **Web — polish** | 🟡 **In progress** | Teams **view** on web | **WEB-012** teams create/edit on web |

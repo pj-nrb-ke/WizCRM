@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { getApiUrl } from './api-url-file';
+import { formatNetworkError } from './network-message';
 
 const TOKEN_KEY = 'wizcrm_token';
 
@@ -54,9 +55,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
       );
     }
     if (e instanceof Error && e.message === 'Network request failed') {
-      throw new Error(
-        `Cannot reach the API at ${apiUrl}. On your PC run: .\\scripts\\start-api.ps1 (and keep that window open).`,
-      );
+      throw new Error(formatNetworkError(apiUrl));
     }
     throw e;
   } finally {

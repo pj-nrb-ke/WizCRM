@@ -7,12 +7,14 @@
 #   .\scripts\build-apk.ps1 -PcIp 192.168.68.58 -Port 3000
 #   .\scripts\build-apk.ps1 -ApiUrl "http://192.168.68.58:3000"
 #   .\scripts\build-apk.ps1                    # auto-detect PC Wi-Fi IP
+#   .\scripts\build-apk.ps1 -Production       # production API + copy WizCRM-production.apk
 
 param(
   [string]$ApiUrl = "",
   [string]$PcIp = "",
   [int]$Port = 3000,
-  [switch]$SkipPrebuild
+  [switch]$SkipPrebuild,
+  [switch]$Production
 )
 
 $ErrorActionPreference = "Stop"
@@ -203,9 +205,14 @@ function Get-LanIp {
   return ($addrs | Select-Object -First 1 -ExpandProperty IPAddress)
 }
 
-$ApiUrl = Resolve-ApiUrl -Url $ApiUrl -Ip $PcIp -ApiPort $Port
+if ($Production) {
+  $ApiUrl = "https://api.wizcrm.app"
+  Write-Host "Production build -> $ApiUrl" -ForegroundColor Cyan
+} else {
+  $ApiUrl = Resolve-ApiUrl -Url $ApiUrl -Ip $PcIp -ApiPort $Port
+  Write-Host "(Phone and PC must be on the same Wi-Fi. API must be running: scripts\start-api.ps1)" -ForegroundColor DarkGray
+}
 Set-BuildApiEnv -MobileRoot $Mobile -Url $ApiUrl
-Write-Host "(Phone and PC must be on the same Wi-Fi. API must be running: scripts\start-api.ps1)" -ForegroundColor DarkGray
 
 Set-JavaHome
 Set-AndroidSdk
@@ -294,10 +301,15 @@ if (-not (Test-Path $apk)) {
   $apk = Join-Path $androidDir "app\build\outputs\apk\debug\app-debug.apk"
 }
 if (Test-Path $apk) {
-  $dest = Join-Path $Root "WizCRM-lite.apk"
+  $dest = if ($Production) {
+    Join-Path $Root "WizCRM-production.apk"
+  } else {
+    Join-Path $Root "WizCRM-lite.apk"
+  }
   Copy-Item $apk $dest -Force
-  # Keep legacy name for scripts/docs that reference it
-  Copy-Item $apk (Join-Path $Root "WizCRM-lite-debug.apk") -Force
+  if (-not $Production) {
+    Copy-Item $apk (Join-Path $Root "WizCRM-lite-debug.apk") -Force
+  }
   Write-Host ""
   Write-Host "SUCCESS" -ForegroundColor Green
   $sizeMb = [math]::Round((Get-Item $dest).Length / 1MB, 2)
@@ -313,11 +325,17 @@ if (Test-Path $apk) {
   Write-Host ""
   Write-Host "Install on phone:" -ForegroundColor Cyan
   Write-Host "  1. Uninstall the old WizCRM APK if installed."
-  Write-Host "  2. Copy WizCRM-lite.apk to the phone (USB, email, or cloud)."
+  Write-Host "  2. Copy $((Split-Path $dest -Leaf)) to the phone (USB, email, or cloud)."
   Write-Host "  3. On phone: allow Install from unknown sources if asked."
   Write-Host "  4. Open the APK and install."
-  Write-Host "  5. Keep API running on PC: scripts\start-api.ps1"
-  Write-Host "  6. Login: rep@wizag.local / wizcrm123"
+  if ($Production) {
+    Write-Host "  5. Login (Wi‑Fi or mobile data): rep@wizag.local or manager@wizag.local / wizcrm123"
+    Write-Host "  6. Optional: Settings → confirm API https://api.wizcrm.app"
+    Write-Host "  Pilot: docs/MOBILE-PILOT.md"
+  } else {
+    Write-Host "  5. Keep API running on PC: scripts\start-api.ps1"
+    Write-Host "  6. Login: rep@wizag.local / wizcrm123"
+  }
   Write-Host ""
   Write-Host "To use Expo Go in the emulator again, run: scripts\start-mobile.ps1" -ForegroundColor DarkGray
 } else {

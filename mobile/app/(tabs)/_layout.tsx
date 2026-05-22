@@ -3,7 +3,7 @@ import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
-import { LogoutButton } from '../../components/LogoutButton';
+import { HeaderActions } from '../../components/HeaderActions';
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
@@ -18,7 +18,7 @@ export default function TabsLayout() {
         headerStyle: { backgroundColor: '#0f172a' },
         headerTintColor: '#f8fafc',
         headerTitleStyle: { fontWeight: '700' },
-        headerRight: () => <LogoutButton />,
+        headerRight: () => <HeaderActions />,
         tabBarStyle: { backgroundColor: '#0f172a', borderTopColor: '#1e293b' },
         tabBarActiveTintColor: '#38bdf8',
         tabBarInactiveTintColor: '#64748b',
