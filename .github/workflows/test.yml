@@ -1,0 +1,55 @@
+name: Test
+
+on:
+  push:
+    branches: [development, main]
+  pull_request:
+    branches: [development, main]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w shared
+      - run: npm run test -w shared
+      - run: npm run test -w api
+      - run: npm ci --prefix mobile
+      - run: npm test --prefix mobile
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: wizcrm
+          POSTGRES_PASSWORD: wizcrm_dev
+          POSTGRES_DB: wizcrm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wizcrm -d wizcrm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://wizcrm:wizcrm_dev@localhost:5432/wizcrm
+      JWT_SECRET: ci-test-secret-min-32-chars-long!!
+      RUN_INTEGRATION_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w shared
+      - run: npx prisma db push --schema api/prisma/schema.prisma
+      - run: npm run db:seed -w api
+      - run: npm run test -w api

@@ -17,8 +17,8 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
 | **P0** | Production hosting | ✅ Done | api + app on Contabo |
-| **P1** | Lite mobile (build) | 🟡 In progress | Features usable; not formally ✅ |
-| **P2** | Lite sign-off (UT/QA/E2E) | 🟡 In progress | Main gate before “Lite complete” |
+| **P1** | Lite mobile (build) | 🟡 In progress | APK + features done; pilot on device |
+| **P2** | Lite sign-off (UT/QA/E2E) | 🟡 In progress | Automated tests + CI; QA = [docs/MOBILE-LITE-SIGNOFF.md](./docs/MOBILE-LITE-SIGNOFF.md) |
 | **P3** | Web Cluster A (admin) | ✅ Done | WEB-001–015 except WEB-012 |
 | **P4** | Web Cluster B (manager) | ✅ Done | WEB-020–023 |
 | **P5** | Web polish | 🟡 In progress | WEB-012 teams CRUD on web |
@@ -141,20 +141,20 @@ Run with project test command after `INF-009`. Add/update in the **same PR** as 
 
 | Status | ID | Tests (critical points) | Blocks |
 |--------|-----|-------------------------|--------|
-| ⬜ | UT-LITE-001 | Name required; phone OR email; company optional; API 400 on invalid | LITE-001 |
-| ⬜ | UT-LITE-002 | Duplicate match on normalized phone/email; no false positive on new | LITE-002 |
-| ⬜ | UT-LITE-003 | Card parse mapper: OCR/vision JSON → lead fields; empty safe | LITE-003 |
+| ✅ | UT-LITE-001 | Name required; phone OR email; company optional; API 400 on invalid | LITE-001 |
+| ✅ | UT-LITE-002 | Duplicate match on normalized phone/email; no false positive on new | LITE-002 |
+| ✅ | UT-LITE-003 | Card parse mapper: OCR/vision JSON → lead fields; empty safe | LITE-003 |
 | ✅ | UT-LITE-004 | Stage enum; allowed transitions; AI suggestion does not apply without confirm | LITE-004 |
-| ⬜ | UT-LITE-005 | Desk ranking: due tasks, stale rules, max 3–5 items | LITE-005 |
+| ✅ | UT-LITE-005 | Desk ranking: due tasks, stale rules, max 3–5 items | LITE-005 |
 | ⬜ | UT-LITE-006 | Summary generator with mock LLM; regen on new activity id | LITE-006 |
 | ✅ | UT-LITE-007 | Next action: one suggestion; dismiss / complete flags | LITE-007 |
 | ✅ | UT-LITE-008 | Note create; voice transcript → cleaned body (mock AI) | LITE-008 |
 | ✅ | UT-LITE-009 | Post-call DTO: call metadata + summary + suggested task | LITE-009 |
-| ⬜ | UT-LITE-010 | Timeline sort DESC by time; filter by lead | LITE-010 |
-| ⬜ | UT-LITE-011 | Task create/complete; overdue included in desk input | LITE-011 |
-| ⬜ | UT-LITE-012 | Pipeline groups by stage; empty stage hidden or shown per spec | LITE-012 |
-| ⬜ | UT-LITE-013 | Login issues token; invalid creds 401; secure store contract (mobile mock) | LITE-013 |
-| ⬜ | UT-LITE-014 | Navigation shell: Desk / Leads / Pipeline routes mount | LITE-014 |
+| ✅ | UT-LITE-010 | Timeline sort DESC by time; filter by lead | LITE-010 |
+| ✅ | UT-LITE-011 | Task create/complete; overdue included in desk input | LITE-011 |
+| ✅ | UT-LITE-012 | Pipeline groups by stage; empty stage hidden or shown per spec | LITE-012 |
+| ✅ | UT-LITE-013 | Login issues token; invalid creds 401; secure store contract (mobile mock) | LITE-013 |
+| ✅ | UT-LITE-014 | Navigation shell: Desk / Leads / Pipeline routes mount | LITE-014 |
 
 ---
 
@@ -194,11 +194,11 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 
 | Status | ID | Journey |
 |--------|-----|---------|
-| ⬜ | E2E-LITE-LOGIN | Login → authenticated home |
-| ⬜ | E2E-LITE-LEAD | Create lead → list + pipeline |
+| ✅ | E2E-LITE-LOGIN | Login → authenticated home |
+| ✅ | E2E-LITE-LEAD | Create lead → list + pipeline |
 | ✅ | E2E-LITE-TIMELINE | Add note → visible on lead timeline |
-| ⬜ | E2E-LITE-DESK | Task due → appears on Sales Desk |
-| ⬜ | E2E-LITE-CARD | Card capture flow → saved lead |
+| ✅ | E2E-LITE-DESK | Task due → appears on Sales Desk |
+| 🟡 | E2E-LITE-CARD | Card capture flow → saved lead (device) |
 | 🟡 | E2E-LITE-POSTCALL | Android post-call flow end-to-end (API confirm gate covered in UT) |
 
 ---

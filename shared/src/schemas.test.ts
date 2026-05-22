@@ -1,10 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
   createActivitySchema,
+  createLeadSchema,
   nextActionFeedbackSchema,
   postCallSchema,
   transcribeAudioSchema,
 } from './schemas.js';
+
+describe('UT-LITE-001 create lead schema', () => {
+  it('requires name and phone or email', () => {
+    expect(createLeadSchema.safeParse({ name: 'A', phone: '+27821234567' }).success).toBe(true);
+    expect(createLeadSchema.safeParse({ name: 'A', email: 'a@b.com' }).success).toBe(true);
+    expect(createLeadSchema.safeParse({ name: 'A' }).success).toBe(false);
+    expect(createLeadSchema.safeParse({ name: '', phone: '+27821234567' }).success).toBe(false);
+  });
+
+  it('accepts source and priority', () => {
+    const r = createLeadSchema.safeParse({
+      name: 'A',
+      phone: '+27821234567',
+      source: 'Referral',
+      priority: 'HOT',
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.priority).toBe('HOT');
+    }
+  });
+});
 
 describe('UT-LITE-009 post-call schema', () => {
   it('requires leadId and roughNote', () => {

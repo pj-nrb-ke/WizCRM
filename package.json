@@ -7,7 +7,9 @@
     "web"
   ],
   "scripts": {
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && npm test --prefix mobile",
+    "test:lite": "powershell -ExecutionPolicy Bypass -File scripts/test-lite.ps1",
+    "test:lite:integration": "powershell -ExecutionPolicy Bypass -File scripts/test-lite.ps1 -Integration",
     "api:dev": "npm run dev -w api",
     "api:test": "npm run test -w api",
     "shared:test": "npm run test -w shared",

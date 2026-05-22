@@ -4,6 +4,7 @@ import { config } from '../../config.js';
 import { prisma } from '../../lib/prisma.js';
 import { createOpenAIClient, chatJson, transcribeAudio } from './openai.provider.js';
 import { isAllowedStageTransition } from '@wizcrm/shared';
+import { normalizeCardFields } from '../card-fields.service.js';
 
 type LeadContext = Lead & {
   activities: Pick<Activity, 'type' | 'subject' | 'body' | 'createdAt'>[];
@@ -159,31 +160,6 @@ export async function generateSalesDesk(
     outputSummary: JSON.stringify(result.items),
   });
   return result.items.slice(0, 5);
-}
-
-function pickString(obj: Record<string, unknown>, keys: string[]): string | undefined {
-  for (const key of keys) {
-    const v = obj[key];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-function normalizeCardFields(parsed: Record<string, unknown>) {
-  return {
-    name: pickString(parsed, ['name', 'fullName', 'full_name', 'contactName', 'contact_name']),
-    company: pickString(parsed, [
-      'company',
-      'organization',
-      'organisation',
-      'employer',
-      'business',
-      'companyName',
-      'company_name',
-    ]),
-    email: pickString(parsed, ['email', 'emailAddress', 'email_address']),
-    phone: pickString(parsed, ['phone', 'phoneNumber', 'phone_number', 'mobile', 'telephone', 'tel']),
-  };
 }
 
 export async function parseBusinessCard(

@@ -10,8 +10,8 @@
 | Phase | Name | Status |
 |-------|------|--------|
 | P0 | Production hosting | ✅ |
-| P1 | Lite mobile (build) | 🟡 |
-| P2 | Lite sign-off (UT/QA/E2E) | 🟡 |
+| P1 | Lite mobile (build) | 🟡 — **device pilot only** |
+| P2 | Lite sign-off (UT/QA/E2E) | 🟡 — **UT/E2E automated ✅; QA on device** |
 | P3 | Web Cluster A (admin) | ✅ |
 | P4 | Web Cluster B (manager) | ✅ |
 | P5 | Web polish (WEB-012) | 🟡 |
@@ -29,55 +29,17 @@
 | Status | ID | Area | Task | Priority |
 |--------|-----|------|------|----------|
 | 🟡 | WEB-012 | Web | Teams admin on web (view only; create/edit still mobile) | **High** |
-| 🟡 | LITE-001 | Lite | Lead inbox — finish UT + QA | **High** |
-| 🟡 | LITE-002 | Lite | Duplicate detection — finish UT + QA | **High** |
-| 🟡 | LITE-003 | Lite | Business card capture — finish UT + QA | **High** |
-| 🟡 | LITE-004 | Lite | Lifecycle stages + AI suggest — finish QA | **High** |
-| 🟡 | LITE-005 | Lite | AI Sales Desk (basic) — finish UT + QA | **High** |
-| 🟡 | LITE-006 | Lite | AI lead summary — finish UT + QA | **High** |
-| 🟡 | LITE-007 | Lite | AI next action — finish QA | **High** |
-| 🟡 | LITE-008 | Lite | Quick note + voice timeline — finish QA | **High** |
-| 🟡 | LITE-009 | Lite | Post-call prompt (Android) — finish QA + E2E | **High** |
-| 🟡 | LITE-010 | Lite | Activity timeline — finish UT + QA | **High** |
-| 🟡 | LITE-011 | Lite | Follow-up tasks — finish UT + QA | **High** |
-| 🟡 | LITE-012 | Lite | Pipeline by stage — finish UT + QA | **High** |
-| 🟡 | LITE-013 | Lite | Auth (single org) — finish UT + QA | **High** |
-| 🟡 | LITE-014 | Lite | Mobile-first delivery — finish UT + QA | **High** |
-| ⬜ | QA-LITE-PILOT | Lite QA | End-to-end pilot sign-off script | **High** |
+| 🟡 | LITE-001..014 | Lite | Features built — **device QA** per [docs/MOBILE-LITE-SIGNOFF.md](./docs/MOBILE-LITE-SIGNOFF.md) | **High** |
+| ⬜ | QA-LITE-PILOT | Lite QA | End-to-end pilot sign-off (**you**, ~5 min) | **High** |
 | ⬜ | QA-LITE-ANDROID | Lite QA | Release APK smoke (install, login, lead, note) | **High** |
-| ⬜ | UT-LITE-001 | Lite UT | Lead create validation | **High** |
-| ⬜ | UT-LITE-002 | Lite UT | Duplicate detection | **High** |
-| ⬜ | UT-LITE-003 | Lite UT | Card parse mapper | **High** |
-| ⬜ | UT-LITE-005 | Lite UT | Desk ranking rules | **High** |
-| ⬜ | UT-LITE-006 | Lite UT | Summary generator (mock LLM) | **High** |
-| ⬜ | UT-LITE-010 | Lite UT | Timeline sort / filter | **High** |
-| ⬜ | UT-LITE-011 | Lite UT | Task create/complete + desk input | **High** |
-| ⬜ | UT-LITE-012 | Lite UT | Pipeline grouping by stage | **High** |
-| ⬜ | UT-LITE-013 | Lite UT | Login / JWT / 401 | **High** |
-| ⬜ | UT-LITE-014 | Lite UT | Mobile nav shell routes | **High** |
-| ⬜ | QA-LITE-001 | Lite QA | Create lead &lt; 20s | **High** |
-| ⬜ | QA-LITE-002 | Lite QA | Duplicate warning flow | **High** |
-| ⬜ | QA-LITE-003 | Lite QA | Card photo → save | **High** |
-| 🟡 | QA-LITE-004 | Lite QA | Stages + AI confirm (manual device) | **High** |
-| ⬜ | QA-LITE-005 | Lite QA | Desk 3–5 items | **High** |
-| ⬜ | QA-LITE-006 | Lite QA | Lead summary updates | **High** |
-| 🟡 | QA-LITE-007 | Lite QA | Next action dismiss/complete (manual) | **High** |
-| 🟡 | QA-LITE-008 | Lite QA | Note + voice on timeline (manual) | **High** |
-| ⬜ | QA-LITE-009 | Lite QA | Post-call flow | **High** |
-| ⬜ | QA-LITE-010 | Lite QA | Timeline order | **High** |
-| ⬜ | QA-LITE-011 | Lite QA | Tasks + desk | **High** |
-| ⬜ | QA-LITE-012 | Lite QA | Pipeline matches stage | **High** |
-| ⬜ | QA-LITE-013 | Lite QA | Internal login only | **High** |
-| ⬜ | QA-LITE-014 | Lite QA | Emulator + physical device | **High** |
-| ⬜ | E2E-LITE-LOGIN | Lite E2E | Login → home | **High** |
-| ⬜ | E2E-LITE-LEAD | Lite E2E | Create lead → list + pipeline | **High** |
-| ⬜ | E2E-LITE-DESK | Lite E2E | Due task on desk | **High** |
-| ⬜ | E2E-LITE-CARD | Lite E2E | Card capture → saved lead | **High** |
-| 🟡 | E2E-LITE-POSTCALL | Lite E2E | Post-call Android E2E | **High** |
+| ⬜ | UT-LITE-006 | Lite UT | Summary generator (mock LLM) — needs OPENAI mock | **High** |
+| ⬜ | QA-LITE-001..014 | Lite QA | All acceptance checks — [MOBILE-PILOT.md](./docs/MOBILE-PILOT.md) | **High** |
+| 🟡 | E2E-LITE-CARD | Lite E2E | Card capture (device + vision API) | **High** |
+| 🟡 | E2E-LITE-POSTCALL | Lite E2E | Post-call on device (API confirm ✅ in CI) | **High** |
 | 🟡 | INF-004 | Infra | Backend API + DB — close UT-INF-004 + QA-INF-004 | **Medium** |
 | 🟡 | INF-005 | Infra | AI / OpenAI layer — production hardening | **Medium** |
 | 🟡 | INF-006 | Infra | Web scaffold — mark ✅ (live on app.wizcrm.app) | **Medium** |
-| ⬜ | INF-007 | Infra | CI lint / test / build | **Medium** |
+| 🟡 | INF-007 | Infra | CI lint / test / build — workflow added | **Medium** |
 | ⬜ | INF-010 | Infra | Pre-push or CI runs UT-* | **Medium** |
 | 🟡 | UT-INF-004 | Infra UT | API route tests (auth, leads, activities, tasks) | **Medium** |
 | ⬜ | QA-INF-004 | Infra QA | API smoke via Docker | **Medium** |
@@ -175,14 +137,14 @@
 
 | Priority | 🟡 In progress | ⬜ Not started | ⏸ Deferred |
 |----------|---------------:|---------------:|-----------:|
-| **High** (Lite sign-off + WEB-012) | 18 | 28 | 0 |
+| **High** (Lite device QA + WEB-012) | 4 | 6 | 0 |
 | **Medium** | 8 | 12 | 0 |
 | **Pro** | 0 | 22 | 0 |
 | **Enterprise** | 0 | 16 | 0 |
 | **Deferred** | 0 | 0 | 4 |
 | **Business** (MGT) | 1 | 22 | 0 |
 
-*UT-LITE-004, 007, 008, 009 and E2E-LITE-TIMELINE are ✅ — not listed above.*
+*UT-LITE-001–005, 007–014 and E2E-LITE-LOGIN/LEAD/DESK/TIMELINE are ✅ in CI when `RUN_INTEGRATION_TESTS=1` — not listed above.*
 
 ---
 

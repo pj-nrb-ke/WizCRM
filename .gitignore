@@ -33,5 +33,7 @@ shared/dist/
 api/dist/
 WizCRM-lite.apk
 WizCRM-lite-debug.apk
+WizCRM-production.apk
+web/dist/
 apk-build/
 build-apk.log

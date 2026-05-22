@@ -1,8 +1,5 @@
 import { Alert, Linking } from 'react-native';
-
-function digitsOnly(phone: string) {
-  return phone.replace(/\D/g, '');
-}
+import { digitsOnly } from './phone-utils';
 
 export async function openTel(phone: string) {
   const url = `tel:${digitsOnly(phone)}`;
