@@ -42,13 +42,14 @@ describe.runIf(runIntegration)('UT-INF-004 API integration', () => {
   });
 
   it('UT-LITE-001 creates lead with phone', async () => {
+    const phone = `+2782${Date.now().toString().slice(-7)}`;
     const res = await app.inject({
       method: 'POST',
       url: '/leads',
       headers: { authorization: `Bearer ${token}` },
       payload: {
         name: 'Test Lead',
-        phone: '+27821234567',
+        phone,
         company: 'ACME',
       },
     });
@@ -57,13 +58,20 @@ describe.runIf(runIntegration)('UT-INF-004 API integration', () => {
   });
 
   it('UT-LITE-002 flags duplicate phone', async () => {
+    const phone = `+2783${Date.now().toString().slice(-7)}`;
+    await app.inject({
+      method: 'POST',
+      url: '/leads',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'First', phone },
+    });
     const res = await app.inject({
       method: 'POST',
       url: '/leads',
       headers: { authorization: `Bearer ${token}` },
       payload: {
         name: 'Duplicate',
-        phone: '+27821234567',
+        phone,
       },
     });
     expect(res.statusCode).toBe(409);
@@ -75,7 +83,7 @@ describe.runIf(runIntegration)('UT-INF-004 API integration', () => {
       method: 'POST',
       url: '/leads',
       headers: { authorization: `Bearer ${token}` },
-      payload: { name: 'Timeline Lead', email: 'timeline@test.local' },
+      payload: { name: 'Timeline Lead', email: `timeline-${Date.now()}@test.local` },
     });
     expect(create.statusCode).toBe(201);
     const leadId = create.json().lead.id as string;
@@ -108,7 +116,7 @@ describe.runIf(runIntegration)('UT-INF-004 API integration', () => {
       method: 'POST',
       url: '/leads',
       headers: { authorization: `Bearer ${token}` },
-      payload: { name: 'PostCall Lead', phone: '+27828887777' },
+      payload: { name: 'PostCall Lead', phone: `+2788${Date.now().toString().slice(-7)}` },
     });
     expect(create.statusCode).toBe(201);
     const leadId = create.json().lead.id as string;
@@ -140,7 +148,7 @@ describe.runIf(runIntegration)('UT-INF-004 API integration', () => {
       method: 'POST',
       url: '/leads',
       headers: { authorization: `Bearer ${token}` },
-      payload: { name: 'Dismiss Lead', email: 'dismiss@test.local' },
+      payload: { name: 'Dismiss Lead', email: `dismiss-${Date.now()}@test.local` },
     });
     const leadId = create.json().lead.id as string;
 

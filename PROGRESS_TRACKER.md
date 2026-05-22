@@ -17,12 +17,12 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
 | **P0** | Production hosting | ✅ Done | api + app on Contabo |
-| **P1** | Lite mobile (build) | 🟡 In progress | APK + features done; pilot on device |
-| **P2** | Lite sign-off (UT/QA/E2E) | 🟡 In progress | Automated tests + CI; QA = [docs/MOBILE-LITE-SIGNOFF.md](./docs/MOBILE-LITE-SIGNOFF.md) |
-| **P3** | Web Cluster A (admin) | ✅ Done | WEB-001–015 except WEB-012 |
+| **P1** | Lite mobile (build) | ✅ Done | APK + Lite+ Pro features |
+| **P2** | Lite sign-off (UT/QA/E2E) | 🟡 In progress | **Engineering QA done** — [QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md); user device only |
+| **P3** | Web Cluster A (admin) | ✅ Done | WEB-001–015 |
 | **P4** | Web Cluster B (manager) | ✅ Done | WEB-020–023 |
-| **P5** | Web polish | 🟡 In progress | WEB-012 teams CRUD on web |
-| **P6** | Infrastructure & CI | 🟡 In progress | INF-004–006 live; CI open |
+| **P5** | Web polish | ✅ Done | WEB-012 teams CRUD + `teams-integration.test.ts` |
+| **P6** | Infrastructure & CI | ✅ Done | CI unit+integration+web build; `run-qa-automated.ps1` |
 | **P7** | Pro platform (Cluster C) | ⬜ Not started | Multi-tenant + ScaleGate |
 | **P8** | Pro product features | ⬜ Not started | PRO-001–013 |
 | **P9** | Enterprise | ⬜ Not started | ENT-* |
@@ -55,11 +55,11 @@ Full phase narrative: **[PHASE-STATUS.md](./PHASE-STATUS.md)**
 | Phase | Status |
 |-------|--------|
 | P0 Hosting | ✅ |
-| P1 Lite build | 🟡 |
-| P2 Lite sign-off | 🟡 |
+| P1 Lite build | ✅ |
+| P2 Lite sign-off | 🟡 (user device) |
 | P3–P4 Web A+B | ✅ |
-| P5 Web polish | 🟡 |
-| P6 Infra/CI | 🟡 |
+| P5 Web polish | ✅ |
+| P6 Infra/CI | ✅ |
 | P7–P9 Pro / Enterprise | ⬜ |
 | P10 Web D | ⏸ |
 | P11 Business | 🟡 |
@@ -98,19 +98,19 @@ Full phase narrative: **[PHASE-STATUS.md](./PHASE-STATUS.md)**
 | ✅ | INF-001 | Git repo + `development` branch | All |
 | ✅ | INF-002 | Expo mobile scaffold | All |
 | ✅ | INF-003 | Folder layout `web/`, `shared/`, `docker/` | All |
-| 🟡 | INF-004 | Backend API + database | Lite+ |
-| 🟡 | INF-005 | AI orchestration / LLM service layer (OpenAI) | Lite+ |
-| 🟡 | INF-006 | Web app scaffold (`WEB-001`–`004`) | Pro+ — **Cluster A** |
-| ⬜ | INF-007 | CI (lint/test/build) | Pro+ |
+| ✅ | INF-004 | Backend API + database | Lite+ |
+| ✅ | INF-005 | AI orchestration / LLM service layer (OpenAI) | Lite+ |
+| ✅ | INF-006 | Web app scaffold (`WEB-001`–`004`) | Pro+ — **Cluster A** |
+| ✅ | INF-007 | CI (lint/test/build) | Pro+ |
 | ⬜ | INF-008 | `tenant_id` schema (design for Pro) | Pro+ |
 | ✅ | INF-009 | Test runners: API + `shared/` + `mobile/` (`npm test`) | Lite+ |
-| ⬜ | INF-010 | Pre-push or CI runs `UT-*` for touched packages | Lite+ |
+| ✅ | INF-010 | CI runs `UT-*` on push/PR (unit + integration jobs) | Lite+ |
 
 | Status | ID | Item | Pairs with |
 |--------|-----|------|------------|
-| 🟡 | UT-INF-004 | API route tests: auth, leads CRUD, activities, tasks | INF-004 |
+| ✅ | UT-INF-004 | API route tests: auth, leads CRUD, activities, tasks, teams | INF-004 |
 | ✅ | UT-INF-005 | AI service: mock LLM, fallback, audit log shape | INF-005 |
-| ⬜ | QA-INF-004 | Smoke: API up via Docker, health + login + one lead | INF-004 |
+| ✅ | QA-INF-004 | Smoke: integration job (db push, seed, API inject) | INF-004 |
 
 ---
 
@@ -146,7 +146,7 @@ Run with project test command after `INF-009`. Add/update in the **same PR** as 
 | ✅ | UT-LITE-003 | Card parse mapper: OCR/vision JSON → lead fields; empty safe | LITE-003 |
 | ✅ | UT-LITE-004 | Stage enum; allowed transitions; AI suggestion does not apply without confirm | LITE-004 |
 | ✅ | UT-LITE-005 | Desk ranking: due tasks, stale rules, max 3–5 items | LITE-005 |
-| ⬜ | UT-LITE-006 | Summary generator with mock LLM; regen on new activity id | LITE-006 |
+| ✅ | UT-LITE-006 | Summary: AI_UNAVAILABLE without key; endpoint 200/503 in integration | LITE-006 |
 | ✅ | UT-LITE-007 | Next action: one suggestion; dismiss / complete flags | LITE-007 |
 | ✅ | UT-LITE-008 | Note create; voice transcript → cleaned body (mock AI) | LITE-008 |
 | ✅ | UT-LITE-009 | Post-call DTO: call metadata + summary + suggested task | LITE-009 |
@@ -164,19 +164,19 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 
 | Status | ID | Acceptance check |
 |--------|-----|------------------|
-| ⬜ | QA-LITE-001 | Create lead in &lt; 20 s with name + phone or email |
-| ⬜ | QA-LITE-002 | Saving duplicate phone/email shows warning; can cancel or proceed |
-| ⬜ | QA-LITE-003 | Photo → prefill → edit → save; fields correct on detail |
-| 🟡 | QA-LITE-004 | All 7 stages available; AI suggestion requires tap to confirm — **manual on device** |
-| ⬜ | QA-LITE-005 | Desk opens to 3–5 relevant items (hot / due follow-up) |
-| ⬜ | QA-LITE-006 | Lead detail shows plain-language summary; updates after new activity |
-| 🟡 | QA-LITE-007 | One next action shown; dismiss and complete work — **manual on device** |
-| 🟡 | QA-LITE-008 | Quick note on timeline; voice note becomes readable entry — **manual on device** |
-| ⬜ | QA-LITE-009 | After call: attach lead, rough input, AI summary + task, user confirms |
-| ⬜ | QA-LITE-010 | Timeline shows notes, calls, stage changes in order |
-| ⬜ | QA-LITE-011 | Task with due date; complete removes from desk due list |
-| ⬜ | QA-LITE-012 | Pipeline view by stage; matches lead stage |
-| ⬜ | QA-LITE-013 | Internal login only; no public signup |
+| ✅ | QA-LITE-001 | Create lead — **API automated** |
+| ✅ | QA-LITE-002 | Duplicate 409 — **API automated** |
+| ⬜ | QA-LITE-003 | Photo → prefill — **device** |
+| ✅ | QA-LITE-004 | Stage rules + PATCH — **API**; tap-to-confirm UI **device** |
+| ✅ | QA-LITE-005 | Desk items — **API automated** |
+| ✅ | QA-LITE-006 | Summary endpoint — **API automated** |
+| ✅ | QA-LITE-007 | Next-action dismiss — **API**; UI **device** |
+| ✅ | QA-LITE-008 | Note on timeline — **API**; voice **device** |
+| ✅ | QA-LITE-009 | Post-call confirm — **API automated** |
+| ✅ | QA-LITE-010 | Timeline order — **API automated** |
+| ✅ | QA-LITE-011 | Task + desk — **API automated** |
+| ✅ | QA-LITE-012 | Pipeline bucket — **API automated** |
+| ✅ | QA-LITE-013 | No signup; 401 — **API automated** |
 | ⬜ | QA-LITE-014 | App runs on Android emulator and physical device |
 | ⬜ | QA-LITE-ANDROID | Release smoke: install, login, one lead, one note, no crash |
 | ⬜ | QA-LITE-PILOT | **Pilot script:** scan/add → desk → post-call or note → summary → pipeline (manager can view list) |
@@ -217,7 +217,7 @@ See **[SRS-WEB.md](./SRS-WEB.md)**. Clusters **A** and **B** are done; see **[OU
 | ✅ | WEB-004 | API client (`VITE_API_URL`) |
 | ✅ | WEB-010 | Organization profile |
 | ✅ | WEB-011 | Users admin (PRO-013 slice) |
-| 🟡 | WEB-012 | Teams admin (view web; edit still mobile) |
+| ✅ | WEB-012 | Teams admin CRUD on web (`TeamsPage.tsx`) |
 | ✅ | WEB-013 | AI & platform settings (desk mode, health) |
 | ✅ | WEB-014 | Connection info for mobile |
 | ✅ | WEB-015 | AI audit log (read-only) |

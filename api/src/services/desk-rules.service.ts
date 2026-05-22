@@ -88,10 +88,28 @@ export function buildExtendedDesk(leads: LeadRow[]): DeskItem[] {
   const seen = new Set<string>();
   const merged: DeskItem[] = [];
   for (const item of [...base, ...extras]) {
-    const key = item.leadId;
+    const key = item.title.startsWith('Task due:') ? `due:${item.leadId}` : item.leadId;
     if (seen.has(key)) continue;
     seen.add(key);
     merged.push(item);
+  }
+  return merged.slice(0, 8);
+}
+
+/** Ensure overdue tasks from rules appear even when LLM desk returns other picks. */
+export function mergeDueTasksIntoDesk(primary: DeskItem[], rules: DeskItem[]): DeskItem[] {
+  const dueFromRules = rules.filter((i) => i.title.startsWith('Task due:'));
+  const seen = new Set<string>();
+  const merged: DeskItem[] = [];
+  for (const item of dueFromRules) {
+    if (seen.has(item.leadId)) continue;
+    merged.push(item);
+    seen.add(item.leadId);
+  }
+  for (const item of primary) {
+    if (seen.has(item.leadId)) continue;
+    merged.push(item);
+    seen.add(item.leadId);
   }
   return merged.slice(0, 8);
 }

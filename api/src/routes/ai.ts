@@ -19,7 +19,7 @@ import {
   suggestStage,
 } from '../services/ai/orchestrator.js';
 import { config } from '../config.js';
-import { buildExtendedDesk } from '../services/desk-rules.service.js';
+import { buildExtendedDesk, mergeDueTasksIntoDesk } from '../services/desk-rules.service.js';
 import { resolveDeskUseAi } from '../services/org-settings.service.js';
 import { isNextActionSuppressed, shouldApplySuggestedStage } from '@wizcrm/shared';
 
@@ -28,14 +28,39 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/desk', async (request) => {
     const { organizationId, sub: userId } = request.user;
-    const leads = await prisma.lead.findMany({
+    const leadInclude = {
+      activities: { orderBy: { createdAt: 'desc' as const }, take: 5 },
+      tasks: { where: { completedAt: null }, take: 5 },
+    };
+    const baseLeads = await prisma.lead.findMany({
       where: { organizationId, ownerId: userId, stage: { notIn: ['WON', 'LOST'] } },
-      include: {
-        activities: { orderBy: { createdAt: 'desc' }, take: 5 },
-        tasks: { where: { completedAt: null }, take: 5 },
-      },
+      include: leadInclude,
+      orderBy: { updatedAt: 'desc' },
       take: 30,
     });
+    const overdueLeadIds = (
+      await prisma.task.findMany({
+        where: {
+          completedAt: null,
+          dueAt: { lte: new Date() },
+          lead: { organizationId, ownerId: userId, stage: { notIn: ['WON', 'LOST'] } },
+        },
+        select: { leadId: true },
+        distinct: ['leadId'],
+        take: 15,
+      })
+    )
+      .map((t) => t.leadId)
+      .filter((id): id is string => Boolean(id));
+    const missingIds = overdueLeadIds.filter((id) => !baseLeads.some((l) => l.id === id));
+    const overdueLeads =
+      missingIds.length > 0
+        ? await prisma.lead.findMany({
+            where: { id: { in: missingIds } },
+            include: leadInclude,
+          })
+        : [];
+    const leads = [...overdueLeads, ...baseLeads] as typeof baseLeads;
     const rulesItems = buildExtendedDesk(leads);
     const deskUseAi = await resolveDeskUseAi(organizationId);
     if (!deskUseAi || !config.aiEnabled) {
@@ -45,6 +70,8 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       let items = await generateSalesDesk(organizationId, userId, leads);
       if (items.length === 0 && leads.length > 0) {
         items = rulesItems;
+      } else {
+        items = mergeDueTasksIntoDesk(items, rulesItems);
       }
       return { items, source: 'ai' as const };
     } catch {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildExtendedDesk, buildRulesDesk } from '../src/services/desk-rules.service.js';
+import {
+  buildExtendedDesk,
+  buildRulesDesk,
+  mergeDueTasksIntoDesk,
+} from '../src/services/desk-rules.service.js';
 
 const baseLead = {
   id: '1',
@@ -42,5 +46,16 @@ describe('UT-LITE-005 desk rules fallback', () => {
     ]);
     expect(items.some((i) => i.title.includes('Hot'))).toBe(true);
     expect(items.length).toBeLessThanOrEqual(8);
+  });
+
+  it('mergeDueTasksIntoDesk prepends overdue task items', () => {
+    const rules = [
+      { leadId: 'a', title: 'Task due: Acme', reason: 'Call back' },
+      { leadId: 'b', title: 'Follow up: Beta', reason: 'idle' },
+    ];
+    const ai = [{ leadId: 'c', title: 'Hot: Gamma', reason: 'x' }];
+    const merged = mergeDueTasksIntoDesk(ai, rules);
+    expect(merged[0].leadId).toBe('a');
+    expect(merged.length).toBeLessThanOrEqual(8);
   });
 });

@@ -1,8 +1,8 @@
 # WizCRM — Outstanding tasks (single list)
 
-**Phase-level status:** **[PHASE-STATUS.md](./PHASE-STATUS.md)** ← start here  
-**Legend:** 🟡 In progress (built but not signed off) · ⬜ Not started  
-**Detail sections:** [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) · Manager: [manager_task_tracker.md](./manager_task_tracker.md)  
+**Phase-level status:** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
+**Automated QA:** **[docs/QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md)** — run `.\scripts\run-qa-automated.ps1`  
+**Legend:** 🟡 In progress · ⬜ Not started · ✅ Done (removed from list when complete)  
 **Last updated:** 2026-05-22
 
 ## Phase snapshot
@@ -10,144 +10,47 @@
 | Phase | Name | Status |
 |-------|------|--------|
 | P0 | Production hosting | ✅ |
-| P1 | Lite mobile (build) | 🟡 — **device pilot only** |
-| P2 | Lite sign-off (UT/QA/E2E) | 🟡 — **UT/E2E automated ✅; QA on device** |
-| P3 | Web Cluster A (admin) | ✅ |
-| P4 | Web Cluster B (manager) | ✅ |
-| P5 | Web polish (WEB-012) | 🟡 |
-| P6 | Infrastructure & CI | 🟡 |
+| P1 | Lite mobile (build) | ✅ |
+| P2 | Lite sign-off | 🟡 — **user device testing only** |
+| P3 | Web Cluster A | ✅ |
+| P4 | Web Cluster B | ✅ |
+| P5 | Web polish (WEB-012) | ✅ |
+| P6 | Infrastructure & CI | ✅ |
 | P7 | Pro platform | ⬜ |
-| P8 | Pro features | ⬜ |
+| P8 | Pro features | 🟡 |
 | P9 | Enterprise | ⬜ |
 | P10 | Web Cluster D | ⏸ |
 | P11 | Business (MGT) | 🟡 |
 
 ---
 
-## All open tasks (by ID)
+## User testing required (after automated QA passes)
 
-| Status | ID | Area | Task | Priority |
-|--------|-----|------|------|----------|
-| 🟡 | WEB-012 | Web | Teams admin on web (view only; create/edit still mobile) | **High** |
-| 🟡 | LITE-001..014 | Lite | Features built — **device QA** per [docs/MOBILE-LITE-SIGNOFF.md](./docs/MOBILE-LITE-SIGNOFF.md) | **High** |
-| ⬜ | QA-LITE-PILOT | Lite QA | End-to-end pilot sign-off (**you**, ~5 min) | **High** |
-| ⬜ | QA-LITE-ANDROID | Lite QA | Release APK smoke (install, login, lead, note) | **High** |
-| ⬜ | UT-LITE-006 | Lite UT | Summary generator (mock LLM) — needs OPENAI mock | **High** |
-| ⬜ | QA-LITE-001..014 | Lite QA | All acceptance checks — [MOBILE-PILOT.md](./docs/MOBILE-PILOT.md) | **High** |
-| 🟡 | E2E-LITE-CARD | Lite E2E | Card capture (device + vision API) | **High** |
-| 🟡 | E2E-LITE-POSTCALL | Lite E2E | Post-call on device (API confirm ✅ in CI) | **High** |
-| 🟡 | INF-004 | Infra | Backend API + DB — close UT-INF-004 + QA-INF-004 | **Medium** |
-| 🟡 | INF-005 | Infra | AI / OpenAI layer — production hardening | **Medium** |
-| 🟡 | INF-006 | Infra | Web scaffold — mark ✅ (live on app.wizcrm.app) | **Medium** |
-| 🟡 | INF-007 | Infra | CI lint / test / build — workflow added | **Medium** |
-| ⬜ | INF-010 | Infra | Pre-push or CI runs UT-* | **Medium** |
-| 🟡 | UT-INF-004 | Infra UT | API route tests (auth, leads, activities, tasks) | **Medium** |
-| ⬜ | QA-INF-004 | Infra QA | API smoke via Docker | **Medium** |
-| 🟡 | TOOL-001 | Tools | LLM orchestration — harden | **Medium** |
-| 🟡 | TOOL-002 | Tools | Card scan / vision | **Medium** |
-| 🟡 | TOOL-003 | Tools | expo-secure-store | **Medium** |
-| ⬜ | TOOL-004 | Tools | Call detection (Android) | **Medium** |
-| 🟡 | QA-NFR-004 | NFR QA | Offline / API down note (manual) | **Medium** |
-| ⬜ | QA-NFR-003 | NFR QA | AI suggest/approve logged | **Medium** |
-| ⬜ | NFR-001 | NFR | HTTPS / secure API (verify + sign off) | **Medium** |
-| ⬜ | NFR-003 | NFR | AI audit log (formal sign-off) | **Medium** |
-| ⬜ | NFR-004 | NFR | AI graceful degradation (formal sign-off) | **Medium** |
-| ⬜ | NFR-007 | NFR | Observability | **Medium** |
-| ⬜ | NFR-008 | NFR | i18n-ready | **Low** |
-| ⬜ | INF-008 | Pro infra | `tenant_id` schema design | **Pro** |
-| ⬜ | PRO-014 | Pro | Multi-tenant SaaS | **Pro** |
-| ⬜ | PRO-015 | Pro | ScaleGate licensing | **Pro** |
-| ⬜ | SG-001 | ScaleGate | License system of record | **Pro** |
-| ⬜ | SG-002 | ScaleGate | Plans lite / pro / enterprise | **Pro** |
-| ⬜ | SG-003 | ScaleGate | Validate + grace period | **Pro** |
-| ⬜ | SG-004 | ScaleGate | Seat limits | **Pro** |
-| ⬜ | SG-005 | ScaleGate | LICENSE_DEV_MODE | **Pro** |
-| ⬜ | PRO-001 | Pro | Smart lead capture + AI source/priority | **Pro** |
-| ⬜ | PRO-002 | Pro | AI Sales Desk (full) | **Pro** |
-| ⬜ | PRO-003 | Pro | Lead detail scores + risk | **Pro** |
-| ⬜ | PRO-004 | Pro | Activity capture (calls, meetings, voice) | **Pro** |
-| ⬜ | PRO-005 | Pro | AI follow-up engine | **Pro** |
-| ⬜ | PRO-006 | Pro | Communication drafts | **Pro** |
-| ⬜ | PRO-007 | Pro | Pipeline AI + forecast | **Pro** |
-| ⬜ | PRO-008 | Pro | Data hygiene | **Pro** |
-| ⬜ | PRO-009 | Pro | Manager cockpit (beyond web B) | **Pro** |
-| ⬜ | PRO-010 | Pro | Targets & pacing | **Pro** |
-| ⬜ | PRO-011 | Pro | Quotations Lite | **Pro** |
-| ⬜ | PRO-012 | Pro | Reporting (advanced; web has CSV slice) | **Pro** |
-| ⬜ | PRO-013 | Pro | Admin branding + full PRO-013 | **Pro** |
-| ⬜ | QA-PRO-PILOT | Pro QA | Pro tier sign-off | **Pro** |
-| ⬜ | TOOL-005 | Tools | Push notifications | **Pro** |
-| ⬜ | TOOL-006 | Tools | ScaleGate HTTP client | **Pro** |
-| ⬜ | TOOL-010 | Tools | EAS production builds | **Pro** |
-| ⬜ | NFR-002 | NFR | Tenant isolation | **Pro** |
-| ⬜ | NFR-005 | NFR | GDPR export/delete | **Pro** |
-| ⬜ | NFR-006 | NFR | List performance | **Pro** |
-| ⬜ | ENT-001 | Enterprise | Field sales + geofence | **Enterprise** |
-| ⬜ | ENT-002 | Enterprise | Field visit analytics | **Enterprise** |
-| ⬜ | ENT-003 | Enterprise | ERP connector framework | **Enterprise** |
-| ⬜ | ENT-004 | Enterprise | ERP customer sync | **Enterprise** |
-| ⬜ | ENT-005 | Enterprise | ERP quotation sync | **Enterprise** |
-| ⬜ | ENT-006 | Enterprise | Integrations (forms, webhooks, calendar) | **Enterprise** |
-| ⬜ | ENT-007 | Enterprise | Campaign / source ROI | **Enterprise** |
-| ⬜ | ENT-008 | Enterprise | Account growth AI | **Enterprise** |
-| ⬜ | ENT-009 | Enterprise | Advanced pipeline / reports | **Enterprise** |
-| ⬜ | ENT-010 | Enterprise | SSO, 2FA, enterprise security | **Enterprise** |
-| ⬜ | ENT-011 | Enterprise | ScaleGate enterprise + metering | **Enterprise** |
-| ⬜ | ENT-012 | Enterprise | E-sign, Slack/Teams (optional) | **Enterprise** |
-| ⬜ | QA-ENT-PILOT | Enterprise QA | Enterprise sign-off | **Enterprise** |
-| ⬜ | ERP-SAGE | ERP | SAGE Evolution 200 connector | **Enterprise** |
-| ⬜ | ERP-SAPB1 | ERP | SAP Business One connector | **Enterprise** |
-| ⬜ | ERP-QB | ERP | QuickBooks connector | **Enterprise** |
-| ⬜ | ERP-TALLY | ERP | Tally connector | **Enterprise** |
-| ⬜ | TOOL-007 | Tools | Geofence | **Enterprise** |
-| ⬜ | TOOL-008 | Tools | Maps / geocoding | **Enterprise** |
-| ⬜ | TOOL-009 | Tools | integrations/erp/ | **Enterprise** |
-| ⏸ | WEB-030 | Web (defer) | Full desk AI on web | **Deferred** |
-| ⏸ | WEB-031 | Web (defer) | Lead detail + AI panels on web | **Deferred** |
-| ⏸ | WEB-032 | Web (defer) | Quotes UI on web | **Deferred** |
-| ⏸ | WEB-033 | Web (defer) | Communication drafts on web | **Deferred** |
-| ⬜ | MGT-001 | Manager | Google Cloud project + billing | **Business** |
-| ⬜ | MGT-002 | Manager | Enable Maps / Geocoding APIs | **Business** |
-| ⬜ | MGT-003 | Manager | Create and restrict API keys | **Business** |
-| ⬜ | MGT-004 | Manager | Privacy policy (location) | **Business** |
-| ⬜ | MGT-005 | Manager | Staff consent / tracking policy | **Business** |
-| ⬜ | MGT-006 | Manager | Define subscription plans | **Business** |
-| ⬜ | MGT-007 | Manager | ScaleGate license API docs | **Business** |
-| ⬜ | MGT-008 | Manager | Map plan codes to features | **Business** |
-| ⬜ | MGT-009 | Manager | Customer onboarding flow | **Business** |
-| ⬜ | MGT-010 | Manager | Terms of Service + DPA | **Business** |
-| ⬜ | MGT-011 | Manager | ERP priority order | **Business** |
-| ⬜ | MGT-012 | Manager | SAGE sandbox/SDK | **Business** |
-| ⬜ | MGT-013 | Manager | SAP B1 sandbox | **Business** |
-| ⬜ | MGT-014 | Manager | QuickBooks developer + OAuth | **Business** |
-| ⬜ | MGT-015 | Manager | Tally SDK/docs | **Business** |
-| ⬜ | MGT-015b | Manager | Pilot customer for ERP test | **Business** |
-| ⬜ | MGT-016 | Manager | Google Play Developer account | **Business** |
-| ⬜ | MGT-017 | Manager | Apple Developer Program | **Business** |
-| ⬜ | MGT-018 | Manager | Store listings | **Business** |
-| ⬜ | MGT-019 | Manager | Play Data safety + content rating | **Business** |
-| 🟡 | MGT-020 | Manager | SaaS domain and DNS (api/app live; confirm all records) | **Business** |
-| ⬜ | MGT-021 | Manager | Support email / status page | **Business** |
-| ⬜ | MGT-022 | Manager | Default geofence radius | **Business** |
-| ⬜ | MGT-023 | Manager | Meeting grace + attendance rules | **Business** |
+| Status | ID | Task |
+|--------|-----|------|
+| ⬜ | QA-LITE-PILOT | Device pilot — [MOBILE-PILOT.md](./docs/MOBILE-PILOT.md) |
+| ⬜ | QA-LITE-ANDROID | Install production APK; login, lead, note, no crash |
+| ⬜ | QA-LITE-003 | Business card photo on device |
+| ⬜ | QA-LITE-004/007/008 | AI confirm + voice on device |
+| ⬜ | QA-NFR-004 | Offline note on device |
+
+All other **QA-LITE-*** and **UT/E2E** are covered by automated tests (see QA-AUTOMATED-SIGNOFF).
 
 ---
 
-## Counts
+## Pro / Enterprise / Business (unchanged)
 
-| Priority | 🟡 In progress | ⬜ Not started | ⏸ Deferred |
-|----------|---------------:|---------------:|-----------:|
-| **High** (Lite device QA + WEB-012) | 4 | 6 | 0 |
-| **Medium** | 8 | 12 | 0 |
-| **Pro** | 0 | 22 | 0 |
-| **Enterprise** | 0 | 16 | 0 |
-| **Deferred** | 0 | 0 | 4 |
-| **Business** (MGT) | 1 | 22 | 0 |
+See [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) for PRO-*, ENT-*, MGT-* rows.
 
-*UT-LITE-001–005, 007–014 and E2E-LITE-LOGIN/LEAD/DESK/TIMELINE are ✅ in CI when `RUN_INTEGRATION_TESTS=1` — not listed above.*
+| Priority | Approx. open rows |
+|----------|-------------------|
+| Pro | 22 |
+| Enterprise | 16 |
+| Business (MGT) | 23 |
+| Deferred WEB | 4 |
 
 ---
 
 ## How to update
 
-When a task is completed in [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), **remove its row** from this file (or change status to ✅ and move to a “Done” archive if you prefer). Keep this file as the **only top-level outstanding list**.
+When user pilot passes, mark P2 ✅ in PHASE-STATUS and clear QA-LITE-PILOT / QA-LITE-ANDROID here.

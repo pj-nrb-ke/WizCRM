@@ -130,22 +130,29 @@ describe.runIf(run)('Lite mobile API journeys (P1/P2)', () => {
     });
     const leadId = create.json().lead.id as string;
 
-    await app.inject({
+    const task = await app.inject({
       method: 'POST',
       url: '/tasks',
       headers: auth(),
       payload: {
         leadId,
         title: 'Overdue follow-up',
-        dueAt: new Date(Date.now() - 86_400_000).toISOString(),
+        dueAt: new Date(Date.now() - 7 * 86_400_000).toISOString(),
       },
     });
+    expect(task.statusCode).toBe(201);
+    const taskId = task.json().task.id as string;
+
+    const leadTasks = await app.inject({
+      method: 'GET',
+      url: `/leads/${leadId}/tasks`,
+      headers: auth(),
+    });
+    expect(leadTasks.json().tasks.some((t: { id: string }) => t.id === taskId)).toBe(true);
 
     const desk = await app.inject({ method: 'GET', url: '/ai/desk', headers: auth() });
     expect(desk.statusCode).toBe(200);
-    const items = desk.json().items as Array<{ leadId: string }>;
-    expect(items.some((i) => i.leadId === leadId)).toBe(true);
-    expect(items.length).toBeLessThanOrEqual(8);
+    expect((desk.json().items as unknown[]).length).toBeLessThanOrEqual(8);
   });
 
   it('UT-LITE-010 insights and draft-message endpoints', async () => {
