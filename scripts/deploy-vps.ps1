@@ -17,4 +17,5 @@ if (-not $SkipPush) {
 }
 
 $Key = Join-Path $env:USERPROFILE '.ssh\contabo_wizcrm'
-ssh -o BatchMode=yes -i $Key root@161.97.141.220 'bash -s' < (Join-Path $PSScriptRoot 'deploy-vps.sh')
+$script = Get-Content (Join-Path $PSScriptRoot 'deploy-vps.sh') -Raw
+$script | ssh -o BatchMode=yes -i $Key root@161.97.141.220 'bash -s'

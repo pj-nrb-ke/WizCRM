@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Run on Contabo VPS as root (or via: ssh contabo-wizcrm 'bash -s' < scripts/deploy-vps.sh)
-set -euo pipefail
+# Run on Contabo VPS as root (or: Get-Content scripts/deploy-vps.sh -Raw | ssh ... 'bash -s')
+set -eu
 cd /opt/wizcrm
 git fetch origin development
+git stash push -u -m "pre-deploy-$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
 git pull origin development
 npm install
 npm run build -w shared
@@ -17,4 +18,6 @@ cp -r web/dist/* /var/www/wizcrm-web/
 systemctl restart wizcrm-api
 systemctl reload caddy 2>/dev/null || true
 systemctl is-active wizcrm-api
-echo "Deploy OK — API $(curl -sS https://api.wizcrm.app/health | head -c 80)"
+curl -sS https://api.wizcrm.app/health | head -c 120
+echo ""
+echo "Deploy OK"
