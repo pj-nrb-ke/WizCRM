@@ -18,4 +18,5 @@ if (-not $SkipPush) {
 
 $Key = Join-Path $env:USERPROFILE '.ssh\contabo_wizcrm'
 $script = Get-Content (Join-Path $PSScriptRoot 'deploy-vps.sh') -Raw
+$script = $script -replace "`r`n", "`n" -replace "`r", "`n"
 $script | ssh -o BatchMode=yes -i $Key root@161.97.141.220 'bash -s'
