@@ -16,6 +16,7 @@ import { priorityLabel } from '../../constants/priorities';
 import { markCallStarted } from '../../lib/call-return';
 import { queueOfflineNote, listPendingNotes } from '../../lib/offline-notes';
 import { openTel, openWhatsApp } from '../../lib/phone-links';
+import { openGoogleMaps } from '../../lib/maps-links';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
 import { VoiceNoteButton } from '../../components/VoiceNoteButton';
 import { useAuth } from '../../context/AuthContext';
@@ -283,7 +284,13 @@ export default function LeadDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
+      showsVerticalScrollIndicator
+    >
       {readOnly ? (
         <Text style={styles.readOnlyBadge}>Manager view (read-only)</Text>
       ) : null}
@@ -294,6 +301,19 @@ export default function LeadDetailScreen() {
         {lead.source ? ` · ${lead.source}` : ''}
       </Text>
       {lead.company ? <Text style={styles.subMeta}>{lead.company}</Text> : null}
+      {lead.address ? (
+        <Text style={styles.subMeta} numberOfLines={3}>
+          {lead.address}
+        </Text>
+      ) : null}
+      {lead.googleMapsUrl || lead.address ? (
+        <Pressable
+          style={styles.mapsLinkBtn}
+          onPress={() => openGoogleMaps(lead.googleMapsUrl ?? lead.address ?? '')}
+        >
+          <Text style={styles.mapsLinkText}>Open in Google Maps</Text>
+        </Pressable>
+      ) : null}
 
       {!readOnly ? (
         <View style={styles.actionRow}>
@@ -308,17 +328,17 @@ export default function LeadDetailScreen() {
             <Text style={styles.callBtnText}>WhatsApp</Text>
           </Pressable>
           <Pressable
-            style={styles.secondaryBtn}
+            style={styles.editBtn}
             onPress={() => router.push({ pathname: '/lead/edit', params: { id } })}
           >
-            <Text style={styles.secondaryBtnText}>Edit</Text>
+            <Text style={styles.editBtnText}>Edit</Text>
           </Pressable>
         </View>
       ) : null}
 
       {!readOnly ? (
         <Pressable
-          style={styles.aiBtn}
+          style={styles.compactBarBtn}
           onPress={() =>
             router.push({
               pathname: '/lead/post-call',
@@ -326,7 +346,7 @@ export default function LeadDetailScreen() {
             })
           }
         >
-          <Text style={styles.aiBtnText}>Log call (AI)</Text>
+          <Text style={styles.compactBarBtnText}>Log call (AI)</Text>
         </Pressable>
       ) : null}
 
@@ -453,7 +473,7 @@ export default function LeadDetailScreen() {
       ) : null}
 
       <Text style={styles.section}>Stage</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled>
         {LEAD_STAGES.map((s) => (
           <Pressable
             key={s}
@@ -503,7 +523,8 @@ export default function LeadDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 16 },
+  container: { flex: 1, backgroundColor: '#0f172a' },
+  scrollContent: { padding: 16, paddingBottom: 120 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' },
   readOnlyBadge: {
     color: '#fbbf24',
@@ -515,18 +536,42 @@ const styles = StyleSheet.create({
   name: { fontSize: 24, fontWeight: '700', color: '#f8fafc' },
   meta: { color: '#38bdf8', marginBottom: 4 },
   subMeta: { color: '#94a3b8', marginBottom: 8 },
-  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
+  mapsLinkBtn: { marginBottom: 8 },
+  mapsLinkText: { color: '#38bdf8', fontWeight: '600', fontSize: 14 },
+  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'center' },
   callBtn: {
     backgroundColor: '#38bdf8',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 40,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
-    minWidth: 90,
   },
   waBtn: { backgroundColor: '#22c55e' },
-  callBtnText: { color: '#0f172a', fontWeight: '700' },
+  callBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14, lineHeight: 18 },
+  editBtn: {
+    borderWidth: 1,
+    borderColor: '#475569',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtnText: { color: '#94a3b8', fontWeight: '600', fontSize: 14, lineHeight: 18 },
+  compactBarBtn: {
+    backgroundColor: '#334155',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactBarBtnText: { color: '#38bdf8', fontWeight: '600', fontSize: 14 },
   offlineBadge: { color: '#fbbf24', fontSize: 12, marginBottom: 8 },
   insightsBox: {
     backgroundColor: '#1e293b',
@@ -573,21 +618,25 @@ const styles = StyleSheet.create({
   nextDismissText: { color: '#94a3b8', fontWeight: '600' },
   aiBtn: {
     backgroundColor: '#334155',
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 8,
     marginTop: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  aiBtnText: { color: '#38bdf8', fontWeight: '600' },
+  aiBtnText: { color: '#38bdf8', fontWeight: '600', fontSize: 14 },
   secondaryBtn: {
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 8,
-    marginTop: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#475569',
+    flex: 1,
   },
-  secondaryBtnText: { color: '#94a3b8', fontWeight: '600' },
+  secondaryBtnText: { color: '#94a3b8', fontWeight: '600', fontSize: 13 },
   taskRow: {
     backgroundColor: '#1e293b',
     padding: 12,

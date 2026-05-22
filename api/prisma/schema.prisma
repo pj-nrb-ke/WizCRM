@@ -68,6 +68,10 @@ model Lead {
   emailNormalized  String?
   phone            String?
   phoneNormalized  String?
+  extraPhones      Json     @default("[]")
+  extraEmails      Json     @default("[]")
+  address          String?
+  googleMapsUrl    String?
   source           String?
   priority         LeadPriority?
   stage            LeadStage  @default(NEW)

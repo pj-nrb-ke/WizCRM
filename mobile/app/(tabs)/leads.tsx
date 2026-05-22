@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -9,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { api, type Lead } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -91,6 +93,10 @@ export default function LeadsScreen() {
     });
   }, [leads, search]);
 
+  function openEdit(leadId: string) {
+    router.push({ pathname: '/lead/edit', params: { id: leadId } });
+  }
+
   const screenTitle = filterTitle
     ? `Leads: ${filterTitle}`
     : isManager
@@ -158,18 +164,36 @@ export default function LeadsScreen() {
             </Text>
           }
           renderItem={({ item }) => (
-            <Pressable style={styles.row} onPress={() => router.push(`/lead/${item.id}`)}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.meta}>
-                {item.stage} · {item.company ?? item.phone ?? item.email ?? '—'}
-              </Text>
-              {isManager && item.owner ? (
-                <Text style={styles.owner}>
-                  {item.owner.name}
-                  {item.owner.team ? ` · ${item.owner.team.name}` : ''}
+            <View style={styles.row}>
+              <Pressable
+                style={styles.rowMain}
+                onPress={() => router.push(`/lead/${item.id}`)}
+                onLongPress={() => {
+                  if (!isManager) openEdit(item.id);
+                  else Alert.alert(item.name, 'Managers have read-only lead access on mobile.');
+                }}
+              >
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.meta}>
+                  {item.stage} · {item.company ?? item.phone ?? item.email ?? '—'}
                 </Text>
+                {isManager && item.owner ? (
+                  <Text style={styles.owner}>
+                    {item.owner.name}
+                    {item.owner.team ? ` · ${item.owner.team.name}` : ''}
+                  </Text>
+                ) : null}
+              </Pressable>
+              {!isManager ? (
+                <Pressable
+                  style={styles.editIconBtn}
+                  onPress={() => openEdit(item.id)}
+                  accessibilityLabel={`Edit ${item.name}`}
+                >
+                  <Ionicons name="create-outline" size={22} color="#38bdf8" />
+                </Pressable>
               ) : null}
-            </Pressable>
+            </View>
           )}
         />
       )}
@@ -222,10 +246,13 @@ const styles = StyleSheet.create({
   error: { color: '#f87171', paddingHorizontal: 16, marginBottom: 8 },
   empty: { color: '#64748b', textAlign: 'center', marginTop: 40, paddingHorizontal: 24 },
   row: {
-    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
   },
+  rowMain: { flex: 1, padding: 16, paddingRight: 8 },
+  editIconBtn: { padding: 16, paddingLeft: 8 },
   name: { color: '#f8fafc', fontSize: 17, fontWeight: '600' },
   meta: { color: '#64748b', marginTop: 4 },
   owner: { color: '#94a3b8', marginTop: 4, fontSize: 13 },

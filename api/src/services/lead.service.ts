@@ -3,7 +3,7 @@ import { isAllowedStageTransition } from '@wizcrm/shared';
 import type { CreateLeadInput, UpdateLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { findDuplicateLeads, normalizeEmail } from './duplicate.service.js';
-import { normalizePhone } from '@wizcrm/shared';
+import { normalizePhone, sanitizeStringList } from '@wizcrm/shared';
 
 export async function loadLeadContext(leadId: string, organizationId: string) {
   return prisma.lead.findFirst({
@@ -20,6 +20,8 @@ export async function createLead(
   ownerId: string,
   input: CreateLeadInput,
 ) {
+  const extraPhones = sanitizeStringList(input.extraPhones);
+  const extraEmails = sanitizeStringList(input.extraEmails);
   return prisma.lead.create({
     data: {
       organizationId,
@@ -30,6 +32,10 @@ export async function createLead(
       emailNormalized: input.email ? normalizeEmail(input.email) : null,
       phone: input.phone,
       phoneNormalized: input.phone ? normalizePhone(input.phone) : null,
+      extraPhones,
+      extraEmails,
+      address: input.address,
+      googleMapsUrl: input.googleMapsUrl,
       source: input.source,
       priority: input.priority,
     },
@@ -60,6 +66,10 @@ export async function updateLead(
   }
   if (input.source !== undefined) data.source = input.source;
   if (input.priority !== undefined) data.priority = input.priority;
+  if (input.extraPhones !== undefined) data.extraPhones = input.extraPhones ?? [];
+  if (input.extraEmails !== undefined) data.extraEmails = input.extraEmails ?? [];
+  if (input.address !== undefined) data.address = input.address;
+  if (input.googleMapsUrl !== undefined) data.googleMapsUrl = input.googleMapsUrl;
 
   if (input.stage && input.stage !== existing.stage) {
     if (!input.confirmStageSuggestion && input.stage !== existing.stage) {

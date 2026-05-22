@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { api, type Lead } from '../../lib/api';
+import { api } from '../../lib/api';
 import { LEAD_PRIORITIES, type LeadPriority } from '../../constants/priorities';
+import { ContactFields } from '../../components/ContactFields';
+import { buildLeadPayload, formHasContact, leadToFormState, type LeadFormState } from '../../lib/lead-form';
 
 const SOURCE_PRESETS = ['Referral', 'Event', 'Website', 'Cold call', 'Partner', 'Other'];
 
@@ -19,24 +21,27 @@ export default function EditLeadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [name, setName] = useState('');
-  const [company, setCompany] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [source, setSource] = useState('');
-  const [priority, setPriority] = useState<LeadPriority | null>(null);
+  const [form, setForm] = useState<LeadFormState>({
+    name: '',
+    company: '',
+    phone: '',
+    email: '',
+    extraPhones: [],
+    extraEmails: [],
+    address: '',
+    googleMapsUrl: '',
+    source: '',
+    priority: null,
+  });
+
+  const patch = (partial: Partial<LeadFormState>) => setForm((f) => ({ ...f, ...partial }));
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      const { lead } = await api<{ lead: Lead }>(`/leads/${id}`);
-      setName(lead.name);
-      setCompany(lead.company ?? '');
-      setEmail(lead.email ?? '');
-      setPhone(lead.phone ?? '');
-      setSource(lead.source ?? '');
-      setPriority((lead.priority as LeadPriority) ?? null);
+      const { lead } = await api<{ lead: Parameters<typeof leadToFormState>[0] }>(`/leads/${id}`);
+      setForm(leadToFormState(lead));
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Could not load lead');
       router.back();
@@ -52,9 +57,9 @@ export default function EditLeadScreen() {
   );
 
   async function save() {
-    if (!id || !name.trim()) return;
-    if (!email.trim() && !phone.trim()) {
-      Alert.alert('Contact', 'Phone or email is required.');
+    if (!id || !form.name.trim()) return;
+    if (!formHasContact(form)) {
+      Alert.alert('Contact', 'At least one phone or email is required.');
       return;
     }
     setSaving(true);
@@ -62,12 +67,16 @@ export default function EditLeadScreen() {
       await api(`/leads/${id}`, {
         method: 'PATCH',
         body: {
-          name: name.trim(),
-          company: company.trim() || null,
-          email: email.trim() || null,
-          phone: phone.trim() || null,
-          source: source.trim() || null,
-          priority,
+          ...buildLeadPayload(form),
+          company: form.company.trim() || null,
+          email: form.email.trim() || null,
+          phone: form.phone.trim() || null,
+          address: form.address.trim() || null,
+          googleMapsUrl: form.googleMapsUrl.trim() || null,
+          source: form.source.trim() || null,
+          priority: form.priority as LeadPriority | null,
+          extraPhones: buildLeadPayload(form).extraPhones,
+          extraEmails: buildLeadPayload(form).extraEmails,
         },
       });
       router.back();
@@ -87,37 +96,43 @@ export default function EditLeadScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.container} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>Name *</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor="#64748b" />
-
-      <Text style={styles.label}>Company</Text>
-      <TextInput style={styles.input} value={company} onChangeText={setCompany} placeholderTextColor="#64748b" />
-
-      <Text style={styles.label}>Email</Text>
       <TextInput
         style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
+        value={form.name}
+        onChangeText={(name) => patch({ name })}
         placeholderTextColor="#64748b"
       />
 
-      <Text style={styles.label}>Phone</Text>
+      <Text style={styles.label}>Company</Text>
       <TextInput
         style={styles.input}
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
+        value={form.company}
+        onChangeText={(company) => patch({ company })}
         placeholderTextColor="#64748b"
+      />
+
+      <ContactFields
+        phone={form.phone}
+        email={form.email}
+        extraPhones={form.extraPhones}
+        extraEmails={form.extraEmails}
+        address={form.address}
+        googleMapsUrl={form.googleMapsUrl}
+        onPhoneChange={(phone) => patch({ phone })}
+        onEmailChange={(email) => patch({ email })}
+        onExtraPhonesChange={(extraPhones) => patch({ extraPhones })}
+        onExtraEmailsChange={(extraEmails) => patch({ extraEmails })}
+        onAddressChange={(address) => patch({ address })}
+        onGoogleMapsUrlChange={(googleMapsUrl) => patch({ googleMapsUrl })}
       />
 
       <Text style={styles.label}>Source</Text>
       <TextInput
         style={styles.input}
-        value={source}
-        onChangeText={setSource}
+        value={form.source}
+        onChangeText={(source) => patch({ source })}
         placeholder="How did you meet them?"
         placeholderTextColor="#64748b"
       />
@@ -125,10 +140,10 @@ export default function EditLeadScreen() {
         {SOURCE_PRESETS.map((s) => (
           <Pressable
             key={s}
-            style={[styles.chip, source === s && styles.chipActive]}
-            onPress={() => setSource(s)}
+            style={[styles.chip, form.source === s && styles.chipActive]}
+            onPress={() => patch({ source: s })}
           >
-            <Text style={[styles.chipText, source === s && styles.chipTextActive]}>{s}</Text>
+            <Text style={[styles.chipText, form.source === s && styles.chipTextActive]}>{s}</Text>
           </Pressable>
         ))}
       </View>
@@ -136,18 +151,18 @@ export default function EditLeadScreen() {
       <Text style={styles.label}>Priority</Text>
       <View style={styles.chipRow}>
         <Pressable
-          style={[styles.chip, priority === null && styles.chipActive]}
-          onPress={() => setPriority(null)}
+          style={[styles.chip, form.priority === null && styles.chipActive]}
+          onPress={() => patch({ priority: null })}
         >
-          <Text style={[styles.chipText, priority === null && styles.chipTextActive]}>None</Text>
+          <Text style={[styles.chipText, form.priority === null && styles.chipTextActive]}>None</Text>
         </Pressable>
         {LEAD_PRIORITIES.map((p) => (
           <Pressable
             key={p}
-            style={[styles.chip, priority === p && styles.chipActive]}
-            onPress={() => setPriority(p)}
+            style={[styles.chip, form.priority === p && styles.chipActive]}
+            onPress={() => patch({ priority: p })}
           >
-            <Text style={[styles.chipText, priority === p && styles.chipTextActive]}>{p}</Text>
+            <Text style={[styles.chipText, form.priority === p && styles.chipTextActive]}>{p}</Text>
           </Pressable>
         ))}
       </View>
@@ -160,7 +175,8 @@ export default function EditLeadScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 16 },
+  container: { flex: 1, backgroundColor: '#0f172a' },
+  scroll: { padding: 16, paddingBottom: 48 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' },
   label: { color: '#94a3b8', marginBottom: 6, marginTop: 12 },
   input: {

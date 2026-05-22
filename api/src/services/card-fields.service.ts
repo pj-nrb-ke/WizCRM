@@ -21,5 +21,16 @@ export function normalizeCardFields(parsed: Record<string, unknown>) {
     ]),
     email: pickString(parsed, ['email', 'emailAddress', 'email_address']),
     phone: pickString(parsed, ['phone', 'phoneNumber', 'phone_number', 'mobile', 'telephone', 'tel']),
+    phone2: pickString(parsed, ['phone2', 'mobile2', 'secondaryPhone', 'secondary_phone']),
+    email2: pickString(parsed, ['email2', 'secondaryEmail', 'secondary_email']),
+    address: pickString(parsed, [
+      'address',
+      'street',
+      'streetAddress',
+      'street_address',
+      'location',
+      'fullAddress',
+      'full_address',
+    ]),
   };
 }

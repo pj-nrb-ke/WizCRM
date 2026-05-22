@@ -1,23 +1,40 @@
-import { Alert, Linking } from 'react-native';
-import { digitsOnly } from './phone-utils';
+import { Alert, Linking, Platform } from 'react-native';
+import { digitsOnly, telUri, whatsAppUri } from './phone-utils';
 
 export async function openTel(phone: string) {
-  const url = `tel:${digitsOnly(phone)}`;
-  const ok = await Linking.canOpenURL(url);
-  if (!ok) {
-    Alert.alert('Call', 'Phone dialer is not available on this device.');
-    return;
+  const url = telUri(phone);
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert('Call', 'Could not open the phone dialer.');
   }
-  await Linking.openURL(url);
 }
 
 export async function openWhatsApp(phone: string) {
-  const digits = digitsOnly(phone);
-  const url = `https://wa.me/${digits}`;
-  const ok = await Linking.canOpenURL(url);
-  if (!ok) {
-    Alert.alert('WhatsApp', 'Could not open WhatsApp. Check that it is installed.');
-    return;
+  const nativeUrl = whatsAppUri(phone, true);
+  const webUrl = whatsAppUri(phone, false);
+
+  if (Platform.OS === 'android') {
+    try {
+      await Linking.openURL(nativeUrl);
+      return;
+    } catch {
+      /* fall through to web */
+    }
+  } else {
+    const canNative = await Linking.canOpenURL(nativeUrl).catch(() => false);
+    if (canNative) {
+      await Linking.openURL(nativeUrl);
+      return;
+    }
   }
-  await Linking.openURL(url);
+
+  try {
+    await Linking.openURL(webUrl);
+  } catch {
+    Alert.alert(
+      'WhatsApp',
+      'Could not open WhatsApp. Install WhatsApp or check the phone number includes country code (e.g. +27…).',
+    );
+  }
 }

@@ -96,12 +96,22 @@ export type Lead = {
   company?: string | null;
   email?: string | null;
   phone?: string | null;
+  extraPhones?: string[] | null;
+  extraEmails?: string[] | null;
+  address?: string | null;
+  googleMapsUrl?: string | null;
   source?: string | null;
   priority?: string | null;
   stage: string;
   lastActivityAt?: string | null;
   owner?: LeadOwner;
 };
+
+export function leadContactLists(lead: Lead) {
+  const extraPhones = Array.isArray(lead.extraPhones) ? lead.extraPhones : [];
+  const extraEmails = Array.isArray(lead.extraEmails) ? lead.extraEmails : [];
+  return { extraPhones, extraEmails };
+}
 
 export type LeadInsights = {
   priority: string | null;

@@ -1,6 +1,10 @@
 import { z } from 'zod';
+import { hasContactMethod, sanitizeStringList } from './contact.js';
 import { LEAD_PRIORITIES } from './priorities.js';
 import { LEAD_STAGES } from './stages.js';
+
+const phoneField = z.string().min(5).max(30);
+const emailField = z.string().email();
 
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -11,21 +15,41 @@ export const createLeadSchema = z
   .object({
     name: z.string().min(1).max(200),
     company: z.string().max(200).optional(),
-    email: z.string().email().optional(),
-    phone: z.string().min(5).max(30).optional(),
+    email: emailField.optional(),
+    phone: phoneField.optional(),
+    extraPhones: z.array(phoneField).max(5).optional(),
+    extraEmails: z.array(emailField).max(5).optional(),
+    address: z.string().max(500).optional(),
+    googleMapsUrl: z.string().url().max(2000).optional(),
     source: z.string().max(100).optional(),
     priority: z.enum(LEAD_PRIORITIES).optional(),
   })
-  .refine((d) => Boolean(d.email || d.phone), {
-    message: 'Either email or phone is required',
-    path: ['email'],
+  .superRefine((d, ctx) => {
+    const extraPhones = sanitizeStringList(d.extraPhones);
+    const extraEmails = sanitizeStringList(d.extraEmails);
+    if (!hasContactMethod({ phone: d.phone, email: d.email, extraPhones, extraEmails })) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'At least one phone or email is required',
+        path: ['email'],
+      });
+    }
+    for (const p of extraPhones) {
+      if (p.length < 5) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid extra phone', path: ['extraPhones'] });
+      }
+    }
   });
 
 export const updateLeadSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   company: z.string().max(200).nullable().optional(),
-  email: z.string().email().nullable().optional(),
-  phone: z.string().min(5).max(30).nullable().optional(),
+  email: emailField.nullable().optional(),
+  phone: phoneField.nullable().optional(),
+  extraPhones: z.array(phoneField).max(5).nullable().optional(),
+  extraEmails: z.array(emailField).max(5).nullable().optional(),
+  address: z.string().max(500).nullable().optional(),
+  googleMapsUrl: z.string().url().max(2000).nullable().optional(),
   source: z.string().max(100).nullable().optional(),
   priority: z.enum(LEAD_PRIORITIES).nullable().optional(),
   stage: z.enum(LEAD_STAGES).optional(),

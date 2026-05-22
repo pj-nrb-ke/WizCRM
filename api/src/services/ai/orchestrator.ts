@@ -172,7 +172,7 @@ export async function parseBusinessCard(
     {
       role: 'system',
       content:
-        'You read business card photos. Extract visible contact fields. Return JSON only: { "name", "company", "email", "phone" } using string or null. name = person name; company = employer or bank/organization on the card; include country code on phone when shown.',
+        'You read business card photos. Extract visible contact fields. Return JSON only: { "name", "company", "email", "phone", "phone2", "email2", "address" } using string or null. name = person name; company = employer; address = full postal address; include country code on phone when shown.',
     },
   ];
 

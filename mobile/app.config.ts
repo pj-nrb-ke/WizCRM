@@ -30,7 +30,7 @@ const config: ExpoConfig = {
       backgroundColor: '#0f172a',
     },
     package: 'com.wizag.wizcrm',
-    versionCode: 2,
+    versionCode: 3,
     edgeToEdgeEnabled: true,
     usesCleartextTraffic: true,
     permissions: ['READ_EXTERNAL_STORAGE'],
