@@ -6,8 +6,30 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Last updated:** 2026-05-22
 
-**Outstanding work (single table):** **[OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md)** ← top-level list  
+**Phase status (top-level):** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
+**Outstanding work (task table):** **[OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md)**  
 **Manager tasks:** [manager_task_tracker.md](./manager_task_tracker.md) (`MGT-*`)
+
+---
+
+## Phase status
+
+| Phase | Name | Status | Notes |
+|-------|------|--------|-------|
+| **P0** | Production hosting | ✅ Done | api + app on Contabo |
+| **P1** | Lite mobile (build) | 🟡 In progress | Features usable; not formally ✅ |
+| **P2** | Lite sign-off (UT/QA/E2E) | 🟡 In progress | Main gate before “Lite complete” |
+| **P3** | Web Cluster A (admin) | ✅ Done | WEB-001–015 except WEB-012 |
+| **P4** | Web Cluster B (manager) | ✅ Done | WEB-020–023 |
+| **P5** | Web polish | 🟡 In progress | WEB-012 teams CRUD on web |
+| **P6** | Infrastructure & CI | 🟡 In progress | INF-004–006 live; CI open |
+| **P7** | Pro platform (Cluster C) | ⬜ Not started | Multi-tenant + ScaleGate |
+| **P8** | Pro product features | ⬜ Not started | PRO-001–013 |
+| **P9** | Enterprise | ⬜ Not started | ENT-* |
+| **P10** | Web Cluster D | ⏸ Deferred | WEB-030–033 |
+| **P11** | Business (MGT) | 🟡 In progress | DNS done; stores/legal/ERP open |
+
+Full phase narrative: **[PHASE-STATUS.md](./PHASE-STATUS.md)**
 
 ---
 
@@ -28,22 +50,21 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 ---
 
-## Summary
+## Summary (by phase — see [PHASE-STATUS.md](./PHASE-STATUS.md))
 
-| Area | Total | Done | In progress | Not started |
-|------|------:|-----:|------------:|------------:|
-| Infrastructure | 10 | 4 | 2 | 4 |
-| **Lite** features | 14 | 0 | 8 | 6 |
-| **Lite** unit tests (`UT-LITE-*`) | 14 | 0 | 0 | 14 |
-| **Lite** QA (`QA-LITE-*`) | 16 | 0 | 0 | 16 |
-| **Lite** E2E (`E2E-LITE-*`) | 6 | 0 | 0 | 6 |
-| Pro features | 15 | 0 | 0 | 15 |
-| Enterprise features | 12 | 0 | 0 | 12 |
-| Technical add-ons | 10 | 0 | 0 | 10 |
-| ScaleGate | 5 | 0 | 0 | 5 |
-| Non-functional | 8 | 0 | 0 | 8 |
+| Phase | Status |
+|-------|--------|
+| P0 Hosting | ✅ |
+| P1 Lite build | 🟡 |
+| P2 Lite sign-off | 🟡 |
+| P3–P4 Web A+B | ✅ |
+| P5 Web polish | 🟡 |
+| P6 Infra/CI | 🟡 |
+| P7–P9 Pro / Enterprise | ⬜ |
+| P10 Web D | ⏸ |
+| P11 Business | 🟡 |
 
-*Update counts when checking off items.*
+*Granular task counts: remove rows from [OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md) as work completes.*
 
 ---
 

@@ -1,8 +1,30 @@
 # WizCRM — Outstanding tasks (single list)
 
+**Phase-level status:** **[PHASE-STATUS.md](./PHASE-STATUS.md)** ← start here  
 **Legend:** 🟡 In progress (built but not signed off) · ⬜ Not started  
-**Source of truth for detail:** [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) · Manager: [manager_task_tracker.md](./manager_task_tracker.md)  
+**Detail sections:** [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) · Manager: [manager_task_tracker.md](./manager_task_tracker.md)  
 **Last updated:** 2026-05-22
+
+## Phase snapshot
+
+| Phase | Name | Status |
+|-------|------|--------|
+| P0 | Production hosting | ✅ |
+| P1 | Lite mobile (build) | 🟡 |
+| P2 | Lite sign-off (UT/QA/E2E) | 🟡 |
+| P3 | Web Cluster A (admin) | ✅ |
+| P4 | Web Cluster B (manager) | ✅ |
+| P5 | Web polish (WEB-012) | 🟡 |
+| P6 | Infrastructure & CI | 🟡 |
+| P7 | Pro platform | ⬜ |
+| P8 | Pro features | ⬜ |
+| P9 | Enterprise | ⬜ |
+| P10 | Web Cluster D | ⏸ |
+| P11 | Business (MGT) | 🟡 |
+
+---
+
+## All open tasks (by ID)
 
 | Status | ID | Area | Task | Priority |
 |--------|-----|------|------|----------|
