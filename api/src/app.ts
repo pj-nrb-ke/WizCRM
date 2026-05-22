@@ -11,6 +11,8 @@ import { healthRoutes } from './routes/health.js';
 import { teamRoutes } from './routes/teams.js';
 import { adminRoutes } from './routes/admin.js';
 import { reportRoutes } from './routes/reports.js';
+import { emailRoutes } from './routes/email.js';
+import { EmailUnavailableError } from './services/brevo-mail.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -39,6 +41,7 @@ export async function buildApp() {
   await app.register(teamRoutes, { prefix: '/teams' });
   await app.register(adminRoutes, { prefix: '/admin' });
   await app.register(reportRoutes, { prefix: '/reports' });
+  await app.register(emailRoutes, { prefix: '/email' });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error as Error & { statusCode?: number };
@@ -46,6 +49,12 @@ export async function buildApp() {
       return reply.status(503).send({
         error: 'AI_UNAVAILABLE',
         message: 'Set OPENAI_API_KEY to enable AI features',
+      });
+    }
+    if (err instanceof EmailUnavailableError || err.message === 'EMAIL_UNAVAILABLE') {
+      return reply.status(503).send({
+        error: 'EMAIL_UNAVAILABLE',
+        message: err.message,
       });
     }
     const status = err.statusCode ?? 500;

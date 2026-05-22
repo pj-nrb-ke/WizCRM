@@ -141,6 +141,12 @@ export const updateAdminUserSchema = z.object({
   teamId: z.string().uuid().nullable().optional(),
 });
 
+export const sendLeadEmailSchema = z.object({
+  subject: z.string().min(1).max(200),
+  body: z.string().min(1).max(50000),
+  html: z.string().max(50000).optional(),
+});
+
 export type OrgSettings = z.infer<typeof orgSettingsSchema>;
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;

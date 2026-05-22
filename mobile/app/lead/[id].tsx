@@ -170,6 +170,46 @@ export default function LeadDetailScreen() {
     }
   }
 
+  async function sendDraftEmail() {
+    if (!id || !lead?.email || !draft.trim()) {
+      Alert.alert(
+        'Email',
+        'Add an email on the lead, load an email draft, then send.',
+      );
+      return;
+    }
+    Alert.alert('Send email?', `Send this message to ${lead.email}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Send',
+        onPress: async () => {
+          try {
+            await api(`/email/leads/${id}/send`, {
+              method: 'POST',
+              body: {
+                subject: `Follow up: ${lead.name}`,
+                body: draft.trim(),
+              },
+            });
+            Alert.alert('Sent', 'Email sent via Brevo and logged on the timeline.');
+            setDraft('');
+            load();
+          } catch (e) {
+            const err = e as Error & { status?: number };
+            if (err.status === 503) {
+              Alert.alert(
+                'Email not configured',
+                'Server needs docs/brevo.local.txt with Brevo credentials.',
+              );
+              return;
+            }
+            Alert.alert('Send failed', err.message || 'Could not send email');
+          }
+        },
+      },
+    ]);
+  }
+
   async function startCall() {
     if (!lead?.phone || !id) {
       Alert.alert('Call', 'Add a phone number on this lead first.');
@@ -387,6 +427,11 @@ export default function LeadDetailScreen() {
             </Pressable>
           </View>
           {draft ? <Text style={styles.draftText}>{draft}</Text> : null}
+          {lead.email && draft ? (
+            <Pressable style={styles.sendEmailBtn} onPress={sendDraftEmail}>
+              <Text style={styles.sendEmailBtnText}>Send email (Brevo)</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -584,6 +629,14 @@ const styles = StyleSheet.create({
   hygieneOk: { color: '#4ade80', marginTop: 4, fontSize: 13 },
   draftBox: { marginBottom: 8 },
   draftText: { color: '#e2e8f0', lineHeight: 22, marginTop: 8 },
+  sendEmailBtn: {
+    backgroundColor: '#38bdf8',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  sendEmailBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
   section: { color: '#94a3b8', fontWeight: '600', marginTop: 20, marginBottom: 8 },
   summary: { color: '#e2e8f0', lineHeight: 22 },
   nextBox: { backgroundColor: '#1e293b', padding: 12, borderRadius: 8, marginTop: 8 },

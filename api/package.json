@@ -12,7 +12,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "email:validate": "tsx scripts/validate-brevo.ts",
+    "email:test": "tsx scripts/test-brevo-email.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
@@ -22,12 +24,14 @@
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.5.0",
     "fastify": "^5.3.3",
+    "nodemailer": "^6.10.1",
     "openai": "^4.104.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.15.21",
+    "@types/nodemailer": "^6.4.23",
     "prisma": "^6.8.2",
     "tsx": "^4.19.4",
     "typescript": "~5.9.2",
