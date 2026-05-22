@@ -26,6 +26,7 @@ Thumbs.db
 .env.local
 .env.*.local
 api/.env
+api/.github-token.local
 
 # Build
 shared/dist/
