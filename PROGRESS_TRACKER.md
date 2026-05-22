@@ -189,22 +189,26 @@ See **[SRS-WEB.md](./SRS-WEB.md)**. Recommended next work: **Cluster A** (founda
 
 | Status | ID | Feature |
 |--------|-----|---------|
-| 🟡 | WEB-001 | Web scaffold + deploy `app.wizcrm.app` |
-| 🟡 | WEB-002 | Auth (JWT, roles) |
-| 🟡 | WEB-003 | App shell + role-based nav |
-| 🟡 | WEB-004 | API client (`VITE_API_URL`) |
-| 🟡 | WEB-010 | Organization profile |
-| 🟡 | WEB-011 | Users admin (PRO-013 slice) |
-| 🟡 | WEB-012 | Teams admin |
-| 🟡 | WEB-013 | AI & platform settings (desk mode, health) |
-| 🟡 | WEB-014 | Connection info for mobile |
-| 🟡 | WEB-015 | AI audit log (read-only) |
-| 🟡 | API-WEB-001..004 | Admin settings API routes |
+| ✅ | WEB-001 | Web scaffold + deploy `app.wizcrm.app` |
+| ✅ | WEB-002 | Auth (JWT, roles) |
+| ✅ | WEB-003 | App shell + role-based nav |
+| ✅ | WEB-004 | API client (`VITE_API_URL`) |
+| ✅ | WEB-010 | Organization profile |
+| ✅ | WEB-011 | Users admin (PRO-013 slice) |
+| 🟡 | WEB-012 | Teams admin (view web; edit still mobile) |
+| ✅ | WEB-013 | AI & platform settings (desk mode, health) |
+| ✅ | WEB-014 | Connection info for mobile |
+| ✅ | WEB-015 | AI audit log (read-only) |
+| ✅ | API-WEB-001..004 | Admin settings API routes |
+| ✅ | WEB-020 | Manager home (team stats) |
+| ✅ | WEB-021 | Pipeline board |
+| ✅ | WEB-022 | Leads table + drawer |
+| ✅ | WEB-023 | Reports + CSV export |
 
 | Cluster | IDs | When |
 |---------|-----|------|
-| **A — Foundation + settings** | INF-006, WEB-001–015, API-WEB-* | **Next** |
-| **B — Manager workspace** | WEB-020–023 | After A |
+| **A — Foundation + settings** | INF-006, WEB-001–015, API-WEB-* | Done |
+| **B — Manager workspace** | WEB-020–023 | Done |
 | **C — Pro platform** | PRO-014, PRO-015, INF-008 | Before external SaaS |
 | **D — Sales CRM on web** | WEB-030–033 | Defer |
 

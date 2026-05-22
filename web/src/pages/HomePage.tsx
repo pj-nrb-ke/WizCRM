@@ -64,9 +64,23 @@ export function HomePage() {
             </>
           )}
           {isManager(user?.role) && (
-            <li>
-              <Link to="/teams">Teams</Link>
-            </li>
+            <>
+              <li>
+                <Link to="/manager">Manager home</Link>
+              </li>
+              <li>
+                <Link to="/pipeline">Pipeline board</Link>
+              </li>
+              <li>
+                <Link to="/leads">Leads table</Link>
+              </li>
+              <li>
+                <Link to="/reports">Reports & CSV</Link>
+              </li>
+              <li>
+                <Link to="/teams">Teams</Link>
+              </li>
+            </>
           )}
         </ul>
       </div>

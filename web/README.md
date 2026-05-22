@@ -49,6 +49,10 @@ app.wizcrm.app {
 | Route | ID | Role |
 |-------|-----|------|
 | `/` | Home | All logged-in |
+| `/manager` | WEB-020 | Manager+ |
+| `/pipeline` | WEB-021 | Manager+ |
+| `/leads` | WEB-022 | Manager+ |
+| `/reports` | WEB-023 | Manager+ |
 | `/organization` | WEB-010 | Manager+ |
 | `/users` | WEB-011 | Admin |
 | `/teams` | WEB-012 | Manager+ |

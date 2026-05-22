@@ -10,6 +10,10 @@ import { TeamsPage } from './pages/TeamsPage';
 import { PlatformPage } from './pages/PlatformPage';
 import { ConnectionPage } from './pages/ConnectionPage';
 import { AuditPage } from './pages/AuditPage';
+import { ManagerHomePage } from './pages/ManagerHomePage';
+import { PipelinePage } from './pages/PipelinePage';
+import { LeadsPage } from './pages/LeadsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -39,6 +43,38 @@ export default function App() {
             }
           >
             <Route path="/" element={<HomePage />} />
+            <Route
+              path="/manager"
+              element={
+                <ManagerOnly>
+                  <ManagerHomePage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/pipeline"
+              element={
+                <ManagerOnly>
+                  <PipelinePage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/leads"
+              element={
+                <ManagerOnly>
+                  <LeadsPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ManagerOnly>
+                  <ReportsPage />
+                </ManagerOnly>
+              }
+            />
             <Route
               path="/organization"
               element={

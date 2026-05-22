@@ -1,0 +1,28 @@
+---
+description: Agent owns all deploy and local rebuild steps; user only verifies the app.
+alwaysApply: true
+---
+
+# Deploy and refresh (agent-owned)
+
+The user does **not** run deploy/build scripts. After meaningful API or web changes, the agent must:
+
+## Contabo VPS (production)
+
+Run without asking the user:
+
+```powershell
+cd c:\Users\pj\WizCRM
+git add -A && git commit && git push origin development   # when there are changes
+.\scripts\deploy-vps.ps1 -SkipPush   # after push; or full deploy-vps.ps1 if already pushed
+```
+
+Or SSH equivalent: `scripts/deploy-vps.sh` on the server (`git pull`, `npm run build -w shared`, `api` prisma db push + build, `VITE_API_URL=https://api.wizcrm.app npm run web:build`, copy `web/dist` → `/var/www/wizcrm-web`, `systemctl restart wizcrm-api`, reload caddy).
+
+## Local workspace
+
+After web/API edits, run `.\scripts\refresh-local.ps1` (or the same build steps). Restart `npm run web:dev` in background if it was running so the user can refresh the browser only.
+
+## User role
+
+User checks whether https://api.wizcrm.app, https://app.wizcrm.app (when DNS exists), and local http://localhost:5173 work — no manual script execution.

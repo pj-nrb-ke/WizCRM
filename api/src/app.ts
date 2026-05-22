@@ -10,6 +10,7 @@ import { aiRoutes } from './routes/ai.js';
 import { healthRoutes } from './routes/health.js';
 import { teamRoutes } from './routes/teams.js';
 import { adminRoutes } from './routes/admin.js';
+import { reportRoutes } from './routes/reports.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -37,6 +38,7 @@ export async function buildApp() {
   await app.register(aiRoutes, { prefix: '/ai' });
   await app.register(teamRoutes, { prefix: '/teams' });
   await app.register(adminRoutes, { prefix: '/admin' });
+  await app.register(reportRoutes, { prefix: '/reports' });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error as Error & { statusCode?: number };

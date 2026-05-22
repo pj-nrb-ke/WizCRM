@@ -50,9 +50,11 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/pipeline', async (request, reply) => {
     const { organizationId } = request.user;
-    const q = request.query as { teamId?: string };
-    let ownerFilter: { ownerId?: { in: string[] } } = {};
-    if (q.teamId) {
+    const q = request.query as { teamId?: string; ownerId?: string };
+    let ownerFilter: { ownerId?: string | { in: string[] } } = {};
+    if (q.ownerId) {
+      ownerFilter = { ownerId: q.ownerId };
+    } else if (q.teamId) {
       const memberIds = await getTeamMemberIds(q.teamId, organizationId);
       if (!memberIds) {
         return reply.status(404).send({ error: 'Team not found' });

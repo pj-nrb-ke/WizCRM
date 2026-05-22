@@ -10,12 +10,20 @@ export function Layout() {
       <aside className="sidebar">
         <div className="brand">
           <strong>WizCRM</strong>
-          <span className="muted">Admin</span>
+          <span className="muted">{isManager(user?.role) ? 'Manager' : 'Settings'}</span>
         </div>
         <nav>
           <NavLink to="/" end>
             Home
           </NavLink>
+          {isManager(user?.role) && (
+            <>
+              <NavLink to="/manager">Manager home</NavLink>
+              <NavLink to="/pipeline">Pipeline</NavLink>
+              <NavLink to="/leads">Leads</NavLink>
+              <NavLink to="/reports">Reports</NavLink>
+            </>
+          )}
           {isManager(user?.role) && (
             <NavLink to="/organization">Organization</NavLink>
           )}
@@ -61,7 +69,8 @@ export function Layout() {
         nav a.active { background: #334155; color: #38bdf8; }
         .sidebar-footer { margin-top: auto; padding-top: 16px; }
         .sidebar-footer button { width: 100%; margin-top: 8px; }
-        .main { flex: 1; padding: 28px 32px; max-width: 900px; }
+        .main { flex: 1; padding: 28px 32px; max-width: 1200px; }
+        .main:has(.page-wide) { max-width: none; }
         h1 { margin: 0 0 8px; font-size: 1.75rem; }
         h2 { margin: 0 0 12px; font-size: 1.1rem; color: #94a3b8; }
       `}</style>
