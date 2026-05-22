@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LEAD_PRIORITIES } from './priorities.js';
 import { LEAD_STAGES } from './stages.js';
 
 export const loginSchema = z.object({
@@ -13,6 +14,7 @@ export const createLeadSchema = z
     email: z.string().email().optional(),
     phone: z.string().min(5).max(30).optional(),
     source: z.string().max(100).optional(),
+    priority: z.enum(LEAD_PRIORITIES).optional(),
   })
   .refine((d) => Boolean(d.email || d.phone), {
     message: 'Either email or phone is required',
@@ -25,6 +27,7 @@ export const updateLeadSchema = z.object({
   email: z.string().email().nullable().optional(),
   phone: z.string().min(5).max(30).nullable().optional(),
   source: z.string().max(100).nullable().optional(),
+  priority: z.enum(LEAD_PRIORITIES).nullable().optional(),
   stage: z.enum(LEAD_STAGES).optional(),
   stageNote: z.string().max(500).optional(),
   confirmStageSuggestion: z.boolean().optional(),

@@ -31,6 +31,7 @@ export async function createLead(
       phone: input.phone,
       phoneNormalized: input.phone ? normalizePhone(input.phone) : null,
       source: input.source,
+      priority: input.priority,
     },
   });
 }
@@ -58,6 +59,7 @@ export async function updateLead(
     data.phoneNormalized = input.phone ? normalizePhone(input.phone) : null;
   }
   if (input.source !== undefined) data.source = input.source;
+  if (input.priority !== undefined) data.priority = input.priority;
 
   if (input.stage && input.stage !== existing.stage) {
     if (!input.confirmStageSuggestion && input.stage !== existing.stage) {

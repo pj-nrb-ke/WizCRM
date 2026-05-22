@@ -19,7 +19,7 @@ import {
   suggestStage,
 } from '../services/ai/orchestrator.js';
 import { config } from '../config.js';
-import { buildRulesDesk } from '../services/desk-rules.service.js';
+import { buildExtendedDesk } from '../services/desk-rules.service.js';
 import { resolveDeskUseAi } from '../services/org-settings.service.js';
 import { isNextActionSuppressed, shouldApplySuggestedStage } from '@wizcrm/shared';
 
@@ -36,7 +36,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       },
       take: 30,
     });
-    const rulesItems = buildRulesDesk(leads);
+    const rulesItems = buildExtendedDesk(leads);
     const deskUseAi = await resolveDeskUseAi(organizationId);
     if (!deskUseAi || !config.aiEnabled) {
       return { items: rulesItems, source: 'rules' as const };
@@ -262,6 +262,31 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       }
       throw e;
     }
+  });
+
+  app.get('/leads/:leadId/draft-message', async (request, reply) => {
+    const { organizationId } = request.user;
+    const { leadId } = request.params as { leadId: string };
+    const q = request.query as { channel?: string; tone?: string };
+    const lead = await loadLeadContext(leadId, organizationId);
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    const channel = q.channel === 'email' ? 'email' : 'whatsapp';
+    const tone = q.tone === 'formal' ? 'formal' : 'friendly';
+    const greeting = tone === 'formal' ? 'Dear' : 'Hi';
+    const name = lead.name.split(' ')[0];
+    const company = lead.company ? ` at ${lead.company}` : '';
+    const body =
+      channel === 'email'
+        ? `${greeting} ${name},\n\nThank you for your time. Following up on our conversation${company} — please let me know if you have any questions.\n\nBest regards`
+        : `${greeting} ${name}, thanks for chatting today. Happy to share more details${company} — when is a good time to connect?`;
+    return {
+      channel,
+      tone,
+      draft: body,
+      note: config.aiEnabled
+        ? 'Template draft — approve before sending (Pro).'
+        : 'Template draft (AI off).',
+    };
   });
 
   app.post('/voice-note', async (request, reply) => {

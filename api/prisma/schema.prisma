@@ -69,6 +69,7 @@ model Lead {
   phone            String?
   phoneNormalized  String?
   source           String?
+  priority         LeadPriority?
   stage            LeadStage  @default(NEW)
   lastActivityAt   DateTime?
   createdAt        DateTime   @default(now())
@@ -82,6 +83,12 @@ model Lead {
   @@index([organizationId, ownerId])
   @@index([organizationId, emailNormalized])
   @@index([organizationId, phoneNormalized])
+}
+
+enum LeadPriority {
+  HOT
+  WARM
+  COLD
 }
 
 enum LeadStage {

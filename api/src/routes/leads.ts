@@ -7,6 +7,7 @@ import {
   findDuplicateLeads,
   loadLeadContext,
 } from '../services/lead.service.js';
+import { buildLeadInsights } from '../services/lead-insights.service.js';
 import { getTeamMemberIds } from '../services/team.service.js';
 
 const ownerSelect = {
@@ -102,6 +103,19 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       orderBy: { dueAt: 'asc' },
     });
     return { tasks };
+  });
+
+  app.get('/:id/insights', async (request, reply) => {
+    const { organizationId } = request.user;
+    const { id } = request.params as { id: string };
+    const lead = await prisma.lead.findFirst({
+      where: { id, organizationId },
+      include: {
+        tasks: { where: { completedAt: null }, take: 15 },
+      },
+    });
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    return { insights: buildLeadInsights(lead) };
   });
 
   app.get('/:id', async (request, reply) => {

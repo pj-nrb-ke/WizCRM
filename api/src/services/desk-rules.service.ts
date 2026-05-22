@@ -59,3 +59,39 @@ export function buildRulesDesk(leads: LeadRow[]): DeskItem[] {
 
   return unique.slice(0, 5);
 }
+
+/** Pro/Lite+ desk: up to 8 items including stale and priority-hot leads. */
+export function buildExtendedDesk(leads: LeadRow[]): DeskItem[] {
+  const base = buildRulesDesk(leads);
+  const now = Date.now();
+  const extras: DeskItem[] = [];
+
+  for (const lead of leads) {
+    if (lead.priority === 'HOT') {
+      extras.push({
+        leadId: lead.id,
+        title: `Hot: ${lead.name}`,
+        reason: lead.source ? `Source: ${lead.source}` : 'Priority lead',
+      });
+    }
+    const last = lead.lastActivityAt?.getTime() ?? lead.createdAt.getTime();
+    const daysIdle = (now - last) / MS_DAY;
+    if (daysIdle >= 7 && lead.stage !== 'WON' && lead.stage !== 'LOST') {
+      extras.push({
+        leadId: lead.id,
+        title: `Stale: ${lead.name}`,
+        reason: `No activity ${Math.floor(daysIdle)} days (${lead.stage})`,
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  const merged: DeskItem[] = [];
+  for (const item of [...base, ...extras]) {
+    const key = item.leadId;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  return merged.slice(0, 8);
+}
