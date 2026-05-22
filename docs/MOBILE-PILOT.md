@@ -1,6 +1,6 @@
 # WizCRM mobile — production pilot
 
-**Goal:** Confirm the existing app works against **https://api.wizcrm.app** on a real Android phone. No new features until this passes.
+**Goal:** Confirm **Lite+ Pro** mobile works against **https://api.wizcrm.app** on a real Android phone.
 
 ## Install
 
@@ -16,9 +16,12 @@
 |------|--------|-------|
 | 1 | **Desk** loads with items (or empty + no error) | ☐ |
 | 2 | **Leads** → **+ New lead** → save with name + phone or email | ☐ |
-| 3 | Open lead → **Log call (AI)** → confirm save | ☐ |
-| 4 | Add a **note** on the lead | ☐ |
-| 5 | **Pipeline** shows lead in correct stage | ☐ |
+| 3 | **Call** from lead → return to app → **Log this call?** prompt → post-call | ☐ |
+| 4 | **Edit** lead → set source + priority (HOT/WARM/COLD) | ☐ |
+| 5 | **WhatsApp** opens when phone present; **Pro scores** + hygiene on lead | ☐ |
+| 6 | **Message draft** (WhatsApp or email) — approve before sending externally | ☐ |
+| 7 | Add a **note** (try airplane mode → note queues, syncs when online) | ☐ |
+| 8 | **Pipeline** shows lead in correct stage | ☐ |
 
 ## Manager (optional)
 

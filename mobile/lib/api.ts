@@ -96,9 +96,18 @@ export type Lead = {
   company?: string | null;
   email?: string | null;
   phone?: string | null;
+  source?: string | null;
+  priority?: string | null;
   stage: string;
   lastActivityAt?: string | null;
   owner?: LeadOwner;
+};
+
+export type LeadInsights = {
+  priority: string | null;
+  source: string | null;
+  scores: { engagement: number; urgency: number; fit: number };
+  hygiene: string[];
 };
 
 export type MemberStats = {

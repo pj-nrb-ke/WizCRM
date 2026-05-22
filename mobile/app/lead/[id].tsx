@@ -10,8 +10,12 @@ import {
   View,
 } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { api, type Lead } from '../../lib/api';
+import { api, type Lead, type LeadInsights } from '../../lib/api';
 import { LEAD_STAGES } from '../../constants/stages';
+import { priorityLabel } from '../../constants/priorities';
+import { markCallStarted } from '../../lib/call-return';
+import { queueOfflineNote, listPendingNotes } from '../../lib/offline-notes';
+import { openTel, openWhatsApp } from '../../lib/phone-links';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
 import { VoiceNoteButton } from '../../components/VoiceNoteButton';
 import { useAuth } from '../../context/AuthContext';
@@ -52,6 +56,9 @@ export default function LeadDetailScreen() {
   const [taskTitle, setTaskTitle] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
   const [dueDateEdit, setDueDateEdit] = useState<{ taskId: string; title: string } | null>(null);
+  const [insights, setInsights] = useState<LeadInsights | null>(null);
+  const [draft, setDraft] = useState('');
+  const [pendingCount, setPendingCount] = useState(0);
 
   function formatDue(iso: string) {
     const d = new Date(iso);
@@ -61,14 +68,18 @@ export default function LeadDetailScreen() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [leadRes, actRes, taskRes] = await Promise.all([
+    const [leadRes, actRes, taskRes, insightRes, pending] = await Promise.all([
       api<{ lead: Lead }>(`/leads/${id}`),
       api<{ activities: Activity[] }>(`/leads/${id}/activities`),
       api<{ tasks: Task[] }>(`/leads/${id}/tasks`),
+      api<{ insights: LeadInsights }>(`/leads/${id}/insights`).catch(() => ({ insights: null })),
+      listPendingNotes(),
     ]);
     setLead(leadRes.lead);
     setActivities(actRes.activities);
     setTasks(taskRes.tasks);
+    setInsights(insightRes.insights);
+    setPendingCount(pending.filter((n) => n.leadId === id).length);
   }, [id]);
 
   useFocusEffect(
@@ -115,7 +126,12 @@ export default function LeadDetailScreen() {
       setNote('');
       load();
     } catch (e) {
-      if (useAiClean) {
+      const msg = e instanceof Error ? e.message : '';
+      const offline =
+        msg.includes('Cannot reach') ||
+        msg.includes('Network request failed') ||
+        msg.includes('timed out');
+      if (useAiClean && !offline) {
         try {
           await api(`/leads/${id}/activities`, {
             method: 'POST',
@@ -130,8 +146,36 @@ export default function LeadDetailScreen() {
           return;
         }
       }
+      if (offline) {
+        await queueOfflineNote(id, body);
+        setNote('');
+        load();
+        Alert.alert('Saved offline', 'Note will sync when you are back online.');
+        return;
+      }
       Alert.alert('Error', e instanceof Error ? e.message : 'Could not save note');
     }
+  }
+
+  async function loadDraft(channel: 'whatsapp' | 'email') {
+    if (!id) return;
+    try {
+      const data = await api<{ draft: string }>(
+        `/ai/leads/${id}/draft-message?channel=${channel}&tone=friendly`,
+      );
+      setDraft(data.draft);
+    } catch (e) {
+      Alert.alert('Draft', e instanceof Error ? e.message : 'Could not load draft');
+    }
+  }
+
+  async function startCall() {
+    if (!lead?.phone || !id) {
+      Alert.alert('Call', 'Add a phone number on this lead first.');
+      return;
+    }
+    await markCallStarted(id, lead.name);
+    await openTel(lead.phone);
   }
 
   async function addTask() {
@@ -244,11 +288,37 @@ export default function LeadDetailScreen() {
         <Text style={styles.readOnlyBadge}>Manager view (read-only)</Text>
       ) : null}
       <Text style={styles.name}>{lead.name}</Text>
-      <Text style={styles.meta}>{lead.stage}</Text>
+      <Text style={styles.meta}>
+        {lead.stage}
+        {lead.priority ? ` · ${priorityLabel(lead.priority as 'HOT' | 'WARM' | 'COLD')}` : ''}
+        {lead.source ? ` · ${lead.source}` : ''}
+      </Text>
+      {lead.company ? <Text style={styles.subMeta}>{lead.company}</Text> : null}
+
+      {!readOnly ? (
+        <View style={styles.actionRow}>
+          <Pressable style={styles.callBtn} onPress={startCall} disabled={!lead.phone}>
+            <Text style={styles.callBtnText}>Call</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.callBtn, styles.waBtn]}
+            onPress={() => lead.phone && openWhatsApp(lead.phone)}
+            disabled={!lead.phone}
+          >
+            <Text style={styles.callBtnText}>WhatsApp</Text>
+          </Pressable>
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={() => router.push({ pathname: '/lead/edit', params: { id } })}
+          >
+            <Text style={styles.secondaryBtnText}>Edit</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {!readOnly ? (
         <Pressable
-          style={styles.callBtn}
+          style={styles.aiBtn}
           onPress={() =>
             router.push({
               pathname: '/lead/post-call',
@@ -256,8 +326,48 @@ export default function LeadDetailScreen() {
             })
           }
         >
-          <Text style={styles.callBtnText}>Log call (AI)</Text>
+          <Text style={styles.aiBtnText}>Log call (AI)</Text>
         </Pressable>
+      ) : null}
+
+      {pendingCount > 0 ? (
+        <Text style={styles.offlineBadge}>
+          {pendingCount} note(s) waiting to sync
+        </Text>
+      ) : null}
+
+      {insights ? (
+        <View style={styles.insightsBox}>
+          <Text style={styles.section}>Pro scores</Text>
+          <Text style={styles.scoreLine}>
+            Urgency {insights.scores.urgency} · Engagement {insights.scores.engagement} · Fit{' '}
+            {insights.scores.fit}
+          </Text>
+          {insights.hygiene.length > 0 ? (
+            insights.hygiene.map((h) => (
+              <Text key={h} style={styles.hygieneLine}>
+                • {h}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.hygieneOk}>Data looks complete</Text>
+          )}
+        </View>
+      ) : null}
+
+      {!readOnly ? (
+        <View style={styles.draftBox}>
+          <Text style={styles.section}>Message draft (approve before sending)</Text>
+          <View style={styles.actionRow}>
+            <Pressable style={styles.secondaryBtn} onPress={() => loadDraft('whatsapp')}>
+              <Text style={styles.secondaryBtnText}>WhatsApp draft</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryBtn} onPress={() => loadDraft('email')}>
+              <Text style={styles.secondaryBtnText}>Email draft</Text>
+            </Pressable>
+          </View>
+          {draft ? <Text style={styles.draftText}>{draft}</Text> : null}
+        </View>
       ) : null}
 
       <Pressable style={styles.aiBtn} onPress={loadAi} disabled={loadingAi}>
@@ -403,15 +513,32 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   name: { fontSize: 24, fontWeight: '700', color: '#f8fafc' },
-  meta: { color: '#38bdf8', marginBottom: 8 },
+  meta: { color: '#38bdf8', marginBottom: 4 },
+  subMeta: { color: '#94a3b8', marginBottom: 8 },
+  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
   callBtn: {
     backgroundColor: '#38bdf8',
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    flex: 1,
+    minWidth: 90,
+  },
+  waBtn: { backgroundColor: '#22c55e' },
+  callBtnText: { color: '#0f172a', fontWeight: '700' },
+  offlineBadge: { color: '#fbbf24', fontSize: 12, marginBottom: 8 },
+  insightsBox: {
+    backgroundColor: '#1e293b',
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 8,
   },
-  callBtnText: { color: '#0f172a', fontWeight: '700' },
+  scoreLine: { color: '#e2e8f0', marginTop: 4 },
+  hygieneLine: { color: '#fbbf24', marginTop: 4, fontSize: 13 },
+  hygieneOk: { color: '#4ade80', marginTop: 4, fontSize: 13 },
+  draftBox: { marginBottom: 8 },
+  draftText: { color: '#e2e8f0', lineHeight: 22, marginTop: 8 },
   section: { color: '#94a3b8', fontWeight: '600', marginTop: 20, marginBottom: 8 },
   summary: { color: '#e2e8f0', lineHeight: 22 },
   nextBox: { backgroundColor: '#1e293b', padding: 12, borderRadius: 8, marginTop: 8 },

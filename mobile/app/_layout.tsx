@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { HeaderActions } from '../components/HeaderActions';
 import { LogoutButton } from '../components/LogoutButton';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
+import { CallReturnPrompt } from '../components/CallReturnPrompt';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -66,6 +67,16 @@ function RootNavigator() {
           }}
         />
         <Stack.Screen
+          name="lead/edit"
+          options={{
+            headerShown: true,
+            title: 'Edit lead',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <HeaderActions />,
+          }}
+        />
+        <Stack.Screen
           name="team/[id]"
           options={{
             headerShown: true,
@@ -94,6 +105,7 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
+        <CallReturnPrompt />
         <RootNavigator />
       </AuthProvider>
     </AppErrorBoundary>

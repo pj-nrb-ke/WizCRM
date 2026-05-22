@@ -27,6 +27,7 @@ import {
 import { router } from 'expo-router';
 
 import { api } from '../../lib/api';
+import { LEAD_PRIORITIES, type LeadPriority } from '../../constants/priorities';
 
 import {
 
@@ -51,6 +52,10 @@ export default function NewLeadScreen() {
   const [email, setEmail] = useState('');
 
   const [phone, setPhone] = useState('');
+
+  const [source, setSource] = useState('');
+
+  const [priority, setPriority] = useState<LeadPriority | null>(null);
 
   const [saving, setSaving] = useState(false);
 
@@ -167,6 +172,10 @@ export default function NewLeadScreen() {
           email: email.trim() || undefined,
 
           phone: phone.trim() || undefined,
+
+          source: source.trim() || undefined,
+
+          priority: priority ?? undefined,
 
           force,
 
@@ -328,6 +337,62 @@ export default function NewLeadScreen() {
 
       />
 
+      <Text style={styles.label}>Source</Text>
+
+      <TextInput
+
+        style={styles.input}
+
+        value={source}
+
+        onChangeText={setSource}
+
+        placeholder="Referral, event, website…"
+
+        placeholderTextColor="#64748b"
+
+      />
+
+      <Text style={styles.label}>Priority</Text>
+
+      <View style={styles.priorityRow}>
+
+        {LEAD_PRIORITIES.map((p) => (
+
+          <Pressable
+
+            key={p}
+
+            style={[styles.priorityChip, priority === p && styles.priorityChipActive]}
+
+            onPress={() => setPriority(priority === p ? null : p)}
+
+          >
+
+            <Text
+
+              style={[
+
+                styles.priorityChipText,
+
+                priority === p && styles.priorityChipTextActive,
+
+              ]}
+
+            >
+
+              {p}
+
+            </Text>
+
+          </Pressable>
+
+        ))}
+
+      </View>
+
+
+
       <Text style={styles.hint}>Phone or email required</Text>
 
       <Pressable style={styles.button} onPress={() => save()} disabled={saving}>
@@ -443,6 +508,26 @@ const styles = StyleSheet.create({
   },
 
   hint: { color: '#64748b', fontSize: 12, marginTop: 8 },
+
+  priorityRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+
+  priorityChip: {
+
+    backgroundColor: '#1e293b',
+
+    paddingHorizontal: 14,
+
+    paddingVertical: 8,
+
+    borderRadius: 20,
+
+  },
+
+  priorityChipActive: { backgroundColor: '#38bdf8' },
+
+  priorityChipText: { color: '#f8fafc', fontSize: 12 },
+
+  priorityChipTextActive: { color: '#0f172a', fontWeight: '700' },
 
   button: {
 
