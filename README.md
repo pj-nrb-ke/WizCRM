@@ -30,6 +30,7 @@ Lead stages and domain rules: **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)** (AI s
 
 | Document | Purpose |
 |----------|---------|
+| **[OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md)** | **Single table of all open tasks (top-level)** |
 | [SRS.md](./SRS.md) | Software requirements v2.0 (Lite / Pro / Enterprise) |
 | [SRS-WEB.md](./SRS-WEB.md) | Web app layer — admin settings, manager desk, phased `WEB-*` |
 | [WizCRM Features.md](./WizCRM%20Features.md) | Brochure feature lists by plan |

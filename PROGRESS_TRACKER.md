@@ -4,8 +4,9 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled · ➖ Waived (QA only, with reason in notes)
 
-**Last updated:** 2026-05-19 (Cluster 2 — UT/E2E for stage, next-action, notes, post-call)
+**Last updated:** 2026-05-22
 
+**Outstanding work (single table):** **[OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md)** ← top-level list  
 **Manager tasks:** [manager_task_tracker.md](./manager_task_tracker.md) (`MGT-*`)
 
 ---
@@ -185,7 +186,7 @@ Manual or scripted acceptance per [SRS.md](./SRS.md) §3.1. Record **Pass / Fail
 
 ## WizCRM Web — phased (`WEB-*`)
 
-See **[SRS-WEB.md](./SRS-WEB.md)**. Recommended next work: **Cluster A** (foundation + central settings).
+See **[SRS-WEB.md](./SRS-WEB.md)**. Clusters **A** and **B** are done; see **[OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md)** for what remains.
 
 | Status | ID | Feature |
 |--------|-----|---------|
