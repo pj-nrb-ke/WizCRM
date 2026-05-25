@@ -16,7 +16,11 @@ if (-not $SkipPush) {
   git push origin development
 }
 
-$Key = Join-Path $env:USERPROFILE '.ssh\contabo_wizcrm'
+. (Join-Path $PSScriptRoot 'Read-HostingConfig.ps1')
+$cfg = Get-HostingConfig -RepoRoot $Root
+$target = "$($cfg.SSH_USER)@$($cfg.SSH_HOST)"
+Write-Host "Deploy → $target ($($cfg._SOURCE))" -ForegroundColor Cyan
+
 $script = Get-Content (Join-Path $PSScriptRoot 'deploy-vps.sh') -Raw
 $script = $script -replace "`r`n", "`n" -replace "`r", "`n"
-$script | ssh -o BatchMode=yes -i $Key root@161.97.141.220 'bash -s'
+$script | ssh -o BatchMode=yes -p $cfg.SSH_PORT -i $cfg.SSH_IDENTITY_FILE $target 'bash -s'

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { filterSearchParams } from '../lib/manager-query';
 import type { TeamsResponse } from '../lib/types';
+import { PageHeader } from '../components/PageHeader';
 
 function StatPill({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
   return (
@@ -44,9 +45,11 @@ export function ManagerHomePage() {
 
   return (
     <>
-      <h1>Manager home</h1>
-      <p className="muted">Team overview — open the pipeline or leads list for a team or rep.</p>
-      {error ? <p className="error">{error}</p> : null}
+      <PageHeader
+        title="Manager home"
+        subtitle="Team overview — open the pipeline or leads list for a team or rep."
+      />
+      {error ? <div className="alert alert-error">{error}</div> : null}
 
       {orgStats && (
         <div className="card">

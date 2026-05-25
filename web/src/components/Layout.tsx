@@ -1,79 +1,124 @@
+import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
+import { NavIcon } from './NavIcon';
+
+function NavItem({ to, end, icon, children }: {
+  to: string;
+  end?: boolean;
+  icon: Parameters<typeof NavIcon>[0]['name'];
+  children: ReactNode;
+}) {
+  return (
+    <NavLink to={to} end={end} className="nav-item">
+      <NavIcon name={icon} />
+      <span>{children}</span>
+    </NavLink>
+  );
+}
+
+function NavSection({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="nav-section">
+      <span className="nav-section-label">{label}</span>
+      {children}
+    </div>
+  );
+}
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const manager = isManager(user?.role);
+  const admin = isAdmin(user?.role);
+  const roleLabel = admin ? 'Administrator' : manager ? 'Manager' : 'User';
 
   return (
-    <div className="layout">
+    <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand">
-          <strong>WizCRM</strong>
-          <span className="muted">{isManager(user?.role) ? 'Manager' : 'Settings'}</span>
+        <div className="sidebar-brand">
+          <div className="brand-mark" aria-hidden>
+            W
+          </div>
+          <div className="brand-text">
+            <strong>WizCRM</strong>
+            <span>Web console</span>
+          </div>
         </div>
-        <nav>
-          <NavLink to="/" end>
-            Home
-          </NavLink>
-          {isManager(user?.role) && (
-            <>
-              <NavLink to="/manager">Manager home</NavLink>
-              <NavLink to="/pipeline">Pipeline</NavLink>
-              <NavLink to="/leads">Leads</NavLink>
-              <NavLink to="/reports">Reports</NavLink>
-            </>
+
+        <nav className="sidebar-nav">
+          <NavItem to="/" end icon="home">
+            Overview
+          </NavItem>
+
+          {manager && (
+            <NavSection label="Sales workspace">
+              <NavItem to="/manager" icon="dashboard">
+                Manager home
+              </NavItem>
+              <NavItem to="/pipeline" icon="pipeline">
+                Pipeline
+              </NavItem>
+              <NavItem to="/leads" icon="leads">
+                Leads
+              </NavItem>
+              <NavItem to="/reports" icon="reports">
+                Reports
+              </NavItem>
+            </NavSection>
           )}
-          {isManager(user?.role) && (
-            <NavLink to="/organization">Organization</NavLink>
+
+          {manager && (
+            <NavSection label="Organization">
+              <NavItem to="/organization" icon="org">
+                Profile
+              </NavItem>
+              <NavItem to="/teams" icon="teams">
+                Teams
+              </NavItem>
+            </NavSection>
           )}
-          {isAdmin(user?.role) && (
-            <>
-              <NavLink to="/users">Users</NavLink>
-              <NavLink to="/platform">AI & platform</NavLink>
-              <NavLink to="/connection">Mobile connection</NavLink>
-              <NavLink to="/audit">AI audit log</NavLink>
-            </>
+
+          {admin && (
+            <NavSection label="Administration">
+              <NavItem to="/users" icon="users">
+                Users
+              </NavItem>
+              <NavItem to="/platform" icon="ai">
+                AI & platform
+              </NavItem>
+              <NavItem to="/connection" icon="mobile">
+                Mobile connection
+              </NavItem>
+              <NavItem to="/audit" icon="audit">
+                AI audit log
+              </NavItem>
+            </NavSection>
           )}
-          {isManager(user?.role) && <NavLink to="/teams">Teams</NavLink>}
         </nav>
+
         <div className="sidebar-footer">
-          <p className="muted">{user?.name}</p>
-          <p className="muted">{user?.role}</p>
-          <button type="button" className="btn-secondary" onClick={logout}>
+          <div className="user-chip">
+            <div className="user-avatar" aria-hidden>
+              {(user?.name ?? '?').charAt(0).toUpperCase()}
+            </div>
+            <div className="user-meta">
+              <span className="user-name">{user?.name}</span>
+              <span className="user-role">{roleLabel}</span>
+            </div>
+          </div>
+          <button type="button" className="btn-logout" onClick={logout}>
+            <NavIcon name="logout" />
             Log out
           </button>
         </div>
       </aside>
-      <main className="main">
-        <Outlet />
-      </main>
-      <style>{`
-        .layout { display: flex; min-height: 100vh; }
-        .sidebar {
-          width: 240px;
-          background: #1e293b;
-          padding: 20px 16px;
-          display: flex;
-          flex-direction: column;
-          border-right: 1px solid #334155;
-        }
-        .brand { margin-bottom: 24px; display: flex; flex-direction: column; gap: 4px; }
-        nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-        nav a {
-          padding: 8px 10px;
-          border-radius: 8px;
-          color: #cbd5e1;
-          text-decoration: none;
-        }
-        nav a.active { background: #334155; color: #38bdf8; }
-        .sidebar-footer { margin-top: auto; padding-top: 16px; }
-        .sidebar-footer button { width: 100%; margin-top: 8px; }
-        .main { flex: 1; padding: 28px 32px; max-width: 1200px; }
-        .main:has(.page-wide) { max-width: none; }
-        h1 { margin: 0 0 8px; font-size: 1.75rem; }
-        h2 { margin: 0 0 12px; font-size: 1.1rem; color: #94a3b8; }
-      `}</style>
+
+      <div className="workspace">
+        <main className="main">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

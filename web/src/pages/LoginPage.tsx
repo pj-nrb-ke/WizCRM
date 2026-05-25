@@ -31,47 +31,44 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <form className="card login-card" onSubmit={onSubmit}>
-        <h1>WizCRM</h1>
-        <p className="muted">Sign in to admin settings</p>
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+      <div className="login-panel">
+        <div className="login-brand">
+          <div className="brand-mark brand-mark-lg">W</div>
+          <h1>WizCRM</h1>
+          <p>Manager & admin console</p>
         </div>
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%' }}>
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
-        <p className="muted" style={{ marginTop: 16, textAlign: 'center' }}>
-          API: {getApiBaseUrl()}
-        </p>
-      </form>
-      <style>{`
-        .login-page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 24px;
-        }
-        .login-card { width: 100%; max-width: 400px; }
-      `}</style>
+        <form className="login-card" onSubmit={onSubmit}>
+          <h2>Sign in</h2>
+          <p className="muted">Use your organization account</p>
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          {error ? <div className="alert alert-error">{error}</div> : null}
+          <button type="submit" className="btn-primary btn-block" disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+          <p className="login-api-hint">
+            API <code>{getApiBaseUrl()}</code>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }
