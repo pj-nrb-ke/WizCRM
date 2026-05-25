@@ -1,6 +1,14 @@
-import type { FastifyPluginAsync } from 'fastify';
-import { createLeadSchema, updateLeadSchema } from '@wizcrm/shared';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import {
+  createLeadSchema,
+  mergePipelineStages,
+  normalizePipelineStagesForSave,
+  pipelineStagesPatchSchema,
+  pipelineStageIds,
+  updateLeadSchema,
+} from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
+import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
 import {
   createLead,
   updateLead,
@@ -17,8 +25,43 @@ const ownerSelect = {
   team: { select: { id: true, name: true } },
 } as const;
 
+function isManager(role: string) {
+  return role === 'MANAGER' || role === 'ADMIN';
+}
+
+function requireManager() {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!isManager(request.user.role)) {
+      return reply.status(403).send({ error: 'Managers and admins only' });
+    }
+  };
+}
+
 export const leadRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
+
+  app.get('/pipeline/config', { preHandler: requireManager() }, async (request) => {
+    const settings = await getOrgSettings(request.user.organizationId);
+    const stages = mergePipelineStages(settings.pipelineStages);
+    return { stages };
+  });
+
+  app.patch('/pipeline/config', { preHandler: requireManager() }, async (request, reply) => {
+    const parsed = pipelineStagesPatchSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const openCount = parsed.data.stages.filter(
+      (s) => s.inPipeline && s.stage !== 'WON' && s.stage !== 'LOST',
+    ).length;
+    if (openCount < 1) {
+      return reply.status(400).send({ error: 'At least one open pipeline stage is required' });
+    }
+    const settings = await mergeOrgSettings(request.user.organizationId, {
+      pipelineStages: normalizePipelineStagesForSave(parsed.data.stages),
+    });
+    return { stages: mergePipelineStages(settings.pipelineStages) };
+  });
 
   app.get('/', async (request, reply) => {
     const { organizationId } = request.user;
@@ -52,6 +95,8 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
   app.get('/pipeline', async (request, reply) => {
     const { organizationId } = request.user;
     const q = request.query as { teamId?: string; ownerId?: string };
+    const stages = mergePipelineStages((await getOrgSettings(organizationId)).pipelineStages);
+    const stageIds = pipelineStageIds(stages);
     let ownerFilter: { ownerId?: string | { in: string[] } } = {};
     if (q.ownerId) {
       ownerFilter = { ownerId: q.ownerId };
@@ -61,12 +106,12 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ error: 'Team not found' });
       }
       if (memberIds.length === 0) {
-        return { pipeline: {} };
+        return { stages, pipeline: {} };
       }
       ownerFilter = { ownerId: { in: memberIds } };
     }
     const leads = await prisma.lead.findMany({
-      where: { organizationId, stage: { notIn: ['WON', 'LOST'] }, ...ownerFilter },
+      where: { organizationId, stage: { in: stageIds }, ...ownerFilter },
       include: { owner: { select: ownerSelect } },
       orderBy: { updatedAt: 'desc' },
     });
@@ -75,7 +120,7 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       acc[lead.stage].push(lead);
       return acc;
     }, {});
-    return { pipeline };
+    return { stages, pipeline };
   });
 
   app.get('/check-duplicates', async (request, reply) => {

@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { isAllowedStageTransition } from '@wizcrm/shared';
+import { isAllowedStageTransition, isPipelineDragTransition } from '@wizcrm/shared';
 import type { CreateLeadInput, UpdateLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { findDuplicateLeads, normalizeEmail } from './duplicate.service.js';
@@ -75,7 +75,10 @@ export async function updateLead(
     if (!input.confirmStageSuggestion && input.stage !== existing.stage) {
       // direct user change still allowed when confirmStageSuggestion or no AI-only path
     }
-    if (!isAllowedStageTransition(existing.stage, input.stage)) {
+    const allowed = input.pipelineMove
+      ? isPipelineDragTransition(existing.stage, input.stage)
+      : isAllowedStageTransition(existing.stage, input.stage);
+    if (!allowed) {
       throw Object.assign(new Error('Invalid stage transition'), { statusCode: 400 });
     }
     data.stage = input.stage;

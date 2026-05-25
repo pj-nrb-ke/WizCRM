@@ -707,11 +707,40 @@ tbody tr:last-child td {
   color: var(--primary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kanban-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.kanban-col-drop {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.25);
+}
+
+.pipeline-moving {
+  margin: 0 0 12px;
+  font-style: italic;
 }
 
 .kanban-cards {
   overflow-y: auto;
   flex: 1;
+  min-height: 160px;
+}
+
+.kanban-drop-zone {
+  border-radius: var(--radius-sm);
 }
 
 .kanban-card {
@@ -725,7 +754,8 @@ tbody tr:last-child td {
   margin-bottom: 8px;
   color: var(--text);
   box-shadow: var(--shadow-sm);
-  cursor: pointer;
+  cursor: grab;
+  transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
 }
 
 .kanban-card:hover {
@@ -733,11 +763,106 @@ tbody tr:last-child td {
   box-shadow: var(--shadow-md);
 }
 
+.kanban-card-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.kanban-card-meta {
+  display: block;
+  font-size: 0.78rem;
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
 .kanban-card .block {
   display: block;
   font-size: 0.8rem;
   margin-top: 4px;
   color: var(--text-muted);
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 28px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+  border: 1px solid var(--border);
+}
+
+.modal-panel h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.stage-editor-list {
+  list-style: none;
+  margin: 20px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stage-editor-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.stage-editor-key {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.stage-editor-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.btn-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* —— Drawer —— */

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { hasContactMethod, sanitizeStringList } from './contact.js';
 import { LEAD_PRIORITIES } from './priorities.js';
+import { pipelineStageConfigSchema } from './pipeline-stages.js';
 import { LEAD_STAGES } from './stages.js';
 
 const phoneField = z.string().min(5).max(30);
@@ -55,6 +56,8 @@ export const updateLeadSchema = z.object({
   stage: z.enum(LEAD_STAGES).optional(),
   stageNote: z.string().max(500).optional(),
   confirmStageSuggestion: z.boolean().optional(),
+  /** Manager pipeline drag-drop: relaxed stage transition rules */
+  pipelineMove: z.boolean().optional(),
 });
 
 export const createActivitySchema = z.object({
@@ -125,6 +128,7 @@ export const updateOrganizationSchema = z.object({
 
 export const orgSettingsSchema = z.object({
   deskUseAi: z.boolean().optional(),
+  pipelineStages: z.array(pipelineStageConfigSchema).optional(),
 });
 
 export const createAdminUserSchema = z.object({
