@@ -14,7 +14,8 @@ if [[ ! -f docker/.env.db ]]; then
   chmod 600 docker/.env.db
 fi
 DC="$(command -v docker-compose 2>/dev/null || echo "docker compose")"
-${DC} -f docker/docker-compose.prod.yml --env-file docker/.env.db up -d
+${DC} -f docker/docker-compose.prod.yml --env-file docker/.env.db up -d --no-recreate 2>/dev/null || \
+  ${DC} -f docker/docker-compose.prod.yml --env-file docker/.env.db up -d
 for _ in $(seq 1 30); do
   if docker inspect -f '{{.State.Health.Status}}' wizcrm-postgres 2>/dev/null | grep -q healthy; then
     break
