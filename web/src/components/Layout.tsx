@@ -62,11 +62,11 @@ export function Layout() {
               <NavItem to="/leads" icon="leads">
                 Leads
               </NavItem>
-              <NavItem to="/reports" icon="reports">
-                Reports
-              </NavItem>
               <NavItem to="/calendar" icon="calendar">
                 My calendar
+              </NavItem>
+              <NavItem to="/reports" icon="reports">
+                Reports
               </NavItem>
             </NavSection>
           )}

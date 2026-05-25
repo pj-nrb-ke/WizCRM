@@ -6,6 +6,7 @@ import { leadsQueryPath, readManagerFilter } from '../lib/manager-query';
 import type { LeadSummary } from '../lib/types';
 import { TeamFilterBar } from '../components/TeamFilterBar';
 import { LeadDrawer } from '../components/LeadDrawer';
+import { PageHeader } from '../components/PageHeader';
 
 export function LeadsPage() {
   const [search] = useSearchParams();
@@ -47,7 +48,10 @@ export function LeadsPage() {
 
   return (
     <div className="page-wide">
-      <h1>{title}</h1>
+      <PageHeader
+        title={title}
+        subtitle="Search, filter, and open any lead for full details."
+      />
       <TeamFilterBar basePath="/leads" />
       {error ? <p className="error">{error}</p> : null}
 

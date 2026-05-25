@@ -6,6 +6,7 @@ import {
   updateTeamSchema,
 } from '@wizcrm/shared';
 import { loadTeamActivityFeed } from '../services/activity-feed.service.js';
+import { loadMetricDetails, type MetricKind } from '../services/team-metrics.service.js';
 import { prisma } from '../lib/prisma.js';
 import {
   getTeamMemberIds,
@@ -30,6 +31,24 @@ export const teamRoutes: FastifyPluginAsync = async (app) => {
     }
     const items = await loadTeamActivityFeed(organizationId, parsed.data);
     return { items };
+  });
+
+  app.get('/metrics/:metric', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const { metric } = request.params as { metric: string };
+    if (!['open', 'stale', 'won', 'overdue'].includes(metric)) {
+      return reply.status(400).send({ error: 'Invalid metric' });
+    }
+    const q = request.query as { teamId?: string; ownerId?: string };
+    const details = await loadMetricDetails(
+      organizationId,
+      metric as MetricKind,
+      { teamId: q.teamId, ownerId: q.ownerId },
+    );
+    return details;
   });
 
   app.get('/', async (request, reply) => {

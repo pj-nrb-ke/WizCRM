@@ -5,16 +5,24 @@ import { filterSearchParams } from '../lib/manager-query';
 import type { TeamsResponse } from '../lib/types';
 import { PageHeader } from '../components/PageHeader';
 import { TeamActivityFeed } from '../components/TeamActivityFeed';
+import { KpiCard } from '../components/KpiCard';
+import {
+  MetricDrilldown,
+  type DrilldownLead,
+  type DrilldownTask,
+} from '../components/MetricDrilldown';
+import { LeadDrawer } from '../components/LeadDrawer';
 import type { LeadSummary } from '../lib/types';
 
-function StatPill({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
-  return (
-    <div className={`stat-pill${warn && value > 0 ? ' stat-pill-warn' : ''}`}>
-      <span className="stat-pill-value">{value}</span>
-      <span className="stat-pill-label">{label}</span>
-    </div>
-  );
-}
+type MetricKey = 'open' | 'stale' | 'won' | 'overdue';
+
+type DrilldownState = {
+  metric: MetricKey;
+  title: string;
+  subtitle: string;
+  teamId?: string;
+  ownerId?: string;
+};
 
 function formatActivity(iso: string | null) {
   if (!iso) return 'No activity yet';
@@ -25,10 +33,22 @@ function formatActivity(iso: string | null) {
   return `Last activity ${days}d ago`;
 }
 
+const METRIC_LABELS: Record<MetricKey, string> = {
+  open: 'Open leads',
+  stale: 'Stale leads',
+  won: 'Won leads',
+  overdue: 'Overdue tasks',
+};
+
 export function ManagerHomePage() {
   const [data, setData] = useState<TeamsResponse | null>(null);
   const [leads, setLeads] = useState<LeadSummary[]>([]);
   const [error, setError] = useState('');
+  const [drilldown, setDrilldown] = useState<DrilldownState | null>(null);
+  const [drillLeads, setDrillLeads] = useState<DrilldownLead[]>([]);
+  const [drillTasks, setDrillTasks] = useState<DrilldownTask[]>([]);
+  const [drillLoading, setDrillLoading] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     api<TeamsResponse>('/teams')
@@ -49,112 +69,267 @@ export function ManagerHomePage() {
     { open: 0, overdue: 0, stale: 0, won: 0 },
   );
 
+  async function openDrilldown(state: DrilldownState) {
+    setDrilldown(state);
+    setDrillLoading(true);
+    setDrillLeads([]);
+    setDrillTasks([]);
+    try {
+      const qs = new URLSearchParams();
+      if (state.teamId) qs.set('teamId', state.teamId);
+      if (state.ownerId) qs.set('ownerId', state.ownerId);
+      const q = qs.toString();
+      const res = await api<{
+        leads: DrilldownLead[];
+        tasks: DrilldownTask[];
+        staleDays?: number;
+      }>(`/teams/metrics/${state.metric}${q ? `?${q}` : ''}`);
+      setDrillLeads(res.leads ?? []);
+      setDrillTasks(res.tasks ?? []);
+      if (res.staleDays && state.metric === 'stale') {
+        setDrilldown((d) =>
+          d ? { ...d, subtitle: `No activity in ${res.staleDays}+ days` } : d,
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load records');
+      setDrilldown(null);
+    } finally {
+      setDrillLoading(false);
+    }
+  }
+
+  function openOrgMetric(metric: MetricKey) {
+    void openDrilldown({
+      metric,
+      title: `Organization · ${METRIC_LABELS[metric]}`,
+      subtitle: 'All teams',
+    });
+  }
+
+  function openTeamMetric(metric: MetricKey, teamId: string, teamName: string) {
+    void openDrilldown({
+      metric,
+      title: `${teamName} · ${METRIC_LABELS[metric]}`,
+      subtitle: teamName,
+      teamId,
+    });
+  }
+
   return (
-    <>
+    <div className="page-dashboard manager-home">
       <PageHeader
         title="Manager home"
-        subtitle="Team overview — open the pipeline or leads list for a team or rep."
+        subtitle="Click a metric to see underlying leads and tasks. Track team performance at a glance."
       />
       {error ? <div className="alert alert-error">{error}</div> : null}
+
+      {orgStats && (
+        <section className="manager-hero card">
+          <div className="manager-hero-text">
+            <h2>Organization snapshot</h2>
+            <p className="muted">
+              Real-time counts across Field Sales and Inside Sales. Select a card to drill into
+              records.
+            </p>
+          </div>
+          <div className="kpi-grid">
+            <KpiCard
+              label="Open leads"
+              value={orgStats.open}
+              icon="◎"
+              variant="default"
+              active={drilldown?.metric === 'open' && !drilldown.teamId}
+              onClick={() => openOrgMetric('open')}
+            />
+            <KpiCard
+              label="Overdue tasks"
+              value={orgStats.overdue}
+              icon="⏱"
+              variant="warn"
+              active={drilldown?.metric === 'overdue' && !drilldown.teamId}
+              onClick={() => openOrgMetric('overdue')}
+            />
+            <KpiCard
+              label="Stale leads"
+              value={orgStats.stale}
+              hint="7+ days idle"
+              icon="⚠"
+              variant="warn"
+              active={drilldown?.metric === 'stale' && !drilldown.teamId}
+              onClick={() => openOrgMetric('stale')}
+            />
+            <KpiCard
+              label="Won"
+              value={orgStats.won}
+              icon="✓"
+              variant="success"
+              active={drilldown?.metric === 'won' && !drilldown.teamId}
+              onClick={() => openOrgMetric('won')}
+            />
+          </div>
+          <div className="manager-quick-links">
+            <Link to="/pipeline" className="quick-chip">
+              Pipeline
+            </Link>
+            <Link to="/leads" className="quick-chip">
+              All leads
+            </Link>
+            <Link to="/calendar" className="quick-chip">
+              My calendar
+            </Link>
+            <Link to="/reports" className="quick-chip">
+              Reports
+            </Link>
+          </div>
+        </section>
+      )}
+
+      <div className="manager-teams-grid">
+        {(data?.teams ?? []).map((team) => (
+          <section key={team.id} className="team-panel card">
+            <div className="team-panel-head">
+              <div>
+                <h2>{team.name}</h2>
+                <p className="muted">
+                  {team.memberCount} rep{team.memberCount === 1 ? '' : 's'} ·{' '}
+                  {formatActivity(team.stats.lastActivityAt)}
+                </p>
+              </div>
+              <div className="team-panel-actions">
+                <Link
+                  to={`/pipeline${filterSearchParams({ teamId: team.id, title: team.name })}`}
+                  className="btn-secondary btn-sm"
+                >
+                  Pipeline
+                </Link>
+                <Link
+                  to={`/leads${filterSearchParams({ teamId: team.id, title: team.name })}`}
+                  className="btn-secondary btn-sm"
+                >
+                  Leads
+                </Link>
+              </div>
+            </div>
+            <div className="kpi-grid kpi-grid-compact">
+              <KpiCard
+                label="Open"
+                value={team.stats.openLeads}
+                onClick={() => openTeamMetric('open', team.id, team.name)}
+              />
+              <KpiCard
+                label="Overdue"
+                value={team.stats.overdueTasks}
+                variant="warn"
+                onClick={() => openTeamMetric('overdue', team.id, team.name)}
+              />
+              <KpiCard
+                label="Stale"
+                value={team.stats.staleLeads}
+                variant="warn"
+                onClick={() => openTeamMetric('stale', team.id, team.name)}
+              />
+              <KpiCard
+                label="Won"
+                value={team.stats.wonLeads}
+                variant="success"
+                onClick={() => openTeamMetric('won', team.id, team.name)}
+              />
+            </div>
+            {team.members.length > 0 ? (
+              <ul className="rep-list">
+                {team.members.map((m) => (
+                  <li key={m.id} className="rep-row">
+                    <button
+                      type="button"
+                      className="rep-row-main"
+                      onClick={() =>
+                        void openDrilldown({
+                          metric: 'open',
+                          title: `${m.name} · open leads`,
+                          subtitle: m.name,
+                          ownerId: m.id,
+                        })
+                      }
+                    >
+                      <span className="rep-avatar" aria-hidden>
+                        {m.name.charAt(0)}
+                      </span>
+                      <span className="rep-info">
+                        <strong>{m.name}</strong>
+                        <span className="muted">
+                          {m.stats.openLeads} open · {m.stats.overdueTasks} overdue ·{' '}
+                          {m.stats.staleLeads} stale
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">No members assigned.</p>
+            )}
+          </section>
+        ))}
+      </div>
+
+      {data && data.unassigned.length > 0 ? (
+        <section className="card">
+          <h2>Unassigned reps</h2>
+          <ul className="rep-list">
+            {data.unassigned.map((u) => (
+              <li key={u.id} className="rep-row">
+                <Link
+                  to={`/leads${filterSearchParams({ ownerId: u.id, title: u.name })}`}
+                  className="rep-row-main"
+                >
+                  <span className="rep-avatar">{u.name.charAt(0)}</span>
+                  <span className="rep-info">
+                    <strong>{u.name}</strong>
+                    <span className="muted">
+                      {u.stats.openLeads} open · {u.stats.overdueTasks} overdue
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <TeamActivityFeed
         leads={leads.map((l) => ({ id: l.id, name: l.name, company: l.company }))}
       />
 
-      {orgStats && (
-        <div className="card">
-          <h2>Organization</h2>
-          <div className="stat-row">
-            <StatPill label="Open leads" value={orgStats.open} />
-            <StatPill label="Overdue tasks" value={orgStats.overdue} warn />
-            <StatPill label="Stale leads" value={orgStats.stale} warn />
-            <StatPill label="Won (all teams)" value={orgStats.won} />
-          </div>
-          <p className="muted" style={{ marginTop: 12 }}>
-            <Link to="/pipeline">Pipeline board</Link> · <Link to="/leads">All leads</Link> ·{' '}
-            <Link to="/reports">Reports & CSV</Link> · <Link to="/calendar">My calendar</Link>
-          </p>
-        </div>
-      )}
+      {drilldown && !drillLoading ? (
+        <MetricDrilldown
+          title={drilldown.title}
+          subtitle={drilldown.subtitle}
+          leads={drillLeads}
+          tasks={drillTasks}
+          onClose={() => setDrilldown(null)}
+          onSelectLead={(id) => {
+            setSelectedLeadId(id);
+            setDrilldown(null);
+          }}
+        />
+      ) : null}
 
-      {(data?.teams ?? []).map((team) => (
-        <div key={team.id} className="card">
-          <h2>
-            {team.name}
-            <span className="muted"> · {team.memberCount} reps</span>
-          </h2>
-          <div className="stat-row">
-            <StatPill label="Open" value={team.stats.openLeads} />
-            <StatPill label="Overdue" value={team.stats.overdueTasks} warn />
-            <StatPill label="Stale" value={team.stats.staleLeads} warn />
-            <StatPill label="Won" value={team.stats.wonLeads} />
+      {drilldown && drillLoading ? (
+        <div className="drilldown-backdrop" role="presentation">
+          <div className="drilldown-panel drilldown-loading">
+            <p className="muted">Loading records…</p>
           </div>
-          <p className="muted">{formatActivity(team.stats.lastActivityAt)}</p>
-          <p>
-            <Link to={`/pipeline${filterSearchParams({ teamId: team.id, title: team.name })}`}>
-              Team pipeline
-            </Link>
-            {' · '}
-            <Link to={`/leads${filterSearchParams({ teamId: team.id, title: team.name })}`}>
-              Team leads
-            </Link>
-          </p>
-          {team.members.length > 0 ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Rep</th>
-                  <th>Open</th>
-                  <th>Overdue</th>
-                  <th>Stale</th>
-                </tr>
-              </thead>
-              <tbody>
-                {team.members.map((m) => (
-                  <tr key={m.id}>
-                    <td>
-                      <Link
-                        to={`/leads${filterSearchParams({
-                          ownerId: m.id,
-                          title: m.name,
-                        })}`}
-                      >
-                        {m.name}
-                      </Link>
-                    </td>
-                    <td>{m.stats.openLeads}</td>
-                    <td>{m.stats.overdueTasks}</td>
-                    <td>{m.stats.staleLeads}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="muted">No members assigned.</p>
-          )}
-        </div>
-      ))}
-
-      {data && data.unassigned.length > 0 ? (
-        <div className="card">
-          <h2>Unassigned reps</h2>
-          <ul className="link-list-plain">
-            {data.unassigned.map((u) => (
-              <li key={u.id}>
-                <Link
-                  to={`/leads${filterSearchParams({ ownerId: u.id, title: u.name })}`}
-                >
-                  {u.name}
-                </Link>
-                <span className="muted">
-                  {' '}
-                  — {u.stats.openLeads} open, {u.stats.overdueTasks} overdue
-                </span>
-              </li>
-            ))}
-          </ul>
         </div>
       ) : null}
-    </>
+
+      <LeadDrawer
+        leadId={selectedLeadId}
+        onClose={() => setSelectedLeadId(null)}
+        onUpdated={() => {
+          api<TeamsResponse>('/teams').then(setData).catch(() => {});
+        }}
+      />
+    </div>
   );
 }
