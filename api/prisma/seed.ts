@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaClient, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { seedDemoData } from './seed-demo.js';
 
 const prisma = new PrismaClient();
 
@@ -103,6 +104,8 @@ async function main() {
       organizationId: org.id,
     },
   });
+
+  await seedDemoData(prisma, org.id);
 
   console.log('Seed complete:');
   console.log('  rep@wizag.local / rep2@wizag.local / manager@wizag.local / admin@wizag.local');
