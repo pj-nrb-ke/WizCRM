@@ -34,10 +34,6 @@ function findLeadStage(
   return undefined;
 }
 
-function readDragLeadId(e: React.DragEvent): string {
-  return e.dataTransfer.getData(DRAG_MIME) || e.dataTransfer.getData('text/plain');
-}
-
 export function PipelinePage() {
   const [search] = useSearchParams();
   const filter = readManagerFilter(search);
@@ -53,6 +49,7 @@ export function PipelinePage() {
   const [moving, setMoving] = useState(false);
   const skipClickRef = useRef(false);
   const dragLeadIdRef = useRef<string | null>(null);
+  const dropHintRef = useRef<DropHint | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -74,6 +71,22 @@ export function PipelinePage() {
 
   const total = stages.reduce((n, s) => n + (pipeline[s.stage]?.length ?? 0), 0);
 
+  function clearDragUi() {
+    dragLeadIdRef.current = null;
+    dropHintRef.current = null;
+    setDragLeadId(null);
+    setDropStage(null);
+    setDropHint(null);
+  }
+
+  function getDragId(e: React.DragEvent): string {
+    return (
+      dragLeadIdRef.current ||
+      e.dataTransfer.getData(DRAG_MIME) ||
+      e.dataTransfer.getData('text/plain')
+    );
+  }
+
   async function persistColumnOrder(stage: string, ordered: LeadSummary[]) {
     setMoving(true);
     setError('');
@@ -90,10 +103,7 @@ export function PipelinePage() {
       throw e;
     } finally {
       setMoving(false);
-      setDropStage(null);
-      setDropHint(null);
-      dragLeadIdRef.current = null;
-      setDragLeadId(null);
+      clearDragUi();
     }
   }
 
@@ -150,42 +160,13 @@ export function PipelinePage() {
       setError(e instanceof Error ? e.message : 'Could not move lead');
     } finally {
       setMoving(false);
-      setDropStage(null);
-      setDropHint(null);
+      clearDragUi();
     }
   }
 
-  function resolveDropHint(
-    stage: string,
-    container: HTMLElement,
-    clientY: number,
-    dragId: string,
-  ): DropHint | null {
-    const wraps = container.querySelectorAll<HTMLElement>('[data-pipeline-lead]');
-    let lastOther: { id: string; rect: DOMRect } | null = null;
-
-    for (const wrap of wraps) {
-      const id = wrap.dataset.pipelineLead;
-      if (!id || id === dragId) continue;
-      const rect = wrap.getBoundingClientRect();
-      lastOther = { id, rect };
-
-      if (clientY >= rect.top && clientY <= rect.bottom) {
-        return {
-          stage,
-          leadId: id,
-          place: clientY < rect.top + rect.height / 2 ? 'before' : 'after',
-        };
-      }
-      if (clientY < rect.top) {
-        return { stage, leadId: id, place: 'before' };
-      }
-    }
-
-    if (lastOther && clientY > lastOther.rect.bottom) {
-      return { stage, leadId: lastOther.id, place: 'after' };
-    }
-    return null;
+  function setHint(hint: DropHint | null) {
+    dropHintRef.current = hint;
+    setDropHint(hint);
   }
 
   function handleDragStart(leadId: string, e: React.DragEvent) {
@@ -197,84 +178,94 @@ export function PipelinePage() {
     e.dataTransfer.effectAllowed = 'move';
   }
 
-  function clearDragState() {
-    dragLeadIdRef.current = null;
-    setDragLeadId(null);
-    setDropStage(null);
-    setDropHint(null);
+  function handleDragEnd(e: React.DragEvent) {
+    if (e.dataTransfer.dropEffect === 'none') {
+      clearDragUi();
+    }
+  }
+
+  function allowDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  function handleDragOverWrap(stage: string, targetLeadId: string, e: React.DragEvent) {
+    allowDrop(e);
+    setDropStage(stage);
+    const dragId = dragLeadIdRef.current;
+    if (!dragId || dragId === targetLeadId) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const place: DropPlace = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+    setHint({ stage, leadId: targetLeadId, place });
   }
 
   function handleDragOverColumn(stage: string, e: React.DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
+    allowDrop(e);
     setDropStage(stage);
     const dragId = dragLeadIdRef.current;
     if (!dragId) return;
-    const hint = resolveDropHint(stage, e.currentTarget as HTMLElement, e.clientY, dragId);
-    setDropHint(hint);
+    const container = e.currentTarget as HTMLElement;
+    const wraps = container.querySelectorAll<HTMLElement>('[data-pipeline-lead]');
+    let lastOther: { id: string; rect: DOMRect } | null = null;
+
+    for (const wrap of wraps) {
+      const id = wrap.dataset.pipelineLead;
+      if (!id || id === dragId) continue;
+      const rect = wrap.getBoundingClientRect();
+      lastOther = { id, rect };
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        setHint({
+          stage,
+          leadId: id,
+          place: e.clientY < rect.top + rect.height / 2 ? 'before' : 'after',
+        });
+        return;
+      }
+      if (e.clientY < rect.top) {
+        setHint({ stage, leadId: id, place: 'before' });
+        return;
+      }
+    }
+    if (lastOther && e.clientY > lastOther.rect.bottom) {
+      setHint({ stage, leadId: lastOther.id, place: 'after' });
+    }
   }
 
-  async function handleDropColumn(stage: string, e: React.DragEvent) {
+  async function handleDropInColumn(stage: string, e: React.DragEvent) {
     e.preventDefault();
-    e.stopPropagation();
-    setDropStage(null);
-    setDropHint(null);
-    const leadId = readDragLeadId(e);
-    if (!leadId || moving) return;
-    const fromStage = findLeadStage(pipeline, leadId);
-    if (!fromStage) return;
-    skipClickRef.current = true;
-    if (fromStage === stage) {
-      const next = moveLeadToEnd(pipeline[stage] ?? [], leadId);
-      await persistColumnOrder(stage, next);
+    const leadId = getDragId(e);
+    if (!leadId || moving) {
+      clearDragUi();
       return;
     }
-    void moveLeadToStage(leadId, fromStage, stage);
-  }
-
-  async function handleDropOnCard(
-    colStage: string,
-    targetLeadId: string,
-    e: React.DragEvent,
-  ) {
-    e.preventDefault();
-    e.stopPropagation();
-    const leadId = readDragLeadId(e);
-    if (!leadId || moving || leadId === targetLeadId) return;
     const fromStage = findLeadStage(pipeline, leadId);
-    if (!fromStage) return;
-    const place: DropPlace =
-      dropHint?.leadId === targetLeadId && dropHint.stage === colStage
-        ? dropHint.place
-        : 'before';
-    skipClickRef.current = true;
-    setDropStage(null);
-    setDropHint(null);
-    if (fromStage === colStage) {
-      await reorderWithinStage(colStage, leadId, targetLeadId, place);
+    if (!fromStage) {
+      clearDragUi();
       return;
     }
-    void moveLeadToStage(leadId, fromStage, colStage, { targetId: targetLeadId, place });
-  }
+    const hint = dropHintRef.current;
+    skipClickRef.current = true;
 
-  function columnDropProps(stage: string) {
-    return {
-      onDragOver: (e: React.DragEvent) => handleDragOverColumn(stage, e),
-      onDrop: (e: React.DragEvent) => void handleDropColumn(stage, e),
-      onDragLeave: (e: React.DragEvent) => {
-        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
-          setDropHint(null);
+    try {
+      if (fromStage === stage) {
+        if (hint?.stage === stage && hint.leadId !== leadId) {
+          await reorderWithinStage(stage, leadId, hint.leadId, hint.place);
+        } else {
+          await persistColumnOrder(stage, moveLeadToEnd(pipeline[stage] ?? [], leadId));
         }
-      },
-    };
-  }
+        return;
+      }
 
-  function cardsDropProps(stage: string) {
-    return {
-      onDragOver: (e: React.DragEvent) => handleDragOverColumn(stage, e),
-      onDrop: (e: React.DragEvent) => void handleDropColumn(stage, e),
-    };
+      const insert =
+        hint?.stage === stage && hint.leadId !== leadId
+          ? { targetId: hint.leadId, place: hint.place }
+          : undefined;
+      await moveLeadToStage(leadId, fromStage, stage, insert);
+    } catch {
+      /* errors surfaced via setError */
+    } finally {
+      clearDragUi();
+    }
   }
 
   return (
@@ -301,29 +292,37 @@ export function PipelinePage() {
           <div
             key={col.stage}
             className={`kanban-col${dropStage === col.stage ? ' kanban-col-drop' : ''}`}
-            {...columnDropProps(col.stage)}
+            onDragOver={(e) => handleDragOverColumn(col.stage, e)}
+            onDrop={(e) => void handleDropInColumn(col.stage, e)}
           >
             <h3 className="kanban-title">
               {col.label}
               <span className="kanban-count">{(pipeline[col.stage] ?? []).length}</span>
             </h3>
-            <div className="kanban-cards kanban-drop-zone" {...cardsDropProps(col.stage)}>
+            <div
+              className="kanban-cards kanban-drop-zone"
+              onDragOver={(e) => handleDragOverColumn(col.stage, e)}
+              onDrop={(e) => void handleDropInColumn(col.stage, e)}
+            >
               {(pipeline[col.stage] ?? []).map((lead) => {
+                const isDragging = dragLeadId === lead.id;
                 const hintBefore =
                   dropHint?.stage === col.stage &&
                   dropHint.leadId === lead.id &&
                   dropHint.place === 'before' &&
-                  dragLeadId !== lead.id;
+                  !isDragging;
                 const hintAfter =
                   dropHint?.stage === col.stage &&
                   dropHint.leadId === lead.id &&
                   dropHint.place === 'after' &&
-                  dragLeadId !== lead.id;
+                  !isDragging;
                 return (
                   <div
                     key={lead.id}
-                    className="kanban-card-wrap"
+                    className={`kanban-card-wrap${isDragging ? ' kanban-card-wrap-dragging' : ''}`}
                     data-pipeline-lead={lead.id}
+                    onDragOver={(e) => handleDragOverWrap(col.stage, lead.id, e)}
+                    onDrop={(e) => void handleDropInColumn(col.stage, e)}
                   >
                     {hintBefore ? (
                       <div className="kanban-drop-line" role="presentation" />
@@ -332,10 +331,9 @@ export function PipelinePage() {
                       role="button"
                       tabIndex={0}
                       draggable
-                      className={`kanban-card${dragLeadId === lead.id ? ' kanban-card-dragging' : ''}`}
+                      className="kanban-card"
                       onDragStart={(e) => handleDragStart(lead.id, e)}
-                      onDragEnd={clearDragState}
-                      onDrop={(e) => void handleDropOnCard(col.stage, lead.id, e)}
+                      onDragEnd={handleDragEnd}
                       onClick={() => {
                         if (skipClickRef.current) {
                           skipClickRef.current = false;
