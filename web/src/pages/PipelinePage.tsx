@@ -244,10 +244,14 @@ export function PipelinePage() {
       return;
     }
     const hint = dropHintRef.current;
+    const dropTargetLeadId = (e.currentTarget as HTMLElement).dataset.pipelineLead;
     skipClickRef.current = true;
 
     try {
       if (fromStage === stage) {
+        if (!hint && dropTargetLeadId === leadId) {
+          return;
+        }
         if (hint?.stage === stage && hint.leadId !== leadId) {
           await reorderWithinStage(stage, leadId, hint.leadId, hint.place);
         } else {

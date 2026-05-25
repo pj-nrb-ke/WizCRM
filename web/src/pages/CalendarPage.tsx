@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
+import {
+  allDayInputEnd,
+  allDayInputStart,
+  buildCalendarRange,
+  buildEventIsoRange,
+  formatDateInputLocal,
+  getEventsOnDay,
+  shiftCalendarCursor,
+  toLocalDateTimeInput,
+  type CalendarViewMode,
+} from '../lib/calendar';
 import { PageHeader } from '../components/PageHeader';
 
 type CalendarEvent = {
@@ -15,28 +26,8 @@ type CalendarEvent = {
   lead: { id: string; name: string; company: string | null } | null;
 };
 
-type ViewMode = 'day' | 'week' | 'month';
-
-function startOfWeek(d: Date) {
-  const x = new Date(d);
-  const day = x.getDay();
-  x.setDate(x.getDate() - day);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-
-function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
 export function CalendarPage() {
-  const [view, setView] = useState<ViewMode>('week');
+  const [view, setView] = useState<CalendarViewMode>('week');
   const [cursor, setCursor] = useState(() => new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,30 +42,7 @@ export function CalendarPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const range = useMemo(() => {
-    if (view === 'day') {
-      const from = new Date(cursor);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(cursor);
-      to.setHours(23, 59, 59, 999);
-      return { from, to, days: [from] };
-    }
-    if (view === 'month') {
-      const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-      const to = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59, 999);
-      const days: Date[] = [];
-      const pad = from.getDay();
-      const start = addDays(from, -pad);
-      for (let i = 0; i < 42; i++) days.push(addDays(start, i));
-      return { from, to, days };
-    }
-    const from = startOfWeek(cursor);
-    const to = addDays(from, 6);
-    to.setHours(23, 59, 59, 999);
-    const days: Date[] = [];
-    for (let i = 0; i < 7; i++) days.push(addDays(from, i));
-    return { from, to, days };
-  }, [view, cursor]);
+  const range = useMemo(() => buildCalendarRange(view, cursor), [view, cursor]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -95,15 +63,7 @@ export function CalendarPage() {
   }, [load]);
 
   function eventsOnDay(day: Date) {
-    const start = new Date(day);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(day);
-    end.setHours(23, 59, 59, 999);
-    return events.filter((e) => {
-      const es = new Date(e.startAt);
-      const ee = new Date(e.endAt);
-      return es <= end && ee >= start;
-    });
+    return getEventsOnDay(events, day);
   }
 
   function closeModal() {
@@ -120,8 +80,8 @@ export function CalendarPage() {
     setEditingId(null);
     setTitle('');
     setNotes('');
-    setStartAt(toLocalInput(start));
-    setEndAt(toLocalInput(end));
+    setStartAt(toLocalDateTimeInput(start));
+    setEndAt(toLocalDateTimeInput(end));
     setAllDay(false);
     setModalOpen(true);
   }
@@ -134,8 +94,8 @@ export function CalendarPage() {
     setEditingId(ev.id);
     setTitle(ev.title);
     setNotes(ev.notes ?? '');
-    setStartAt(toLocalInput(new Date(ev.startAt)));
-    setEndAt(toLocalInput(new Date(ev.endAt)));
+    setStartAt(ev.allDay ? allDayInputStart(ev.startAt) : toLocalDateTimeInput(new Date(ev.startAt)));
+    setEndAt(ev.allDay ? allDayInputEnd(ev.endAt) : toLocalDateTimeInput(new Date(ev.endAt)));
     setAllDay(ev.allDay);
     setModalOpen(true);
   }
@@ -144,11 +104,12 @@ export function CalendarPage() {
     e.preventDefault();
     setSaving(true);
     setError('');
+    const isoRange = buildEventIsoRange(startAt, endAt, allDay);
     const body = {
       title: title.trim(),
       notes: notes.trim() || undefined,
-      startAt: new Date(startAt).toISOString(),
-      endAt: new Date(endAt).toISOString(),
+      startAt: isoRange.startAt,
+      endAt: isoRange.endAt,
       allDay,
     };
     try {
@@ -196,7 +157,7 @@ export function CalendarPage() {
 
       <div className="calendar-toolbar">
         <div className="calendar-view-tabs">
-          {(['day', 'week', 'month'] as ViewMode[]).map((v) => (
+          {(['day', 'week', 'month'] as CalendarViewMode[]).map((v) => (
             <button
               key={v}
               type="button"
@@ -211,13 +172,13 @@ export function CalendarPage() {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => setCursor(addDays(cursor, view === 'month' ? -30 : view === 'week' ? -7 : -1))}
+            onClick={() => setCursor(shiftCalendarCursor(cursor, view, -1))}
           >
             ←
           </button>
           <input
             type="date"
-            value={isoDate(cursor)}
+            value={formatDateInputLocal(cursor)}
             onChange={(e) => setCursor(new Date(e.target.value + 'T12:00:00'))}
           />
           <button
@@ -230,7 +191,7 @@ export function CalendarPage() {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => setCursor(addDays(cursor, view === 'month' ? 30 : view === 'week' ? 7 : 1))}
+            onClick={() => setCursor(shiftCalendarCursor(cursor, view, 1))}
           >
             →
           </button>
@@ -367,9 +328,4 @@ function sameMonth(a: Date, b: Date) {
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
-
-function toLocalInput(d: Date) {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }

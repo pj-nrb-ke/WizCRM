@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { filterSearchParams } from '../lib/manager-query';
+import { aggregateOrgStats } from '../lib/manager-home';
 import type { TeamsResponse } from '../lib/types';
 import { PageHeader } from '../components/PageHeader';
 import { TeamActivityFeed } from '../components/TeamActivityFeed';
@@ -59,15 +60,7 @@ export function ManagerHomePage() {
       .catch(() => setLeads([]));
   }, []);
 
-  const orgStats = data?.teams.reduce(
-    (acc, t) => ({
-      open: acc.open + t.stats.openLeads,
-      overdue: acc.overdue + t.stats.overdueTasks,
-      stale: acc.stale + t.stats.staleLeads,
-      won: acc.won + t.stats.wonLeads,
-    }),
-    { open: 0, overdue: 0, stale: 0, won: 0 },
-  );
+  const orgStats = data ? aggregateOrgStats(data.teams) : null;
 
   async function openDrilldown(state: DrilldownState) {
     setDrilldown(state);
@@ -86,7 +79,7 @@ export function ManagerHomePage() {
       }>(`/teams/metrics/${state.metric}${q ? `?${q}` : ''}`);
       setDrillLeads(res.leads ?? []);
       setDrillTasks(res.tasks ?? []);
-      if (res.staleDays && state.metric === 'stale') {
+      if (res.staleDays != null && state.metric === 'stale') {
         setDrilldown((d) =>
           d ? { ...d, subtitle: `No activity in ${res.staleDays}+ days` } : d,
         );

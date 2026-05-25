@@ -537,6 +537,18 @@ h2,
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
+.workspace input[type='checkbox'],
+.workspace input[type='radio'],
+.login-card input[type='checkbox'],
+.login-card input[type='radio'] {
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+
 button {
   cursor: pointer;
   border: none;
@@ -815,7 +827,7 @@ tbody tr:last-child td {
   inset: 0;
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(4px);
-  z-index: 500;
+  z-index: 700;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -943,7 +955,7 @@ tbody tr:last-child td {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.4);
-  z-index: 100;
+  z-index: 450;
   display: flex;
   justify-content: flex-end;
 }
@@ -1477,6 +1489,16 @@ tbody tr:last-child td {
   flex-shrink: 0;
 }
 
+@media (max-width: 720px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
+  }
+}
+
 /* —— Manager home —— */
 .page-dashboard {
   max-width: 1200px;
@@ -1734,7 +1756,7 @@ tbody tr:last-child td {
 .drilldown-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 650;
   background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
   display: flex;

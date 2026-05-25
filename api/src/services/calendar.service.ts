@@ -98,12 +98,25 @@ export async function updateCalendarEvent(
   id: string,
   organizationId: string,
   userId: string,
+  role: string,
   input: UpdateInput,
 ) {
+  const isManager = role === 'MANAGER' || role === 'ADMIN';
   const existing = await prisma.calendarEvent.findFirst({
-    where: { id, organizationId },
+    where: {
+      id,
+      organizationId,
+      ...(isManager ? {} : { userId }),
+    },
   });
   if (!existing) return null;
+
+  if (input.leadId) {
+    const lead = await prisma.lead.findFirst({
+      where: { id: input.leadId, organizationId },
+    });
+    if (!lead) return null;
+  }
 
   const data: Prisma.CalendarEventUpdateInput = {};
   if (input.title !== undefined) data.title = input.title;
@@ -131,9 +144,19 @@ export async function updateCalendarEvent(
   });
 }
 
-export async function deleteCalendarEvent(id: string, organizationId: string) {
+export async function deleteCalendarEvent(
+  id: string,
+  organizationId: string,
+  userId: string,
+  role: string,
+) {
+  const isManager = role === 'MANAGER' || role === 'ADMIN';
   const existing = await prisma.calendarEvent.findFirst({
-    where: { id, organizationId },
+    where: {
+      id,
+      organizationId,
+      ...(isManager ? {} : { userId }),
+    },
   });
   if (!existing) return false;
   await prisma.calendarEvent.delete({ where: { id } });

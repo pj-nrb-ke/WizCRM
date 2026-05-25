@@ -38,21 +38,21 @@ export const calendarRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.patch('/events/:id', async (request, reply) => {
-    const { organizationId, sub: userId } = request.user;
+    const { organizationId, sub: userId, role } = request.user;
     const { id } = request.params as { id: string };
     const parsed = updateCalendarEventSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const event = await updateCalendarEvent(id, organizationId, userId, parsed.data);
+    const event = await updateCalendarEvent(id, organizationId, userId, role, parsed.data);
     if (!event) return reply.status(404).send({ error: 'Event not found' });
     return { event };
   });
 
   app.delete('/events/:id', async (request, reply) => {
-    const { organizationId } = request.user;
+    const { organizationId, sub: userId, role } = request.user;
     const { id } = request.params as { id: string };
-    const ok = await deleteCalendarEvent(id, organizationId);
+    const ok = await deleteCalendarEvent(id, organizationId, userId, role);
     if (!ok) return reply.status(404).send({ error: 'Event not found' });
     return { ok: true };
   });
