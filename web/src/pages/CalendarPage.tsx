@@ -42,12 +42,14 @@ export function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [allDay, setAllDay] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const range = useMemo(() => {
     if (view === 'day') {
@@ -104,15 +106,37 @@ export function CalendarPage() {
     });
   }
 
-  function openNewEvent() {
-    const d = new Date(cursor);
-    d.setMinutes(0, 0, 0);
-    const end = new Date(d.getTime() + 60 * 60 * 1000);
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setError('');
+  }
+
+  function openNewForDay(day: Date) {
+    const start = new Date(day);
+    start.setHours(9, 0, 0, 0);
+    const end = new Date(day);
+    end.setHours(10, 0, 0, 0);
+    setEditingId(null);
     setTitle('');
     setNotes('');
-    setStartAt(toLocalInput(d));
+    setStartAt(toLocalInput(start));
     setEndAt(toLocalInput(end));
     setAllDay(false);
+    setModalOpen(true);
+  }
+
+  function openNewEvent() {
+    openNewForDay(cursor);
+  }
+
+  function openEditEvent(ev: CalendarEvent) {
+    setEditingId(ev.id);
+    setTitle(ev.title);
+    setNotes(ev.notes ?? '');
+    setStartAt(toLocalInput(new Date(ev.startAt)));
+    setEndAt(toLocalInput(new Date(ev.endAt)));
+    setAllDay(ev.allDay);
     setModalOpen(true);
   }
 
@@ -120,18 +144,20 @@ export function CalendarPage() {
     e.preventDefault();
     setSaving(true);
     setError('');
+    const body = {
+      title: title.trim(),
+      notes: notes.trim() || undefined,
+      startAt: new Date(startAt).toISOString(),
+      endAt: new Date(endAt).toISOString(),
+      allDay,
+    };
     try {
-      await api('/calendar/events', {
-        method: 'POST',
-        body: {
-          title,
-          notes: notes || undefined,
-          startAt: new Date(startAt).toISOString(),
-          endAt: new Date(endAt).toISOString(),
-          allDay,
-        },
-      });
-      setModalOpen(false);
+      if (editingId) {
+        await api(`/calendar/events/${editingId}`, { method: 'PATCH', body });
+      } else {
+        await api('/calendar/events', { method: 'POST', body });
+      }
+      closeModal();
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
@@ -140,11 +166,27 @@ export function CalendarPage() {
     }
   }
 
+  async function deleteEvent() {
+    if (!editingId) return;
+    if (!window.confirm('Delete this event?')) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await api(`/calendar/events/${editingId}`, { method: 'DELETE' });
+      closeModal();
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="page-wide">
       <PageHeader
         title="My calendar"
-        subtitle="Day, week, and month views — schedule meetings and link them to leads."
+        subtitle="Click a day to add an event, or click an event to edit. Day, week, and month views."
         actions={
           <button type="button" className="btn-primary" onClick={openNewEvent}>
             Add event
@@ -195,30 +237,50 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {error ? <div className="alert alert-error">{error}</div> : null}
+      {error && !modalOpen ? <div className="alert alert-error">{error}</div> : null}
       {loading ? <p className="muted">Loading calendar…</p> : null}
 
       <div className={`calendar-grid view-${view}`}>
         {range.days.map((day) => (
           <div
             key={day.toISOString()}
-            className={`calendar-day${sameMonth(day, cursor) ? '' : ' calendar-day-outside'}`}
+            className={`calendar-day calendar-day-clickable${sameMonth(day, cursor) ? '' : ' calendar-day-outside'}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => openNewForDay(day)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openNewForDay(day);
+              }
+            }}
+            aria-label={`Add event on ${day.toLocaleDateString()}`}
           >
             <div className="calendar-day-head">
               <strong>{day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</strong>
+              <span className="calendar-day-add-hint">+</span>
             </div>
             <ul className="calendar-day-events">
               {eventsOnDay(day).map((ev) => (
-                <li key={ev.id} className="calendar-event-chip">
-                  <span className="calendar-event-time">
-                    {ev.allDay
-                      ? 'All day'
-                      : `${fmtTime(ev.startAt)}–${fmtTime(ev.endAt)}`}
-                  </span>
-                  <span className="calendar-event-title">{ev.title}</span>
-                  {ev.lead ? (
-                    <span className="calendar-event-lead">{ev.lead.name}</span>
-                  ) : null}
+                <li key={ev.id}>
+                  <button
+                    type="button"
+                    className="calendar-event-chip"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditEvent(ev);
+                    }}
+                  >
+                    <span className="calendar-event-time">
+                      {ev.allDay
+                        ? 'All day'
+                        : `${fmtTime(ev.startAt)}–${fmtTime(ev.endAt)}`}
+                    </span>
+                    <span className="calendar-event-title">{ev.title}</span>
+                    {ev.lead ? (
+                      <span className="calendar-event-lead">{ev.lead.name}</span>
+                    ) : null}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -227,9 +289,15 @@ export function CalendarPage() {
       </div>
 
       {modalOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal-card calendar-modal">
-            <h2>Add event</h2>
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeModal}
+        >
+          <div className="modal-card calendar-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingId ? 'Edit event' : 'Add event'}</h2>
+            {error && modalOpen ? <div className="alert alert-error">{error}</div> : null}
             <form onSubmit={(e) => void saveEvent(e)}>
               <label>
                 Event outline *
@@ -265,13 +333,25 @@ export function CalendarPage() {
                 Notes
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               </label>
-              <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={() => setModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" disabled={saving}>
-                  {saving ? 'Saving…' : 'Save event'}
-                </button>
+              <div className="form-actions calendar-form-actions">
+                {editingId ? (
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => void deleteEvent()}
+                    disabled={deleting || saving}
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                ) : null}
+                <div className="form-actions-right">
+                  <button type="button" className="btn-secondary" onClick={closeModal}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={saving}>
+                    {saving ? 'Saving…' : 'Save event'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
