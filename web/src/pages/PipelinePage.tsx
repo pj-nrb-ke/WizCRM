@@ -49,8 +49,10 @@ export function PipelinePage() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [dropStage, setDropStage] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<DropHint | null>(null);
+  const [dragLeadId, setDragLeadId] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const skipClickRef = useRef(false);
+  const dragLeadIdRef = useRef<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -90,6 +92,8 @@ export function PipelinePage() {
       setMoving(false);
       setDropStage(null);
       setDropHint(null);
+      dragLeadIdRef.current = null;
+      setDragLeadId(null);
     }
   }
 
@@ -151,11 +155,53 @@ export function PipelinePage() {
     }
   }
 
+  function resolveDropHint(
+    stage: string,
+    container: HTMLElement,
+    clientY: number,
+    dragId: string,
+  ): DropHint | null {
+    const wraps = container.querySelectorAll<HTMLElement>('[data-pipeline-lead]');
+    let lastOther: { id: string; rect: DOMRect } | null = null;
+
+    for (const wrap of wraps) {
+      const id = wrap.dataset.pipelineLead;
+      if (!id || id === dragId) continue;
+      const rect = wrap.getBoundingClientRect();
+      lastOther = { id, rect };
+
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        return {
+          stage,
+          leadId: id,
+          place: clientY < rect.top + rect.height / 2 ? 'before' : 'after',
+        };
+      }
+      if (clientY < rect.top) {
+        return { stage, leadId: id, place: 'before' };
+      }
+    }
+
+    if (lastOther && clientY > lastOther.rect.bottom) {
+      return { stage, leadId: lastOther.id, place: 'after' };
+    }
+    return null;
+  }
+
   function handleDragStart(leadId: string, e: React.DragEvent) {
     skipClickRef.current = false;
+    dragLeadIdRef.current = leadId;
+    setDragLeadId(leadId);
     e.dataTransfer.setData(DRAG_MIME, leadId);
     e.dataTransfer.setData('text/plain', leadId);
     e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function clearDragState() {
+    dragLeadIdRef.current = null;
+    setDragLeadId(null);
+    setDropStage(null);
+    setDropHint(null);
   }
 
   function handleDragOverColumn(stage: string, e: React.DragEvent) {
@@ -163,6 +209,10 @@ export function PipelinePage() {
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     setDropStage(stage);
+    const dragId = dragLeadIdRef.current;
+    if (!dragId) return;
+    const hint = resolveDropHint(stage, e.currentTarget as HTMLElement, e.clientY, dragId);
+    setDropHint(hint);
   }
 
   async function handleDropColumn(stage: string, e: React.DragEvent) {
@@ -208,17 +258,19 @@ export function PipelinePage() {
     void moveLeadToStage(leadId, fromStage, colStage, { targetId: targetLeadId, place });
   }
 
-  function handleDragOverCard(colStage: string, targetLeadId: string, e: React.DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const place: DropPlace = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
-    setDropStage(colStage);
-    setDropHint({ stage: colStage, leadId: targetLeadId, place });
+  function columnDropProps(stage: string) {
+    return {
+      onDragOver: (e: React.DragEvent) => handleDragOverColumn(stage, e),
+      onDrop: (e: React.DragEvent) => void handleDropColumn(stage, e),
+      onDragLeave: (e: React.DragEvent) => {
+        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+          setDropHint(null);
+        }
+      },
+    };
   }
 
-  function columnDropProps(stage: string) {
+  function cardsDropProps(stage: string) {
     return {
       onDragOver: (e: React.DragEvent) => handleDragOverColumn(stage, e),
       onDrop: (e: React.DragEvent) => void handleDropColumn(stage, e),
@@ -255,30 +307,34 @@ export function PipelinePage() {
               {col.label}
               <span className="kanban-count">{(pipeline[col.stage] ?? []).length}</span>
             </h3>
-            <div className="kanban-cards kanban-drop-zone" {...columnDropProps(col.stage)}>
+            <div className="kanban-cards kanban-drop-zone" {...cardsDropProps(col.stage)}>
               {(pipeline[col.stage] ?? []).map((lead) => {
                 const hintBefore =
                   dropHint?.stage === col.stage &&
                   dropHint.leadId === lead.id &&
-                  dropHint.place === 'before';
+                  dropHint.place === 'before' &&
+                  dragLeadId !== lead.id;
                 const hintAfter =
                   dropHint?.stage === col.stage &&
                   dropHint.leadId === lead.id &&
-                  dropHint.place === 'after';
+                  dropHint.place === 'after' &&
+                  dragLeadId !== lead.id;
                 return (
-                  <div key={lead.id} className="kanban-card-wrap">
-                    {hintBefore ? <div className="kanban-drop-line" aria-hidden /> : null}
+                  <div
+                    key={lead.id}
+                    className="kanban-card-wrap"
+                    data-pipeline-lead={lead.id}
+                  >
+                    {hintBefore ? (
+                      <div className="kanban-drop-line" role="presentation" />
+                    ) : null}
                     <div
                       role="button"
                       tabIndex={0}
                       draggable
-                      className="kanban-card"
+                      className={`kanban-card${dragLeadId === lead.id ? ' kanban-card-dragging' : ''}`}
                       onDragStart={(e) => handleDragStart(lead.id, e)}
-                      onDragEnd={() => {
-                        setDropStage(null);
-                        setDropHint(null);
-                      }}
-                      onDragOver={(e) => handleDragOverCard(col.stage, lead.id, e)}
+                      onDragEnd={clearDragState}
                       onDrop={(e) => void handleDropOnCard(col.stage, lead.id, e)}
                       onClick={() => {
                         if (skipClickRef.current) {
@@ -305,7 +361,9 @@ export function PipelinePage() {
                         </span>
                       ) : null}
                     </div>
-                    {hintAfter ? <div className="kanban-drop-line" aria-hidden /> : null}
+                    {hintAfter ? (
+                      <div className="kanban-drop-line" role="presentation" />
+                    ) : null}
                   </div>
                 );
               })}

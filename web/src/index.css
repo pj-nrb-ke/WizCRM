@@ -748,11 +748,14 @@ tbody tr:last-child td {
 }
 
 .kanban-drop-line {
-  height: 3px;
-  margin: 4px 0;
-  border-radius: 2px;
-  background: var(--primary);
-  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.35);
+  display: block;
+  height: 4px;
+  margin: 6px 4px;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25), 0 2px 8px rgba(79, 70, 229, 0.45);
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .kanban-card {
@@ -776,8 +779,9 @@ tbody tr:last-child td {
 }
 
 .kanban-card-dragging {
-  opacity: 0.45;
+  opacity: 0.35;
   cursor: grabbing;
+  pointer-events: none;
 }
 
 .kanban-card-meta {
