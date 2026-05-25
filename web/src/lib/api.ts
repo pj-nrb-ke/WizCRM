@@ -34,11 +34,22 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBaseUrl()}${path}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Network error';
+    if (msg === 'Failed to fetch') {
+      throw new Error(
+        'Could not reach the API. Check your connection, or ask an admin to verify api.wizcrm.app is running.',
+      );
+    }
+    throw e;
+  }
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

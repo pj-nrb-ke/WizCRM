@@ -21,7 +21,12 @@ export async function buildApp() {
     bodyLimit: 15 * 1024 * 1024,
   });
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+    origin: true,
+    // Default is GET,HEAD,POST only — browser blocks PATCH (pipeline drag-drop, settings).
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
   await app.register(jwt, { secret: config.jwtSecret });
 
   app.decorate('authenticate', async (request, reply) => {
