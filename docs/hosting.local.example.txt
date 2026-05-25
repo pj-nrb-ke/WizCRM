@@ -1,0 +1,27 @@
+# Copy to hosting.local.txt (gitignored) — VPS / deploy credentials for agents.
+# Never commit hosting.local.txt. Use docs/hosting.local.txt (default) or config/secrets/hosting.local.txt
+
+# --- SSH (required for deploy from your PC) ---
+SSH_HOST=161.97.141.220
+SSH_USER=root
+SSH_PORT=22
+# Windows: %USERPROFILE%\.ssh\your_key  |  Linux/macOS: ~/.ssh/your_key
+SSH_IDENTITY_FILE=%USERPROFILE%\.ssh\contabo_wizcrm
+
+# --- App on server (required for deploy scripts) ---
+APP_ROOT=/opt/wizcrm
+GIT_BRANCH=development
+GIT_REMOTE=origin
+
+# --- Public URLs (build-time + smoke tests) ---
+API_PUBLIC_URL=https://api.wizcrm.app
+WEB_PUBLIC_URL=https://app.wizcrm.app
+
+# --- Static web publish path on VPS (Caddy file_server root) ---
+WEB_STATIC_DIR=/var/www/wizcrm-web
+
+# --- Optional: provider panel (do not use for SSH if SSH_* is set) ---
+# HOSTING_PROVIDER=contabo
+# HOSTING_PANEL_URL=https://my.contabo.com
+# HOSTING_PANEL_USER=your-panel-login@email.com
+# HOSTING_PANEL_PASS=your-panel-password

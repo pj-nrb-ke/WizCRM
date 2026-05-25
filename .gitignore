@@ -28,8 +28,11 @@ Thumbs.db
 api/.env
 api/.github-token.local
 docs/brevo.local.txt
+docs/hosting.local.txt
 config/secrets/brevo.local.txt
+config/secrets/hosting.local.txt
 secrets/brevo.local.txt
+secrets/hosting.local.txt
 
 # Build
 shared/dist/

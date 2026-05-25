@@ -2,6 +2,8 @@
 
 Playbook from publishing **WizCRM** on a Contabo Ubuntu VPS. Another agent can reuse this pattern for a **different app** on a **different VPS** by swapping names, domains, and repo paths.
 
+**Agent credential file (SSH / deploy targets):** [HOSTING-WEB-SERVER.md](./HOSTING-WEB-SERVER.md) — load `docs/hosting.local.txt` (copy from `hosting.local.example.txt`).
+
 **WizCRM production (reference):**
 
 | Item | Value |
@@ -58,6 +60,8 @@ Wait until `nslookup api.yourdomain.com` returns the VPS IP.
 - WizCRM uses public repo + `development` branch (empty `main` was a pitfall early on).
 
 ### 0.3 SSH from your PC to the VPS (no password in chat)
+
+Store VPS IP, user, and key path in **`docs/hosting.local.txt`** (see [HOSTING-WEB-SERVER.md](./HOSTING-WEB-SERVER.md)). Deploy scripts read that file; do not hardcode credentials in chat.
 
 On **Windows** (developer machine):
 
@@ -260,7 +264,7 @@ Get-Content scripts/deploy-vps.sh -Raw | ForEach-Object { $_ -replace "`r`n","`n
   ssh -i $env:USERPROFILE\.ssh\contabo_wizcrm root@161.97.141.220 "bash -s"
 ```
 
-Or: `.\scripts\deploy-vps.ps1` after `git push`.
+Or: `.\scripts\deploy-vps.ps1` after `git push` (requires `docs/hosting.local.txt`).
 
 ### 3.2 Deploy steps (in order)
 
@@ -367,6 +371,9 @@ ssh -i $env:USERPROFILE\.ssh\contabo_wizcrm root@161.97.141.220
 | `docker/docker-compose.prod.yml` | Production Postgres |
 | `web/README.md` | Web build + Caddy snippet |
 | `docs/PARALLEL-AGENT-NOTE.md` | Agent ops (user does not run scripts) |
+| `docs/HOSTING-WEB-SERVER.md` | Generic hosting + `hosting.local.txt` for agents |
+| `docs/hosting.local.example.txt` | Template for VPS SSH/deploy (gitignored copy) |
+| `scripts/Read-HostingConfig.ps1` | Load `hosting.local.txt` in PowerShell |
 
 ---
 

@@ -52,6 +52,8 @@ After web/API edits: rebuild locally (`refresh-local` script or workspace builds
 ## Secrets
 
 - Never commit `.env`, API keys, PATs, or private keys.
+- **VPS deploy:** read `docs/hosting.local.txt` (copy from `hosting.local.example.txt`) — see [HOSTING-WEB-SERVER.md](./HOSTING-WEB-SERVER.md). Do not paste SSH passwords in chat.
+- **Email (WizCRM):** `docs/brevo.local.txt` — see [email-integration.md](./email-integration.md).
 - Optional: gitignored `api/.github-token.local` for one-time SSH key registration via API only if SSH cannot be done in the browser.
 
 ---
@@ -69,7 +71,8 @@ After web/API edits: rebuild locally (`refresh-local` script or workspace builds
 |------|--------|
 | Repo | `git@github.com-pj-nrb-ke:pj-nrb-ke/WizCRM.git` branch `development` |
 | SSH host | `github.com-pj-nrb-ke` |
-| VPS SSH | `ssh -i ~/.ssh/contabo_wizcrm root@161.97.141.220` or host `contabo-wizcrm` |
+| VPS SSH | From `docs/hosting.local.txt` via `scripts/Read-HostingConfig.ps1` |
+| Hosting doc | [HOSTING-WEB-SERVER.md](./HOSTING-WEB-SERVER.md) |
 | API | `https://api.wizcrm.app` |
 | Web | `https://app.wizcrm.app` |
 | Deploy | `scripts/deploy-vps.sh` (pipe to SSH), `scripts/refresh-local.ps1` |
