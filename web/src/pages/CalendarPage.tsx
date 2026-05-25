@@ -295,7 +295,7 @@ export function CalendarPage() {
           aria-modal="true"
           onClick={closeModal}
         >
-          <div className="modal-card calendar-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-panel calendar-modal" onClick={(e) => e.stopPropagation()}>
             <h2>{editingId ? 'Edit event' : 'Add event'}</h2>
             {error && modalOpen ? <div className="alert alert-error">{error}</div> : null}
             <form onSubmit={(e) => void saveEvent(e)}>
