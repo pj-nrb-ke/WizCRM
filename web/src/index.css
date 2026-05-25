@@ -845,8 +845,8 @@ tbody tr:last-child td {
   letter-spacing: normal;
 }
 
-.modal-panel label,
-.modal-card label {
+.modal-panel label:not(.checkbox-row):not(.member-check),
+.modal-card label:not(.checkbox-row):not(.member-check) {
   display: block;
   margin-bottom: 14px;
   font-size: 0.85rem;
@@ -854,16 +854,38 @@ tbody tr:last-child td {
   color: var(--text);
 }
 
-.modal-panel label input,
-.modal-panel label textarea,
-.modal-panel label select,
-.modal-card label input,
-.modal-card label textarea,
-.modal-card label select {
+.modal-panel label:not(.checkbox-row):not(.member-check) input:not([type='checkbox']):not([type='radio']),
+.modal-panel label:not(.checkbox-row):not(.member-check) textarea,
+.modal-panel label:not(.checkbox-row):not(.member-check) select,
+.modal-card label:not(.checkbox-row):not(.member-check) input:not([type='checkbox']):not([type='radio']),
+.modal-card label:not(.checkbox-row):not(.member-check) textarea,
+.modal-card label:not(.checkbox-row):not(.member-check) select {
   display: block;
   width: 100%;
   margin-top: 6px;
   font-weight: 400;
+}
+
+.modal-panel label.checkbox-row,
+.modal-card label.checkbox-row,
+.modal-panel label.member-check,
+.modal-card label.member-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.modal-panel label.checkbox-row input,
+.modal-card label.checkbox-row input,
+.modal-panel label.member-check input,
+.modal-card label.member-check input {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .stage-editor-list {
@@ -1395,19 +1417,37 @@ tbody tr:last-child td {
 }
 
 /* Sales opportunity form */
-.opp-form label {
+.opp-form label:not(.checkbox-row):not(.member-check) {
   display: block;
   margin-bottom: 12px;
   font-size: 0.85rem;
   font-weight: 600;
 }
 
-.opp-form input,
+.opp-form label:not(.checkbox-row):not(.member-check) input:not([type='checkbox']):not([type='radio']),
 .opp-form select,
 .opp-form textarea {
   display: block;
   width: 100%;
   margin-top: 4px;
+}
+
+.opp-form label.checkbox-row,
+.opp-form label.member-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.opp-form label.checkbox-row input,
+.opp-form label.member-check input {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .form-row {
@@ -1426,13 +1466,15 @@ tbody tr:last-child td {
 .checkbox-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 500;
+  cursor: pointer;
 }
 
 .checkbox-row input {
   width: auto;
   margin: 0;
+  flex-shrink: 0;
 }
 
 /* —— Manager home —— */

@@ -90,8 +90,6 @@ export function PlatformPage() {
       </div>
       <style>{`
         .status-list { margin: 0; padding-left: 20px; }
-        .checkbox-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .checkbox-row input { width: auto; }
       `}</style>
     </>
   );
