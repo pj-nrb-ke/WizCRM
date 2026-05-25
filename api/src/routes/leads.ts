@@ -5,6 +5,7 @@ import {
   normalizePipelineStagesForSave,
   pipelineStagesPatchSchema,
   pipelineStageIds,
+  pipelineReorderSchema,
   updateLeadSchema,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
@@ -12,6 +13,7 @@ import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.servi
 import {
   createLead,
   updateLead,
+  reorderPipelineLeads,
   findDuplicateLeads,
   loadLeadContext,
 } from '../services/lead.service.js';
@@ -61,6 +63,24 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       pipelineStages: normalizePipelineStagesForSave(parsed.data.stages),
     });
     return { stages: mergePipelineStages(settings.pipelineStages) };
+  });
+
+  app.patch('/pipeline/reorder', { preHandler: requireManager() }, async (request, reply) => {
+    const parsed = pipelineReorderSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    try {
+      await reorderPipelineLeads(
+        request.user.organizationId,
+        parsed.data.stage,
+        parsed.data.leadIds,
+      );
+      return { ok: true };
+    } catch (e) {
+      const err = e as Error & { statusCode?: number };
+      return reply.status(err.statusCode ?? 500).send({ error: err.message });
+    }
   });
 
   app.get('/', async (request, reply) => {
@@ -113,7 +133,7 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     const leads = await prisma.lead.findMany({
       where: { organizationId, stage: { in: stageIds }, ...ownerFilter },
       include: { owner: { select: ownerSelect } },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ pipelineRank: 'asc' }, { updatedAt: 'desc' }],
     });
     const pipeline = leads.reduce<Record<string, typeof leads>>((acc, lead) => {
       if (!acc[lead.stage]) acc[lead.stage] = [];

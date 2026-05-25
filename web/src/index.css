@@ -743,6 +743,18 @@ tbody tr:last-child td {
   border-radius: var(--radius-sm);
 }
 
+.kanban-card-wrap {
+  position: relative;
+}
+
+.kanban-drop-line {
+  height: 3px;
+  margin: 4px 0;
+  border-radius: 2px;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.35);
+}
+
 .kanban-card {
   display: block;
   width: 100%;

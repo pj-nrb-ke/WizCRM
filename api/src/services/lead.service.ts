@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { LeadStage, Prisma } from '@prisma/client';
 import { isAllowedStageTransition, isPipelineDragTransition } from '@wizcrm/shared';
 import type { CreateLeadInput, UpdateLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
@@ -15,6 +15,51 @@ export async function loadLeadContext(leadId: string, organizationId: string) {
   });
 }
 
+async function nextPipelineRank(organizationId: string, stage: LeadStage, atTop: boolean) {
+  if (atTop) {
+    const min = await prisma.lead.aggregate({
+      where: { organizationId, stage },
+      _min: { pipelineRank: true },
+    });
+    return (min._min.pipelineRank ?? 0) - 1;
+  }
+  const max = await prisma.lead.aggregate({
+    where: { organizationId, stage },
+    _max: { pipelineRank: true },
+  });
+  return (max._max.pipelineRank ?? 0) + 1;
+}
+
+export async function reorderPipelineLeads(
+  organizationId: string,
+  stage: LeadStage,
+  leadIds: string[],
+) {
+  const inStage = await prisma.lead.findMany({
+    where: { organizationId, stage },
+    select: { id: true, pipelineRank: true },
+    orderBy: [{ pipelineRank: 'asc' }, { updatedAt: 'desc' }],
+  });
+  const byId = new Map(inStage.map((l) => [l.id, l]));
+  for (const id of leadIds) {
+    if (!byId.has(id)) {
+      throw Object.assign(new Error('Lead not in this stage'), { statusCode: 400 });
+    }
+  }
+  const reorderedIds = new Set(leadIds);
+  const rest = inStage.filter((l) => !reorderedIds.has(l.id)).map((l) => l.id);
+  const finalOrder = [...leadIds, ...rest];
+
+  await prisma.$transaction(
+    finalOrder.map((id, index) =>
+      prisma.lead.update({
+        where: { id },
+        data: { pipelineRank: index },
+      }),
+    ),
+  );
+}
+
 export async function createLead(
   organizationId: string,
   ownerId: string,
@@ -22,11 +67,13 @@ export async function createLead(
 ) {
   const extraPhones = sanitizeStringList(input.extraPhones);
   const extraEmails = sanitizeStringList(input.extraEmails);
+  const pipelineRank = await nextPipelineRank(organizationId, 'NEW', false);
   return prisma.lead.create({
     data: {
       organizationId,
       ownerId,
       name: input.name,
+      pipelineRank,
       company: input.company,
       email: input.email,
       emailNormalized: input.email ? normalizeEmail(input.email) : null,
@@ -82,6 +129,9 @@ export async function updateLead(
       throw Object.assign(new Error('Invalid stage transition'), { statusCode: 400 });
     }
     data.stage = input.stage;
+    if (input.pipelineMove) {
+      data.pipelineRank = await nextPipelineRank(organizationId, input.stage, true);
+    }
     await prisma.stageChange.create({
       data: {
         leadId,

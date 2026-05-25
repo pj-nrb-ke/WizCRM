@@ -60,6 +60,12 @@ export const updateLeadSchema = z.object({
   pipelineMove: z.boolean().optional(),
 });
 
+/** Reorder cards within one pipeline column (manager board). */
+export const pipelineReorderSchema = z.object({
+  stage: z.enum(LEAD_STAGES),
+  leadIds: z.array(z.string().uuid()).min(1).max(200),
+});
+
 export const createActivitySchema = z.object({
   type: z.enum(['CALL', 'EMAIL', 'MEETING', 'TASK', 'NOTE']),
   subject: z.string().max(200).optional(),

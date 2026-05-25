@@ -75,6 +75,8 @@ model Lead {
   source           String?
   priority         LeadPriority?
   stage            LeadStage  @default(NEW)
+  /** Sort order within a pipeline column (lower = higher on the board). */
+  pipelineRank     Int        @default(0)
   lastActivityAt   DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
@@ -84,6 +86,7 @@ model Lead {
   aiSuggestions    AiSuggestion[]
 
   @@index([organizationId, stage])
+  @@index([organizationId, stage, pipelineRank])
   @@index([organizationId, ownerId])
   @@index([organizationId, emailNormalized])
   @@index([organizationId, phoneNormalized])
