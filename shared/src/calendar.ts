@@ -1,0 +1,37 @@
+import { z } from 'zod';
+
+export const CALENDAR_RECURRENCE = ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM'] as const;
+
+const calendarEventFieldsSchema = z.object({
+  title: z.string().min(1).max(300),
+  notes: z.string().max(5000).optional(),
+  leadId: z.string().uuid().optional(),
+  startAt: z.string().datetime(),
+  endAt: z.string().datetime(),
+  allDay: z.boolean().optional(),
+  recurrence: z.enum(CALENDAR_RECURRENCE).optional(),
+  recurrenceIntervalDays: z.number().int().min(1).max(365).optional(),
+  recurrenceUntil: z.string().datetime().optional(),
+  reminderMinutes: z.number().int().min(0).max(10080).optional(),
+});
+
+export const createCalendarEventSchema = calendarEventFieldsSchema.refine(
+  (d) => new Date(d.endAt) >= new Date(d.startAt),
+  { message: 'End must be after start', path: ['endAt'] },
+);
+
+export const updateCalendarEventSchema = calendarEventFieldsSchema.partial();
+
+export const calendarQuerySchema = z.object({
+  from: z.string().optional(),
+  to: z.string().optional(),
+  view: z.enum(['day', 'week', 'month']).optional(),
+});
+
+export const teamActivityFeedQuerySchema = z.object({
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  leadId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
+  ownerId: z.string().uuid().optional(),
+});

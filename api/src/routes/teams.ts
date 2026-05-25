@@ -2,8 +2,10 @@ import type { FastifyPluginAsync } from 'fastify';
 import {
   assignTeamMembersSchema,
   createTeamSchema,
+  teamActivityFeedQuerySchema,
   updateTeamSchema,
 } from '@wizcrm/shared';
+import { loadTeamActivityFeed } from '../services/activity-feed.service.js';
 import { prisma } from '../lib/prisma.js';
 import {
   getTeamMemberIds,
@@ -16,6 +18,19 @@ function isManagerRole(role: string) {
 
 export const teamRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
+
+  app.get('/activity-feed', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const parsed = teamActivityFeedQuerySchema.safeParse(request.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const items = await loadTeamActivityFeed(organizationId, parsed.data);
+    return { items };
+  });
 
   app.get('/', async (request, reply) => {
     const { organizationId, role } = request.user;

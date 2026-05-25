@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { LEAD_STAGES } from '../lib/stages';
 import { api } from '../lib/api';
 import type { LeadSummary } from '../lib/types';
+import { SalesOpportunityForm } from './SalesOpportunityForm';
+import { SALES_OPP_STAGE_LABELS, SALES_OPP_STATUS_LABELS } from '../lib/opportunity-labels';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -20,6 +22,19 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [stage, setStage] = useState('');
+  const [opportunities, setOpportunities] = useState<
+    {
+      id: string;
+      referenceNumber: string;
+      description: string;
+      oppStage: string;
+      oppStatus: string;
+      probabilityPct: number;
+      expectedValue: number | null;
+      isClosed: boolean;
+    }[]
+  >([]);
+  const [showOppForm, setShowOppForm] = useState(false);
 
   useEffect(() => {
     if (!leadId) {
@@ -33,6 +48,10 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
         setStage(d.lead.stage);
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+    api<{ opportunities: typeof opportunities }>(`/opportunities/lead/${leadId}`)
+      .then((d) => setOpportunities(d.opportunities ?? []))
+      .catch(() => setOpportunities([]));
+    setShowOppForm(false);
   }, [leadId]);
 
   if (!leadId) return null;
@@ -115,6 +134,49 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                 </ul>
               </>
             ) : null}
+            <h3>Sales opportunities</h3>
+            {showOppForm ? (
+              <SalesOpportunityForm
+                leadId={lead.id}
+                leadName={lead.name}
+                onCreated={() => {
+                  setShowOppForm(false);
+                  onUpdated?.();
+                  api<{ opportunities: typeof opportunities }>(`/opportunities/lead/${leadId}`)
+                    .then((d) => setOpportunities(d.opportunities ?? []))
+                    .catch(() => {});
+                }}
+                onCancel={() => setShowOppForm(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ marginBottom: 12 }}
+                onClick={() => setShowOppForm(true)}
+              >
+                Add sales opportunity
+              </button>
+            )}
+            {opportunities.length > 0 ? (
+              <ul className="mini-list">
+                {opportunities.map((o) => (
+                  <li key={o.id}>
+                    <strong>{o.referenceNumber}</strong> — {o.description.slice(0, 80)}
+                    <span className="muted">
+                      {' '}
+                      · {SALES_OPP_STAGE_LABELS[o.oppStage] ?? o.oppStage} ·{' '}
+                      {SALES_OPP_STATUS_LABELS[o.oppStatus] ?? o.oppStatus} · {o.probabilityPct}%
+                      {o.expectedValue != null ? ` · EV ${o.expectedValue}` : ''}
+                      {o.isClosed ? ' (closed)' : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">No sales opportunities yet.</p>
+            )}
+
             {lead.activities && lead.activities.length > 0 ? (
               <>
                 <h3>Recent activity</h3>

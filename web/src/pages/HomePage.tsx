@@ -60,6 +60,12 @@ export function HomePage() {
         accent: 'amber',
       },
       {
+        to: '/calendar',
+        title: 'My calendar',
+        description: 'Day, week, and month schedule for your team',
+        accent: 'sky',
+      },
+      {
         to: '/organization',
         title: 'Organization',
         description: 'Company profile and branding',

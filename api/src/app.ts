@@ -12,6 +12,8 @@ import { teamRoutes } from './routes/teams.js';
 import { adminRoutes } from './routes/admin.js';
 import { reportRoutes } from './routes/reports.js';
 import { emailRoutes } from './routes/email.js';
+import { opportunityRoutes } from './routes/opportunities.js';
+import { calendarRoutes } from './routes/calendar.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
 export async function buildApp() {
@@ -47,6 +49,8 @@ export async function buildApp() {
   await app.register(adminRoutes, { prefix: '/admin' });
   await app.register(reportRoutes, { prefix: '/reports' });
   await app.register(emailRoutes, { prefix: '/email' });
+  await app.register(opportunityRoutes, { prefix: '/opportunities' });
+  await app.register(calendarRoutes, { prefix: '/calendar' });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error as Error & { statusCode?: number };

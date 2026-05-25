@@ -44,6 +44,8 @@ model User {
   ownedLeads     Lead[]       @relation("LeadOwner")
   activities     Activity[]
   tasks          Task[]
+  calendarEvents CalendarEvent[]
+  salesOpportunities SalesOpportunity[] @relation("OpportunityOwner")
   aiAuditLogs    AiAuditLog[]
 
   @@index([organizationId])
@@ -83,6 +85,8 @@ model Lead {
   activities       Activity[]
   tasks            Task[]
   stageChanges     StageChange[]
+  salesOpportunities SalesOpportunity[]
+  calendarEvents   CalendarEvent[]
   aiSuggestions    AiSuggestion[]
 
   @@index([organizationId, stage])
@@ -127,6 +131,42 @@ enum ActivityType {
   TASK
   NOTE
   STAGE_CHANGE
+  SALES_OPPORTUNITY
+  CALENDAR_EVENT
+}
+
+enum SalesOppStage {
+  NEW_OPPORTUNITY
+  QUALIFICATION
+  PROPOSAL
+  NEGOTIATION
+  CLOSED
+}
+
+enum SalesOppStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  PENDING
+  WON
+  LOST
+  CANCELLED
+}
+
+enum OpportunitySourceType {
+  OTHER
+  REFERRAL
+  CAMPAIGN
+  EXISTING_CUSTOMER
+  WEBSITE
+  AGENT
+}
+
+enum CalendarRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
 }
 
 model Activity {
@@ -142,6 +182,59 @@ model Activity {
   createdAt DateTime     @default(now())
 
   @@index([leadId, createdAt(sort: Desc)])
+}
+
+model SalesOpportunity {
+  id               String              @id @default(uuid())
+  organizationId   String
+  leadId           String
+  lead             Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  ownerId          String
+  owner            User                @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  referenceNumber  String
+  description      String
+  contactPerson    String?
+  isPublic         Boolean             @default(true)
+  oppStage         SalesOppStage       @default(NEW_OPPORTUNITY)
+  oppStatus        SalesOppStatus        @default(NOT_STARTED)
+  probabilityPct   Float               @default(10)
+  sourceType       OpportunitySourceType @default(OTHER)
+  sourceDetail     String?
+  startDate        DateTime            @default(now())
+  closeBy          DateTime?
+  actualClose      DateTime?
+  budgeted         Float?
+  forecastedExcl   Float?
+  isClosed         Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId, leadId])
+  @@index([organizationId, ownerId])
+}
+
+model CalendarEvent {
+  id                    String             @id @default(uuid())
+  organizationId        String
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id])
+  leadId                String?
+  lead                  Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  title                 String
+  notes                 String?
+  startAt               DateTime
+  endAt                 DateTime
+  allDay                Boolean            @default(false)
+  recurrence            CalendarRecurrence @default(NONE)
+  recurrenceIntervalDays Int?
+  recurrenceUntil       DateTime?
+  reminderMinutes       Int?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([organizationId, userId, startAt])
+  @@index([organizationId, leadId])
 }
 
 model Task {

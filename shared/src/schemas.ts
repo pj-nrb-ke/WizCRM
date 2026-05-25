@@ -67,7 +67,7 @@ export const pipelineReorderSchema = z.object({
 });
 
 export const createActivitySchema = z.object({
-  type: z.enum(['CALL', 'EMAIL', 'MEETING', 'TASK', 'NOTE']),
+  type: z.enum(['CALL', 'EMAIL', 'MEETING', 'TASK', 'NOTE', 'SALES_OPPORTUNITY', 'CALENDAR_EVENT']),
   subject: z.string().max(200).optional(),
   body: z.string().min(1).max(10000),
 });

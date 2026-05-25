@@ -5,3 +5,5 @@ export * from './phone.js';
 export * from './schemas.js';
 export * from './ai-rules.js';
 export * from './pipeline-stages.js';
+export * from './opportunity.js';
+export * from './calendar.js';

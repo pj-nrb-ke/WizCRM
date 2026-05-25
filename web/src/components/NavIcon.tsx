@@ -6,6 +6,7 @@ type IconName =
   | 'pipeline'
   | 'leads'
   | 'reports'
+  | 'calendar'
   | 'org'
   | 'users'
   | 'teams'
@@ -48,6 +49,13 @@ const paths: Record<IconName, ReactElement> = {
       strokeLinecap="round"
       strokeLinejoin="round"
       d="M9 19v-6a2 2 0 012-2h2a2 2 0 012 2v6M9 19H7a2 2 0 01-2-2V7a2 2 0 012-2h2m6 14h2a2 2 0 002-2V7a2 2 0 00-2-2h-2m-6 0V5a2 2 0 012-2h2a2 2 0 012 2v0"
+    />
+  ),
+  calendar: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
     />
   ),
   org: (

@@ -14,6 +14,7 @@ import { ManagerHomePage } from './pages/ManagerHomePage';
 import { PipelinePage } from './pages/PipelinePage';
 import { LeadsPage } from './pages/LeadsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { CalendarPage } from './pages/CalendarPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -72,6 +73,14 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <ReportsPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <ManagerOnly>
+                  <CalendarPage />
                 </ManagerOnly>
               }
             />

@@ -4,6 +4,8 @@ import { api } from '../lib/api';
 import { filterSearchParams } from '../lib/manager-query';
 import type { TeamsResponse } from '../lib/types';
 import { PageHeader } from '../components/PageHeader';
+import { TeamActivityFeed } from '../components/TeamActivityFeed';
+import type { LeadSummary } from '../lib/types';
 
 function StatPill({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
   return (
@@ -25,12 +27,16 @@ function formatActivity(iso: string | null) {
 
 export function ManagerHomePage() {
   const [data, setData] = useState<TeamsResponse | null>(null);
+  const [leads, setLeads] = useState<LeadSummary[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
     api<TeamsResponse>('/teams')
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+    api<{ leads: LeadSummary[] }>('/leads')
+      .then((d) => setLeads(d.leads ?? []))
+      .catch(() => setLeads([]));
   }, []);
 
   const orgStats = data?.teams.reduce(
@@ -51,6 +57,10 @@ export function ManagerHomePage() {
       />
       {error ? <div className="alert alert-error">{error}</div> : null}
 
+      <TeamActivityFeed
+        leads={leads.map((l) => ({ id: l.id, name: l.name, company: l.company }))}
+      />
+
       {orgStats && (
         <div className="card">
           <h2>Organization</h2>
@@ -62,7 +72,7 @@ export function ManagerHomePage() {
           </div>
           <p className="muted" style={{ marginTop: 12 }}>
             <Link to="/pipeline">Pipeline board</Link> · <Link to="/leads">All leads</Link> ·{' '}
-            <Link to="/reports">Reports & CSV</Link>
+            <Link to="/reports">Reports & CSV</Link> · <Link to="/calendar">My calendar</Link>
           </p>
         </div>
       )}
