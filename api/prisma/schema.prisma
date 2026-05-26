@@ -47,6 +47,7 @@ model User {
   calendarEvents CalendarEvent[]
   salesOpportunities SalesOpportunity[] @relation("OpportunityOwner")
   aiAuditLogs    AiAuditLog[]
+  stageChanges   StageChange[]
 
   @@index([organizationId])
   @@index([teamId])
@@ -77,6 +78,10 @@ model Lead {
   source           String?
   priority         LeadPriority?
   stage            LeadStage  @default(NEW)
+  wonValue         Decimal?   @db.Decimal(14, 2)
+  wonStartAt       DateTime?
+  wonProducts      String?
+  lossReason       String?
   /** Sort order within a pipeline column (lower = higher on the board). */
   pipelineRank     Int        @default(0)
   lastActivityAt   DateTime?
@@ -121,7 +126,10 @@ model StageChange {
   note         String?
   suggestedByAi Boolean  @default(false)
   userId       String
+  user         User      @relation(fields: [userId], references: [id])
   createdAt    DateTime  @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
 }
 
 enum ActivityType {

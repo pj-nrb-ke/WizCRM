@@ -112,7 +112,10 @@ export async function suggestStage(lead: LeadContext, userId: string): Promise<{
     `You are a CRM assistant. Return JSON: { "suggestedStage": string, "reason": string }. suggestedStage must be one of: NEW, CONTACTED, QUALIFIED, PROPOSAL, NEGOTIATION, WON, LOST. Current stage is ${lead.stage}. Only suggest change if activity supports it.`,
     input,
   );
-  if (!isAllowedStageTransition(lead.stage, result.suggestedStage)) {
+  if (
+    lead.stage === 'WON' ||
+    !isAllowedStageTransition(lead.stage, result.suggestedStage)
+  ) {
     result.suggestedStage = lead.stage;
   }
   await audit({

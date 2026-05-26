@@ -23,8 +23,9 @@ describe('UT-LITE-004 stage transitions', () => {
     expect(isAllowedStageTransition('PROPOSAL', 'LOST')).toBe(true);
   });
 
-  it('blocks won to earlier sales stages', () => {
-    expect(isAllowedStageTransition('WON', 'NEGOTIATION')).toBe(false);
+  it('allows reopen from won to an open stage', () => {
+    expect(isAllowedStageTransition('WON', 'QUALIFIED')).toBe(true);
+    expect(isAllowedStageTransition('WON', 'WON')).toBe(true);
   });
 
   it('allows reopen from lost', () => {

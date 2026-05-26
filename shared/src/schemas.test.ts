@@ -5,6 +5,7 @@ import {
   nextActionFeedbackSchema,
   postCallSchema,
   transcribeAudioSchema,
+  updateLeadSchema,
 } from './schemas.js';
 
 describe('UT-LITE-001 create lead schema', () => {
@@ -54,6 +55,18 @@ describe('UT-LITE-007 next action feedback schema', () => {
   it('requires non-empty action', () => {
     expect(nextActionFeedbackSchema.safeParse({ action: 'Call back' }).success).toBe(true);
     expect(nextActionFeedbackSchema.safeParse({ action: '' }).success).toBe(false);
+  });
+});
+
+describe('close lead update schema', () => {
+  it('requires wonValue when stage is WON', () => {
+    expect(updateLeadSchema.safeParse({ stage: 'WON' }).success).toBe(false);
+    expect(updateLeadSchema.safeParse({ stage: 'WON', wonValue: 1200 }).success).toBe(true);
+  });
+
+  it('requires lossReason when stage is LOST', () => {
+    expect(updateLeadSchema.safeParse({ stage: 'LOST' }).success).toBe(false);
+    expect(updateLeadSchema.safeParse({ stage: 'LOST', lossReason: 'PRICE' }).success).toBe(true);
   });
 });
 

@@ -62,6 +62,9 @@ export function Layout() {
               <NavItem to="/leads" icon="leads">
                 Leads
               </NavItem>
+              <NavItem to="/leads/import" icon="leads">
+                Bulk import
+              </NavItem>
               <NavItem to="/calendar" icon="calendar">
                 My calendar
               </NavItem>
@@ -75,6 +78,9 @@ export function Layout() {
             <NavSection label="Organization">
               <NavItem to="/organization" icon="org">
                 Profile
+              </NavItem>
+              <NavItem to="/settings/crm" icon="org">
+                CRM lists
               </NavItem>
               <NavItem to="/teams" icon="teams">
                 Teams

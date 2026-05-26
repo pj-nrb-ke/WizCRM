@@ -92,7 +92,8 @@ describe('reports.service', () => {
         lastActivityAt: new Date(),
         owner: { id: 'rep-2', name: 'Bob', email: 'bob@wizcrm.app' },
       },
-    ]);
+    ])
+      .mockResolvedValueOnce([{ id: 'lead-3', lossReason: 'NO_BUDGET' }]);
     prismaMocks.activityCount.mockResolvedValueOnce(7);
     prismaMocks.stageChangeFindMany.mockResolvedValueOnce([
       {

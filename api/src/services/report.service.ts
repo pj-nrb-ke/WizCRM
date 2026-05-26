@@ -1,4 +1,5 @@
 import type { LeadStage, Prisma } from '@prisma/client';
+import { lossReasonLabel } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getTeamMemberIds } from './team.service.js';
 import { STALE_LEAD_DAYS, isStaleLead } from './team.service.js';
@@ -207,27 +208,38 @@ async function loadLast30DayActivities(
 async function loadLossReasons(leadIds: string[]) {
   if (leadIds.length === 0) return [] as { reason: string; count: number }[];
 
-  const changes = await prisma.stageChange.findMany({
-    where: {
-      leadId: { in: leadIds },
-      toStage: 'LOST',
-    },
-    select: {
-      leadId: true,
-      note: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: 'desc' },
+  const lostLeads = await prisma.lead.findMany({
+    where: { id: { in: leadIds }, stage: 'LOST' },
+    select: { id: true, lossReason: true },
   });
 
   const reasons = new Map<string, number>();
-  const seenLeads = new Set<string>();
-  for (const change of changes) {
-    if (seenLeads.has(change.leadId)) continue;
-    seenLeads.add(change.leadId);
-    const reason = change.note?.trim() || '(unspecified)';
-    reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+  const needsNote: string[] = [];
+
+  for (const lead of lostLeads) {
+    if (lead.lossReason) {
+      const label = lossReasonLabel(lead.lossReason);
+      reasons.set(label, (reasons.get(label) ?? 0) + 1);
+    } else {
+      needsNote.push(lead.id);
+    }
   }
+
+  if (needsNote.length > 0) {
+    const changes = await prisma.stageChange.findMany({
+      where: { leadId: { in: needsNote }, toStage: 'LOST' },
+      select: { leadId: true, note: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    const seenLeads = new Set<string>();
+    for (const change of changes) {
+      if (seenLeads.has(change.leadId)) continue;
+      seenLeads.add(change.leadId);
+      const reason = change.note?.trim() || '(unspecified)';
+      reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+    }
+  }
+
   return [...reasons.entries()]
     .map(([reason, count]) => ({ reason, count }))
     .sort((a, b) => b.count - a.count);

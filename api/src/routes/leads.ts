@@ -7,6 +7,7 @@ import {
   pipelineStageIds,
   pipelineReorderSchema,
   updateLeadSchema,
+  bulkImportLeadsSchema,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
@@ -17,6 +18,8 @@ import {
   findDuplicateLeads,
   loadLeadContext,
 } from '../services/lead.service.js';
+import { getCrmConfig } from '../services/crm-config.service.js';
+import { bulkImportLeads } from '../services/lead-import.service.js';
 import { buildLeadInsights } from '../services/lead-insights.service.js';
 import { getTeamMemberIds } from '../services/team.service.js';
 
@@ -29,6 +32,10 @@ const ownerSelect = {
 
 function isManager(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
+}
+
+function isManagerRole(role: string) {
+  return isManager(role);
 }
 
 function requireManager() {
@@ -141,6 +148,32 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       return acc;
     }, {});
     return { stages, pipeline };
+  });
+
+  app.get('/crm-config', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    return getCrmConfig(organizationId);
+  });
+
+  app.post('/import', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const parsed = bulkImportLeadsSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const result = await bulkImportLeads(
+      organizationId,
+      userId,
+      parsed.data.rows,
+      parsed.data.ownerId,
+    );
+    return reply.status(201).send(result);
   });
 
   app.get('/check-duplicates', async (request, reply) => {

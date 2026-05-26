@@ -1,4 +1,5 @@
 export * from './stages.js';
+export * from './close-lead.js';
 export * from './priorities.js';
 export * from './contact.js';
 export * from './phone.js';

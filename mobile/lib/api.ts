@@ -103,6 +103,10 @@ export type Lead = {
   source?: string | null;
   priority?: string | null;
   stage: string;
+  wonValue?: number | string | null;
+  wonStartAt?: string | null;
+  wonProducts?: string | null;
+  lossReason?: string | null;
   lastActivityAt?: string | null;
   owner?: LeadOwner;
 };

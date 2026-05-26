@@ -3,6 +3,9 @@ import { hasContactMethod, sanitizeStringList } from './contact.js';
 import { LEAD_PRIORITIES } from './priorities.js';
 import { pipelineStageConfigSchema } from './pipeline-stages.js';
 import { LEAD_STAGES } from './stages.js';
+import { DEFAULT_LOSS_REASONS } from './close-lead.js';
+
+const lossReasonCodes = DEFAULT_LOSS_REASONS.map((r) => r.code) as [string, ...string[]];
 
 const phoneField = z.string().min(5).max(30);
 const emailField = z.string().email();
@@ -42,22 +45,68 @@ export const createLeadSchema = z
     }
   });
 
-export const updateLeadSchema = z.object({
-  name: z.string().min(1).max(200).optional(),
-  company: z.string().max(200).nullable().optional(),
-  email: emailField.nullable().optional(),
-  phone: phoneField.nullable().optional(),
-  extraPhones: z.array(phoneField).max(5).nullable().optional(),
-  extraEmails: z.array(emailField).max(5).nullable().optional(),
-  address: z.string().max(500).nullable().optional(),
-  googleMapsUrl: z.string().url().max(2000).nullable().optional(),
-  source: z.string().max(100).nullable().optional(),
-  priority: z.enum(LEAD_PRIORITIES).nullable().optional(),
-  stage: z.enum(LEAD_STAGES).optional(),
-  stageNote: z.string().max(500).optional(),
-  confirmStageSuggestion: z.boolean().optional(),
-  /** Manager pipeline drag-drop: relaxed stage transition rules */
-  pipelineMove: z.boolean().optional(),
+export const lossReasonOptionSchema = z.object({
+  code: z.string().min(1).max(40),
+  label: z.string().min(1).max(120),
+});
+
+export const updateLeadSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    company: z.string().max(200).nullable().optional(),
+    email: emailField.nullable().optional(),
+    phone: phoneField.nullable().optional(),
+    extraPhones: z.array(phoneField).max(5).nullable().optional(),
+    extraEmails: z.array(emailField).max(5).nullable().optional(),
+    address: z.string().max(500).nullable().optional(),
+    googleMapsUrl: z.string().url().max(2000).nullable().optional(),
+    source: z.string().max(100).nullable().optional(),
+    priority: z.enum(LEAD_PRIORITIES).nullable().optional(),
+    stage: z.enum(LEAD_STAGES).optional(),
+    stageNote: z.string().max(500).optional(),
+    confirmStageSuggestion: z.boolean().optional(),
+    /** Manager pipeline drag-drop: relaxed stage transition rules */
+    pipelineMove: z.boolean().optional(),
+    wonValue: z.number().nonnegative().max(999_999_999).optional(),
+    wonStartAt: z.string().datetime().optional(),
+    wonProducts: z.string().max(2000).optional(),
+    lossReason: z.enum(lossReasonCodes).optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.stage === 'WON') {
+      if (d.wonValue === undefined || Number.isNaN(d.wonValue)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Deal value is required when marking as Won',
+          path: ['wonValue'],
+        });
+      }
+    }
+    if (d.stage === 'LOST') {
+      if (!d.lossReason) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Loss reason is required when marking as Lost',
+          path: ['lossReason'],
+        });
+      }
+    }
+  });
+
+export const bulkImportLeadsSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(200),
+        company: z.string().max(200).optional(),
+        email: emailField.optional(),
+        phone: phoneField.optional(),
+        source: z.string().max(100).optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+  ownerId: z.string().uuid().optional(),
 });
 
 /** Reorder cards within one pipeline column (manager board). */
@@ -135,6 +184,8 @@ export const updateOrganizationSchema = z.object({
 export const orgSettingsSchema = z.object({
   deskUseAi: z.boolean().optional(),
   pipelineStages: z.array(pipelineStageConfigSchema).optional(),
+  leadSources: z.array(z.string().min(1).max(100)).max(50).optional(),
+  lossReasons: z.array(lossReasonOptionSchema).max(30).optional(),
 });
 
 export const createAdminUserSchema = z.object({

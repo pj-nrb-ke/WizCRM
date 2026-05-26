@@ -19,6 +19,8 @@ import { openTel, openWhatsApp } from '../../lib/phone-links';
 import { openGoogleMaps } from '../../lib/maps-links';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
 import { VoiceNoteButton } from '../../components/VoiceNoteButton';
+import { CloseLeadSheet } from '../../components/CloseLeadSheet';
+import { lossReasonLabel } from '@wizcrm/shared';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
 
@@ -60,6 +62,8 @@ export default function LeadDetailScreen() {
   const [insights, setInsights] = useState<LeadInsights | null>(null);
   const [draft, setDraft] = useState('');
   const [pendingCount, setPendingCount] = useState(0);
+  const [closeMode, setCloseMode] = useState<'WON' | 'LOST' | null>(null);
+  const [closeSaving, setCloseSaving] = useState(false);
 
   function formatDue(iso: string) {
     const d = new Date(iso);
@@ -274,6 +278,14 @@ export default function LeadDetailScreen() {
     }
   }
 
+  function onStagePress(toStage: string) {
+    if (toStage === 'WON' || toStage === 'LOST') {
+      setCloseMode(toStage);
+      return;
+    }
+    void confirmStage(toStage);
+  }
+
   async function confirmStage(toStage: string) {
     if (!id) return;
     try {
@@ -285,6 +297,45 @@ export default function LeadDetailScreen() {
       load();
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Could not update stage');
+    }
+  }
+
+  async function submitCloseWon(data: { wonValue: number; wonProducts?: string }) {
+    if (!id) return;
+    setCloseSaving(true);
+    try {
+      await api(`/leads/${id}`, {
+        method: 'PATCH',
+        body: {
+          stage: 'WON',
+          wonValue: data.wonValue,
+          wonStartAt: new Date().toISOString(),
+          wonProducts: data.wonProducts,
+        },
+      });
+      setCloseMode(null);
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not close as won');
+    } finally {
+      setCloseSaving(false);
+    }
+  }
+
+  async function submitCloseLost(data: { lossReason: string }) {
+    if (!id) return;
+    setCloseSaving(true);
+    try {
+      await api(`/leads/${id}`, {
+        method: 'PATCH',
+        body: { stage: 'LOST', lossReason: data.lossReason },
+      });
+      setCloseMode(null);
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not close as lost');
+    } finally {
+      setCloseSaving(false);
     }
   }
 
@@ -340,6 +391,15 @@ export default function LeadDetailScreen() {
         {lead.priority ? ` · ${priorityLabel(lead.priority as 'HOT' | 'WARM' | 'COLD')}` : ''}
         {lead.source ? ` · ${lead.source}` : ''}
       </Text>
+      {lead.stage === 'WON' && lead.wonValue != null ? (
+        <Text style={styles.closeBannerWon}>
+          Won · {String(lead.wonValue)}
+          {lead.wonProducts ? ` · ${lead.wonProducts}` : ''}
+        </Text>
+      ) : null}
+      {lead.stage === 'LOST' && lead.lossReason ? (
+        <Text style={styles.closeBannerLost}>Lost · {lossReasonLabel(lead.lossReason)}</Text>
+      ) : null}
       {lead.company ? <Text style={styles.subMeta}>{lead.company}</Text> : null}
       {lead.address ? (
         <Text style={styles.subMeta} numberOfLines={3}>
@@ -523,7 +583,7 @@ export default function LeadDetailScreen() {
           <Pressable
             key={s}
             style={[styles.stageChip, lead.stage === s && styles.stageChipActive]}
-            onPress={() => !readOnly && confirmStage(s)}
+            onPress={() => !readOnly && onStagePress(s)}
             disabled={readOnly}
           >
             <Text style={[styles.stageChipText, lead.stage === s && styles.stageChipTextActive]}>
@@ -563,6 +623,15 @@ export default function LeadDetailScreen() {
           <Text style={styles.activityDate}>{new Date(a.createdAt).toLocaleString()}</Text>
         </View>
       ))}
+
+      <CloseLeadSheet
+        visible={closeMode !== null}
+        mode={closeMode ?? 'WON'}
+        saving={closeSaving}
+        onClose={() => setCloseMode(null)}
+        onSubmitWon={(d) => void submitCloseWon(d)}
+        onSubmitLost={(d) => void submitCloseLost(d)}
+      />
     </ScrollView>
   );
 }
@@ -579,6 +648,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   name: { fontSize: 24, fontWeight: '700', color: '#f8fafc' },
+  closeBannerWon: { color: '#34d399', marginTop: 8, fontWeight: '600' },
+  closeBannerLost: { color: '#f87171', marginTop: 8, fontWeight: '600' },
   meta: { color: '#38bdf8', marginBottom: 4 },
   subMeta: { color: '#94a3b8', marginBottom: 8 },
   mapsLinkBtn: { marginBottom: 8 },

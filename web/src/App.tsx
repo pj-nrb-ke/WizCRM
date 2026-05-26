@@ -15,6 +15,8 @@ import { PipelinePage } from './pages/PipelinePage';
 import { LeadsPage } from './pages/LeadsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { BulkImportPage } from './pages/BulkImportPage';
+import { CrmSettingsPage } from './pages/CrmSettingsPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -81,6 +83,22 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <CalendarPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/leads/import"
+              element={
+                <ManagerOnly>
+                  <BulkImportPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/settings/crm"
+              element={
+                <ManagerOnly>
+                  <CrmSettingsPage />
                 </ManagerOnly>
               }
             />

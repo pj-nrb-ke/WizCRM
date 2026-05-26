@@ -6,6 +6,8 @@ import { leadsQueryPath, readManagerFilter } from '../lib/manager-query';
 import type { LeadSummary } from '../lib/types';
 import { TeamFilterBar } from '../components/TeamFilterBar';
 import { LeadDrawer } from '../components/LeadDrawer';
+import { CreateLeadModal } from '../components/CreateLeadModal';
+import type { CrmConfig } from '../components/CloseLeadModal';
 import { PageHeader } from '../components/PageHeader';
 
 export function LeadsPage() {
@@ -17,6 +19,8 @@ export function LeadsPage() {
   const [q, setQ] = useState('');
   const [stageFilter, setStageFilter] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [crmConfig, setCrmConfig] = useState<CrmConfig | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -31,6 +35,12 @@ export function LeadsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    api<CrmConfig>('/leads/crm-config')
+      .then(setCrmConfig)
+      .catch(() => setCrmConfig(null));
+  }, []);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -75,6 +85,9 @@ export function LeadsPage() {
             </option>
           ))}
         </select>
+        <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
+          New lead
+        </button>
         <button type="button" className="btn-secondary" onClick={() => load()}>
           Refresh
         </button>
@@ -131,6 +144,15 @@ export function LeadsPage() {
         leadId={selectedId}
         onClose={() => setSelectedId(null)}
         onUpdated={load}
+      />
+      <CreateLeadModal
+        open={showCreate}
+        config={crmConfig}
+        onClose={() => setShowCreate(false)}
+        onCreated={(id) => {
+          load();
+          setSelectedId(id);
+        }}
       />
     </div>
   );

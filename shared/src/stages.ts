@@ -21,7 +21,8 @@ export function isAllowedStageTransition(from: LeadStage, to: LeadStage): boolea
   if (from === to) return true;
   if (to === 'LOST') return from !== 'WON';
   if (from === 'LOST') return true;
-  if (from === 'WON') return false;
+  /** Reopen closed-won deals back into the pipeline (clears won fields in API). */
+  if (from === 'WON') return to !== 'WON';
   const fromIdx = LEAD_STAGES.indexOf(from);
   const toIdx = LEAD_STAGES.indexOf(to);
   return toIdx >= fromIdx;

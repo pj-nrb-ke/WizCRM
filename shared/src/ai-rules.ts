@@ -10,6 +10,8 @@ export function shouldApplySuggestedStage(
     return false;
   }
   if (!isLeadStage(suggestedStage)) return false;
+  /** AI must not suggest moving a won deal backward; reopen is a manual manager action. */
+  if (currentStage === 'WON') return false;
   return isAllowedStageTransition(currentStage, suggestedStage);
 }
 
