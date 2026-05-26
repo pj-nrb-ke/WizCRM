@@ -22,6 +22,7 @@ import {
   isOfflineError,
 } from '../../lib/offline-queue';
 import { LeadTeamChat } from '../../components/LeadTeamChat';
+import { LeadNextActionPanel } from '../../components/LeadNextActionPanel';
 import { openTel, openWhatsApp } from '../../lib/phone-links';
 import { openGoogleMaps } from '../../lib/maps-links';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
@@ -690,6 +691,8 @@ export default function LeadDetailScreen() {
           )}
         </View>
       ) : null}
+
+      {!readOnly ? <LeadNextActionPanel leadId={id!} /> : null}
 
       <LeadTeamChat leadId={id!} readOnly={readOnly} />
 

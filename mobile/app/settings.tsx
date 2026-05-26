@@ -129,6 +129,10 @@ export default function SettingsScreen() {
         <Text style={styles.bullet}>• Pipeline shows correct stage</Text>
       </View>
 
+      <Pressable style={styles.menuBtn} onPress={() => router.push('/reminders')}>
+        <Text style={styles.menuBtnText}>Custom reminders</Text>
+      </Pressable>
+
       <Pressable
         style={styles.signOut}
         onPress={async () => {
@@ -184,6 +188,14 @@ const styles = StyleSheet.create({
   btnSecondaryText: { color: '#e2e8f0', fontWeight: '600' },
   hint: { color: '#64748b', fontSize: 12, marginTop: 10 },
   bullet: { color: '#e2e8f0', marginBottom: 6 },
+  menuBtn: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  menuBtnText: { color: '#38bdf8', fontWeight: '700', fontSize: 16 },
   signOut: { padding: 16, alignItems: 'center' },
   signOutText: { color: '#f87171', fontWeight: '600' },
 });

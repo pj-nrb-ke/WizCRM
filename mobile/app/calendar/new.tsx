@@ -15,6 +15,8 @@ import {
   parseLocalDatetimeInput,
   toLocalDatetimeInput,
 } from '../../lib/calendar-utils';
+import { fetchCrmConfig } from '../../lib/crm-config';
+import { ProjectTagsEditor } from '../../components/ProjectTagsEditor';
 
 export default function NewCalendarEventScreen() {
   const times = defaultNewEventTimes();
@@ -25,12 +27,16 @@ export default function NewCalendarEventScreen() {
   const [endAt, setEndAt] = useState(toLocalDatetimeInput(times.endAt));
   const [leadId, setLeadId] = useState('');
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [reminderMinutes, setReminderMinutes] = useState('60');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api<{ leads: Lead[] }>('/leads')
-      .then((d) => setLeads((d.leads ?? []).slice(0, 50)))
-      .catch(() => setLeads([]));
+    Promise.all([
+      api<{ leads: Lead[] }>('/leads').then((d) => setLeads((d.leads ?? []).slice(0, 50))),
+      fetchCrmConfig().then((c) => setTagSuggestions(c?.leadTags ?? [])),
+    ]).catch(() => setLeads([]));
   }, []);
 
   async function save() {
@@ -48,6 +54,9 @@ export default function NewCalendarEventScreen() {
         meetingAddress: meetingAddress.trim() || undefined,
       };
       if (leadId) body.leadId = leadId;
+      const mins = Number(reminderMinutes);
+      if (!Number.isNaN(mins) && mins >= 0) body.reminderMinutes = mins;
+      if (tags.length) body.tags = tags;
       await api('/calendar/events', { method: 'POST', body });
       router.back();
     } catch (e) {
@@ -108,6 +117,17 @@ export default function NewCalendarEventScreen() {
           </View>
         </>
       ) : null}
+
+      <Text style={styles.label}>Reminder (minutes before)</Text>
+      <TextInput
+        style={styles.input}
+        value={reminderMinutes}
+        onChangeText={setReminderMinutes}
+        keyboardType="number-pad"
+        placeholder="60"
+      />
+
+      <ProjectTagsEditor tags={tags} suggestions={tagSuggestions} onChange={setTags} />
 
       <Pressable style={styles.saveBtn} disabled={saving} onPress={() => void save()}>
         <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Create event'}</Text>

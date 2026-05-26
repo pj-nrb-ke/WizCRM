@@ -17,6 +17,7 @@ export type MemberStats = {
   openLeads: number;
   overdueTasks: number;
   staleLeads: number;
+  wonLeads: number;
   lastActivityAt: string | null;
 };
 
@@ -30,6 +31,7 @@ export function emptyMemberStats(): MemberStats {
     openLeads: 0,
     overdueTasks: 0,
     staleLeads: 0,
+    wonLeads: 0,
     lastActivityAt: null,
   };
 }
@@ -42,9 +44,11 @@ export function mergeMemberStats(
 ): MemberStats {
   let openLeads = 0;
   let staleLeads = 0;
+  let wonLeads = 0;
   let latest: Date | null = null;
 
   for (const lead of leads) {
+    if (lead.stage === 'WON') wonLeads += 1;
     if (!CLOSED_STAGES.includes(lead.stage)) {
       openLeads += 1;
       if (isStaleLeadWithDays(lead.lastActivityAt, lead.createdAt, staleDays, now)) {
@@ -61,6 +65,7 @@ export function mergeMemberStats(
     openLeads,
     overdueTasks: overdueTaskCount,
     staleLeads,
+    wonLeads,
     lastActivityAt: latest ? latest.toISOString() : null,
   };
 }

@@ -93,8 +93,8 @@ export default function TeamDetailScreen() {
 
       <View style={styles.summary}>
         <Text style={styles.summaryLine}>
-          {team.stats.openLeads} open leads · {team.stats.overdueTasks} overdue tasks ·{' '}
-          {team.stats.staleLeads} stale
+          {team.stats.openLeads} open · {team.stats.wonLeads} won · {team.stats.overdueTasks} overdue
+          · {team.stats.staleLeads} stale · {team.stats.memberCount} members
         </Text>
       </View>
 
@@ -122,9 +122,37 @@ export default function TeamDetailScreen() {
             <Text style={styles.memberName}>{m.name}</Text>
             <Text style={styles.memberEmail}>{m.email}</Text>
             <Text style={styles.memberStats}>
-              {m.stats.openLeads} open · {m.stats.overdueTasks} overdue · {m.stats.staleLeads}{' '}
-              stale
+              {m.stats.openLeads} open · {m.stats.wonLeads ?? 0} won · {m.stats.overdueTasks} overdue
+              · {m.stats.staleLeads} stale
             </Text>
+            {m.stats.lastActivityAt ? (
+              <Text style={styles.lastAct}>
+                Last activity {new Date(m.stats.lastActivityAt).toLocaleDateString()}
+              </Text>
+            ) : (
+              <Text style={styles.lastAct}>No recent activity</Text>
+            )}
+            <View style={styles.metricRow}>
+              {(['open', 'stale', 'won', 'overdue'] as const).map((metric) => (
+                <Pressable
+                  key={metric}
+                  style={styles.metricChip}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/team/metrics',
+                      params: {
+                        metric,
+                        teamId: id!,
+                        title: `${m.name} · ${metric}`,
+                        ownerId: m.id,
+                      },
+                    })
+                  }
+                >
+                  <Text style={styles.metricChipText}>{metric}</Text>
+                </Pressable>
+              ))}
+            </View>
           </Pressable>
         ))
       )}
@@ -189,6 +217,17 @@ const styles = StyleSheet.create({
   memberName: { color: '#f8fafc', fontSize: 16, fontWeight: '600' },
   memberEmail: { color: '#64748b', fontSize: 13, marginTop: 2 },
   memberStats: { color: '#94a3b8', fontSize: 13, marginTop: 6 },
+  lastAct: { color: '#64748b', fontSize: 12, marginTop: 4 },
+  metricRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  metricChip: {
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  metricChipText: { color: '#38bdf8', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
   leadsBtn: {
     margin: 16,
     marginTop: 8,

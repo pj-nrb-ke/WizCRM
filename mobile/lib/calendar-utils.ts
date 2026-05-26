@@ -14,6 +14,8 @@ export type CalendarEventRow = {
   geofenceOverride?: boolean | null;
   checkOutAt: string | null;
   attendanceStatus: string | null;
+  reminderMinutes?: number | null;
+  tags?: string[];
   lead: { id: string; name: string; company: string | null } | null;
 };
 
@@ -46,6 +48,12 @@ export function toLocalDatetimeInput(iso: string) {
 
 export function parseLocalDatetimeInput(value: string) {
   return new Date(value).toISOString();
+}
+
+export function monthRange(year: number, month: number) {
+  const from = new Date(year, month - 1, 1, 0, 0, 0, 0);
+  const to = new Date(year, month, 0, 23, 59, 59, 999);
+  return { from: from.toISOString(), to: to.toISOString() };
 }
 
 export function listRangeDays(daysAhead = 14) {

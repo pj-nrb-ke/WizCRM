@@ -32,12 +32,29 @@ describe('UT team stats', () => {
     expect(stats.openLeads).toBe(2);
     expect(stats.staleLeads).toBe(1);
     expect(stats.overdueTasks).toBe(2);
+    expect(stats.wonLeads).toBe(1);
   });
 
   it('teamStatsFromMembers sums member stats', () => {
     const stats = teamStatsFromMembers([
-      { stats: { openLeads: 3, overdueTasks: 1, staleLeads: 0, lastActivityAt: null } },
-      { stats: { openLeads: 2, overdueTasks: 0, staleLeads: 1, lastActivityAt: null } },
+      {
+        stats: {
+          openLeads: 3,
+          overdueTasks: 1,
+          staleLeads: 0,
+          wonLeads: 0,
+          lastActivityAt: null,
+        },
+      },
+      {
+        stats: {
+          openLeads: 2,
+          overdueTasks: 0,
+          staleLeads: 1,
+          wonLeads: 0,
+          lastActivityAt: null,
+        },
+      },
     ]);
     expect(stats.openLeads).toBe(5);
     expect(stats.memberCount).toBe(2);

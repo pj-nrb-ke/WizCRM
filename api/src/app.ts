@@ -17,6 +17,7 @@ import { calendarRoutes } from './routes/calendar.js';
 import { integrationRoutes } from './routes/integrations.js';
 import { quotationRoutes } from './routes/quotations.js';
 import { leadThreadRoutes } from './routes/lead-thread.js';
+import { reminderRoutes } from './routes/reminders.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
 export async function buildApp() {
@@ -55,6 +56,7 @@ export async function buildApp() {
   await app.register(emailRoutes, { prefix: '/email' });
   await app.register(opportunityRoutes, { prefix: '/opportunities' });
   await app.register(calendarRoutes, { prefix: '/calendar' });
+  await app.register(reminderRoutes, { prefix: '/reminders' });
   await app.register(integrationRoutes, { prefix: '/integrations' });
   await app.register(quotationRoutes, { prefix: '/quotations' });
 

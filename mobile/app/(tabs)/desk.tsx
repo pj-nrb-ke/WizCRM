@@ -16,6 +16,7 @@ import { buildPersonalMetrics, type PersonalDashboardMetrics } from '../../lib/p
 import { PersonalDashboardCard } from '../../components/PersonalDashboardCard';
 import { LicenseBanner } from '../../components/LicenseBanner';
 import { rescheduleLocalReminders } from '../../lib/notifications';
+import { fetchReminders } from '../../lib/reminders';
 
 type DeskItem = { leadId: string; title: string; reason: string };
 
@@ -38,7 +39,7 @@ export default function DeskScreen() {
     const to = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const calendarQuery = new URLSearchParams({ from, to, view: 'week' });
     try {
-      const [leadsRes, tasksRes, eventsRes, crmConfig] = await Promise.all([
+      const [leadsRes, tasksRes, eventsRes, crmConfig, remindersRes] = await Promise.all([
         api<{ leads: { stage: string; updatedAt: string; lastActivityAt?: string | null }[] }>(
           `/leads?ownerId=${encodeURIComponent(user.id)}`,
         ),
@@ -55,6 +56,7 @@ export default function DeskScreen() {
           events: [],
         })),
         api<{ staleLeadDays?: number }>('/leads/crm-config').catch(() => ({ staleLeadDays: 7 })),
+        fetchReminders(from, to).catch(() => ({ reminders: [] })),
       ]);
       const staleDays =
         typeof crmConfig.staleLeadDays === 'number' ? crmConfig.staleLeadDays : 7;
@@ -70,6 +72,7 @@ export default function DeskScreen() {
       void rescheduleLocalReminders({
         tasks: tasksRes.tasks ?? [],
         events: eventsRes.events ?? [],
+        customReminders: remindersRes.reminders ?? [],
       });
     } catch (e) {
       setPersonalError(e instanceof Error ? e.message : 'Failed to load dashboard');

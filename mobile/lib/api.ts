@@ -145,6 +145,7 @@ export type MemberStats = {
   openLeads: number;
   overdueTasks: number;
   staleLeads: number;
+  wonLeads: number;
   lastActivityAt: string | null;
 };
 

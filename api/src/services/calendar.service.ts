@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type { createCalendarEventSchema, updateCalendarEventSchema } from '@wizcrm/shared';
+import { normalizeLeadTags, type createCalendarEventSchema, type updateCalendarEventSchema } from '@wizcrm/shared';
 import { DEFAULT_CHECK_IN_RADIUS_METERS, haversineDistanceMeters } from '@wizcrm/shared';
 import type { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -80,6 +80,7 @@ export async function createCalendarEvent(
       recurrenceIntervalDays: input.recurrenceIntervalDays,
       recurrenceUntil: input.recurrenceUntil ? new Date(input.recurrenceUntil) : null,
       reminderMinutes: input.reminderMinutes,
+      tags: normalizeLeadTags(input.tags),
       meetingAddress: input.meetingAddress,
       meetingLat: input.meetingLat,
       meetingLng: input.meetingLng,
@@ -149,6 +150,7 @@ export async function updateCalendarEvent(
     data.recurrenceUntil = input.recurrenceUntil ? new Date(input.recurrenceUntil) : null;
   }
   if (input.reminderMinutes !== undefined) data.reminderMinutes = input.reminderMinutes;
+  if (input.tags !== undefined) data.tags = normalizeLeadTags(input.tags);
   if (input.meetingAddress !== undefined) data.meetingAddress = input.meetingAddress;
   if (input.meetingLat !== undefined) data.meetingLat = input.meetingLat;
   if (input.meetingLng !== undefined) data.meetingLng = input.meetingLng;

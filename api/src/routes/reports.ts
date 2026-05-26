@@ -67,6 +67,34 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     return loadSalesPacing(organizationId, year, month);
   });
 
+  app.get('/my-pacing', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.targetsPacing) {
+      return reply.status(403).send({ error: 'Pro plan required for targets and pacing' });
+    }
+    const full = await loadSalesPacing(organizationId);
+    const mine = full.reps.find((r) => r.userId === userId);
+    if (!mine) {
+      return {
+        period: full.period,
+        target: 0,
+        wonRevenue: 0,
+        wonDeals: 0,
+        achievementPct: null,
+        pacingLabel: 'No target set',
+      };
+    }
+    return {
+      period: full.period,
+      target: mine.target,
+      wonRevenue: mine.wonRevenue,
+      wonDeals: mine.wonDeals,
+      achievementPct: mine.achievementPct,
+      pacingLabel: mine.pacingLabel,
+    };
+  });
+
   app.get('/data-hygiene', async (request, reply) => {
     const { organizationId, role } = request.user;
     if (!isManagerRole(role)) {

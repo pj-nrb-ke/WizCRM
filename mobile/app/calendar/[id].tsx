@@ -23,6 +23,9 @@ import { openGoogleMaps } from '../../lib/maps-links';
 import { oneParam } from '../../lib/route-params';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
+import { fetchCrmConfig } from '../../lib/crm-config';
+import { ProjectTagsEditor } from '../../components/ProjectTagsEditor';
+import { createReminder } from '../../lib/reminders';
 
 export default function CalendarEventScreen() {
   const params = useLocalSearchParams<{ id: string | string[] }>();
@@ -65,6 +68,9 @@ export default function CalendarEventScreen() {
       setMeetingAddress(found.meetingAddress ?? '');
       setStartAt(toLocalDatetimeInput(found.startAt));
       setEndAt(toLocalDatetimeInput(found.endAt));
+      setTags(found.tags ?? []);
+      setReminderMinutes(String(found.reminderMinutes ?? 60));
+      fetchCrmConfig().then((c) => setTagSuggestions(c?.leadTags ?? []));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -91,6 +97,8 @@ export default function CalendarEventScreen() {
           startAt: parseLocalDatetimeInput(startAt),
           endAt: parseLocalDatetimeInput(endAt),
           meetingAddress: meetingAddress.trim() || undefined,
+          tags,
+          reminderMinutes: Number(reminderMinutes) || 60,
         },
       });
       await load();
@@ -229,6 +237,33 @@ export default function CalendarEventScreen() {
         multiline
         numberOfLines={3}
       />
+
+      <Text style={styles.label}>Alarm (minutes before start)</Text>
+      <TextInput
+        style={styles.input}
+        value={reminderMinutes}
+        onChangeText={setReminderMinutes}
+        keyboardType="number-pad"
+      />
+      <ProjectTagsEditor tags={tags} suggestions={tagSuggestions} onChange={setTags} />
+      <Pressable
+        style={styles.secondaryBtn}
+        onPress={() => {
+          if (!id) return;
+          const remindAt = new Date(parseLocalDatetimeInput(startAt));
+          remindAt.setMinutes(remindAt.getMinutes() - 15);
+          void createReminder({
+            title: `Reminder: ${title}`,
+            remindAt: remindAt.toISOString(),
+            tags,
+            calendarEventId: id,
+          })
+            .then(() => Alert.alert('Reminder added', 'Extra alert 15 min before (local).'))
+            .catch((e) => Alert.alert('Error', e instanceof Error ? e.message : 'Failed'));
+        }}
+      >
+        <Text style={styles.secondaryBtnText}>+ Custom reminder (15m before)</Text>
+      </Pressable>
 
       <View style={styles.attendanceBox}>
         <Text style={styles.section}>Field attendance</Text>

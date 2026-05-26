@@ -38,10 +38,12 @@ export default function TeamMetricsScreen() {
   const params = useLocalSearchParams<{
     metric?: string | string[];
     teamId?: string | string[];
+    ownerId?: string | string[];
     title?: string | string[];
   }>();
   const metric = oneParam(params.metric) ?? 'open';
   const teamId = oneParam(params.teamId);
+  const ownerId = oneParam(params.ownerId);
   const title = oneParam(params.title) ?? METRIC_TITLES[metric] ?? 'Records';
 
   const [leads, setLeads] = useState<MetricLead[]>([]);
@@ -58,6 +60,7 @@ export default function TeamMetricsScreen() {
       try {
         const qs = new URLSearchParams();
         if (teamId) qs.set('teamId', teamId);
+        if (ownerId) qs.set('ownerId', ownerId);
         const q = qs.toString();
         const res = await api<{ leads: MetricLead[]; tasks: MetricTask[] }>(
           `/teams/metrics/${metric}${q ? `?${q}` : ''}`,
@@ -73,7 +76,7 @@ export default function TeamMetricsScreen() {
         setRefreshing(false);
       }
     },
-    [metric, teamId],
+    [metric, teamId, ownerId],
   );
 
   useFocusEffect(

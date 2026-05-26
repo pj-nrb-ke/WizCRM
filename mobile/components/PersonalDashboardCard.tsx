@@ -36,7 +36,7 @@ export function PersonalDashboardCard({ metrics, loading, error }: Props) {
           key: 'events',
           label: 'Events (7d)',
           value: metrics.upcomingEvents,
-          onPress: () => router.push('/(tabs)/desk'),
+          onPress: () => router.push('/(tabs)/calendar'),
         },
       ]
     : [];

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leadTagsField } from './lead-tags.js';
 
 export const CALENDAR_RECURRENCE = ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM'] as const;
 
@@ -13,6 +14,7 @@ const calendarEventFieldsSchema = z.object({
   recurrenceIntervalDays: z.number().int().min(1).max(365).optional(),
   recurrenceUntil: z.string().datetime().optional(),
   reminderMinutes: z.number().int().min(0).max(10080).optional(),
+  tags: leadTagsField,
   meetingAddress: z.string().max(500).optional(),
   meetingLat: z.number().min(-90).max(90).optional(),
   meetingLng: z.number().min(-180).max(180).optional(),

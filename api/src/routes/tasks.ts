@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { createTaskSchema, updateTaskSchema } from '@wizcrm/shared';
+import { createTaskSchema, normalizeLeadTags, updateTaskSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 
 export const taskRoutes: FastifyPluginAsync = async (app) => {
@@ -34,6 +34,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
         leadId: parsed.data.leadId,
         title: parsed.data.title,
         dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+        tags: normalizeLeadTags(parsed.data.tags),
       },
     });
     return reply.status(201).send({ task });
@@ -62,6 +63,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
               ? new Date(parsed.data.dueAt)
               : undefined,
         completedAt: parsed.data.completed ? new Date() : undefined,
+        tags: parsed.data.tags !== undefined ? normalizeLeadTags(parsed.data.tags) : undefined,
       },
     });
     return { task };

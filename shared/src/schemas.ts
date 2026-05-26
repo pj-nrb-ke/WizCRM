@@ -129,12 +129,14 @@ export const createTaskSchema = z.object({
   title: z.string().min(1).max(300),
   dueAt: z.string().datetime().optional(),
   leadId: z.string().uuid().optional(),
+  tags: leadTagsField,
 });
 
 export const updateTaskSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   dueAt: z.string().datetime().nullable().optional(),
   completed: z.boolean().optional(),
+  tags: leadTagsField,
 });
 
 export const cardParseSchema = z.object({

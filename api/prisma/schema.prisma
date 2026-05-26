@@ -45,6 +45,7 @@ model User {
   activities     Activity[]
   tasks          Task[]
   calendarEvents CalendarEvent[]
+  userReminders  UserReminder[]
   salesOpportunities SalesOpportunity[] @relation("OpportunityOwner")
   quotations         Quotation[]
   aiAuditLogs    AiAuditLog[]
@@ -100,6 +101,7 @@ model Lead {
   aiSuggestions    AiSuggestion[]
   messages         LeadMessage[]
   attachments      LeadAttachment[]
+  userReminders    UserReminder[]
 
   @@index([organizationId, stage])
   @@index([organizationId, stage, pipelineRank])
@@ -343,6 +345,8 @@ model CalendarEvent {
   recurrenceIntervalDays Int?
   recurrenceUntil       DateTime?
   reminderMinutes       Int?
+  /** Project / campaign tags (shared with leads via org tag list). */
+  tags                  String[]           @default([])
   meetingAddress        String?
   meetingLat            Float?
   meetingLng            Float?
@@ -359,9 +363,28 @@ model CalendarEvent {
   @@index([organizationId, leadId])
 }
 
+model UserReminder {
+  id              String    @id @default(uuid())
+  organizationId  String
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  notes           String?
+  remindAt        DateTime
+  tags            String[]  @default([])
+  leadId          String?
+  lead            Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  calendarEventId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([organizationId, userId, remindAt])
+}
+
 model Task {
   id          String    @id @default(uuid())
   organizationId String
+  tags        String[]  @default([])
   leadId      String?
   lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   userId      String
