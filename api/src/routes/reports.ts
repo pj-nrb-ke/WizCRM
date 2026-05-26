@@ -6,6 +6,9 @@ import {
   loadReportSummary,
 } from '../services/report.service.js';
 import { loadAdvancedAnalytics } from '../services/report-analytics.service.js';
+import { loadSalesPacing } from '../services/sales-targets.service.js';
+import { loadDataHygieneReport } from '../services/data-hygiene-report.service.js';
+import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 
 function isManagerRole(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
@@ -40,6 +43,39 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/summary', analyticsHandler);
   app.get('/analytics', analyticsHandler);
+
+  app.get('/pacing', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.targetsPacing) {
+      return reply.status(403).send({ error: 'Pro plan required for targets and pacing' });
+    }
+    const q = request.query as { year?: string; month?: string };
+    const year = q.year ? Number(q.year) : undefined;
+    const month = q.month ? Number(q.month) : undefined;
+    if (year !== undefined && (!Number.isInteger(year) || year < 2000)) {
+      return reply.status(400).send({ error: 'Invalid year' });
+    }
+    if (month !== undefined && (!Number.isInteger(month) || month < 1 || month > 12)) {
+      return reply.status(400).send({ error: 'Invalid month' });
+    }
+    return loadSalesPacing(organizationId, year, month);
+  });
+
+  app.get('/data-hygiene', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.dataHygiene) {
+      return reply.status(403).send({ error: 'Pro plan required for data hygiene report' });
+    }
+    return loadDataHygieneReport(organizationId);
+  });
 
   app.get('/export.csv', async (request, reply) => {
     const { organizationId, role } = request.user;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { PlanCode } from '@wizcrm/shared';
 import { api } from '../lib/api';
 
 type SettingsResponse = {
@@ -7,18 +8,24 @@ type SettingsResponse = {
   aiEnabled: boolean;
   openaiKeyConfigured: boolean;
   openaiModel: string;
+  settings: {
+    plan?: PlanCode;
+    licenseStatus?: string;
+  };
 };
 
 export function PlatformPage() {
   const [data, setData] = useState<SettingsResponse | null>(null);
   const [deskUseAi, setDeskUseAi] = useState(false);
+  const [plan, setPlan] = useState<PlanCode>('lite');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   function load() {
-    return api<SettingsResponse & { settings: object }>('/admin/settings').then((d) => {
+    return api<SettingsResponse>('/admin/settings').then((d) => {
       setData(d);
       setDeskUseAi(d.deskUseAi);
+      setPlan(d.settings.plan ?? 'lite');
     });
   }
 
@@ -32,10 +39,10 @@ export function PlatformPage() {
     try {
       const d = await api<{ deskUseAi: boolean }>('/admin/settings', {
         method: 'PATCH',
-        body: { deskUseAi },
+        body: { deskUseAi, plan },
       });
       setDeskUseAi(d.deskUseAi);
-      setMessage('Settings saved. Desk tab will use the new mode on next load.');
+      setMessage('Settings saved. Reload the app to refresh Pro features.');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
@@ -56,6 +63,22 @@ export function PlatformPage() {
             <li>Env default (LLM desk): {data.deskUseAiEnvDefault ? 'On' : 'Off'}</li>
           </ul>
         )}
+      </div>
+
+      <div className="card">
+        <h2>Commercial plan (Pro features)</h2>
+        <p className="muted">
+          Until ScaleGate is wired, set the org plan here to unlock Pro modules (targets, hygiene,
+          insights, quotations).
+        </p>
+        <label>
+          Plan
+          <select value={plan} onChange={(e) => setPlan(e.target.value as PlanCode)}>
+            <option value="lite">Lite</option>
+            <option value="pro">Pro</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+        </label>
       </div>
 
       <div className="card">

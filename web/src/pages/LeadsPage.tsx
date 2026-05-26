@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LEAD_STAGES } from '../lib/stages';
 import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { isManager } from '../lib/roles';
 import { leadsQueryPath, readManagerFilter } from '../lib/manager-query';
 import type { LeadSummary } from '../lib/types';
 import { TeamFilterBar } from '../components/TeamFilterBar';
@@ -10,7 +12,13 @@ import { CreateLeadModal } from '../components/CreateLeadModal';
 import type { CrmConfig } from '../components/CloseLeadModal';
 import { PageHeader } from '../components/PageHeader';
 
+type AssignableUser = { id: string; name: string; email: string; role: string };
+
+const OPEN_STAGES = LEAD_STAGES.filter((s) => s !== 'WON' && s !== 'LOST');
+
 export function LeadsPage() {
+  const { user } = useAuth();
+  const manager = isManager(user?.role);
   const [search] = useSearchParams();
   const filter = readManagerFilter(search);
   const [leads, setLeads] = useState<LeadSummary[]>([]);
@@ -22,6 +30,12 @@ export function LeadsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [crmConfig, setCrmConfig] = useState<CrmConfig | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [bulkOwnerId, setBulkOwnerId] = useState('');
+  const [bulkStage, setBulkStage] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -46,6 +60,18 @@ export function LeadsPage() {
       .catch(() => setCrmConfig(null));
   }, []);
 
+  useEffect(() => {
+    if (!manager) return;
+    api<{ users: AssignableUser[] }>('/teams/assignable-users')
+      .then((d) => setAssignableUsers(d.users))
+      .catch(() => setAssignableUsers([]));
+  }, [manager]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setBulkMessage('');
+  }, [search.toString(), stageFilter, tagFilter, q]);
+
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return leads;
@@ -65,6 +91,65 @@ export function LeadsPage() {
       return hay.includes(term);
     });
   }, [leads, q]);
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((l) => selectedIds.has(l.id));
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((l) => l.id)));
+    }
+  }
+
+  async function runBulkUpdate() {
+    if (selectedIds.size === 0) return;
+    if (!bulkOwnerId && !bulkStage) {
+      setBulkMessage('Choose an owner and/or stage to apply.');
+      return;
+    }
+    setBulkBusy(true);
+    setBulkMessage('');
+    try {
+      const body: {
+        leadIds: string[];
+        ownerId?: string;
+        stage?: string;
+        pipelineMove?: boolean;
+      } = { leadIds: [...selectedIds] };
+      if (bulkOwnerId) body.ownerId = bulkOwnerId;
+      if (bulkStage) {
+        body.stage = bulkStage;
+        body.pipelineMove = true;
+      }
+      const result = await api<{ updated: number; failed: number }>('/leads/bulk-update', {
+        method: 'POST',
+        body,
+      });
+      setBulkMessage(`Updated ${result.updated} lead${result.updated === 1 ? '' : 's'}.`);
+      if (result.failed > 0) {
+        setBulkMessage((m) => `${m} ${result.failed} could not be updated.`);
+      }
+      setSelectedIds(new Set());
+      setBulkOwnerId('');
+      setBulkStage('');
+      load();
+    } catch (e) {
+      setBulkMessage(e instanceof Error ? e.message : 'Bulk update failed');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   const title = filter.title ? `Leads: ${filter.title}` : 'All leads';
 
@@ -118,6 +203,54 @@ export function LeadsPage() {
         </button>
       </div>
 
+      {manager && selectedIds.size > 0 ? (
+        <div className="leads-bulk-bar card">
+          <span>
+            {selectedIds.size} selected
+          </span>
+          <select
+            value={bulkOwnerId}
+            onChange={(e) => setBulkOwnerId(e.target.value)}
+            aria-label="Bulk assign owner"
+          >
+            <option value="">Assign owner…</option>
+            {assignableUsers.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={bulkStage}
+            onChange={(e) => setBulkStage(e.target.value)}
+            aria-label="Bulk change stage"
+          >
+            <option value="">Change stage…</option>
+            {OPEN_STAGES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn-primary btn-sm"
+            disabled={bulkBusy || (!bulkOwnerId && !bulkStage)}
+            onClick={() => void runBulkUpdate()}
+          >
+            {bulkBusy ? 'Applying…' : 'Apply'}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </button>
+          {bulkMessage ? <span className="muted">{bulkMessage}</span> : null}
+        </div>
+      ) : null}
+
       {loading ? (
         <p className="muted">Loading…</p>
       ) : (
@@ -131,6 +264,16 @@ export function LeadsPage() {
         <table>
           <thead>
             <tr>
+              {manager ? (
+                <th style={{ width: 36 }}>
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all visible leads"
+                  />
+                </th>
+              ) : null}
               <th>Name</th>
               <th>Stage</th>
               <th>Owner</th>
@@ -140,8 +283,18 @@ export function LeadsPage() {
           </thead>
           <tbody>
             {filtered.map((l) => (
-              <tr key={l.id} className="row-clickable" onClick={() => setSelectedId(l.id)}>
-                <td>
+              <tr key={l.id} className="row-clickable">
+                {manager ? (
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(l.id)}
+                      onChange={() => toggleSelect(l.id)}
+                      aria-label={`Select ${l.name}`}
+                    />
+                  </td>
+                ) : null}
+                <td onClick={() => setSelectedId(l.id)}>
                   <strong>{l.name}</strong>
                   {l.company ? <div className="muted">{l.company}</div> : null}
                   {l.tags && l.tags.length > 0 ? (
@@ -154,13 +307,13 @@ export function LeadsPage() {
                     </div>
                   ) : null}
                 </td>
-                <td>{l.stage}</td>
-                <td>
+                <td onClick={() => setSelectedId(l.id)}>{l.stage}</td>
+                <td onClick={() => setSelectedId(l.id)}>
                   {l.owner?.name ?? '—'}
                   {l.owner?.team ? <div className="muted">{l.owner.team.name}</div> : null}
                 </td>
-                <td>{l.source ?? '—'}</td>
-                <td className="muted">
+                <td onClick={() => setSelectedId(l.id)}>{l.source ?? '—'}</td>
+                <td className="muted" onClick={() => setSelectedId(l.id)}>
                   {l.updatedAt ? new Date(l.updatedAt).toLocaleDateString() : '—'}
                 </td>
               </tr>

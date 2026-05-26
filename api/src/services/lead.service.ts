@@ -5,7 +5,7 @@ import {
   isValidLossReasonCode,
   lossReasonLabel,
 } from '@wizcrm/shared';
-import type { CreateLeadInput, UpdateLeadInput } from '@wizcrm/shared';
+import type { BulkUpdateLeadsInput, CreateLeadInput, UpdateLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getCrmConfig } from './crm-config.service.js';
 import { findDuplicateLeads, normalizeEmail } from './duplicate.service.js';
@@ -273,6 +273,52 @@ export async function updateLead(
   });
 
   return updated;
+}
+
+export async function bulkUpdateLeads(
+  organizationId: string,
+  userId: string,
+  actorRole: string,
+  input: BulkUpdateLeadsInput,
+) {
+  if (!isManagerRole(actorRole)) {
+    throw Object.assign(new Error('Managers and admins only'), { statusCode: 403 });
+  }
+
+  const found = await prisma.lead.findMany({
+    where: { organizationId, id: { in: input.leadIds } },
+    select: { id: true },
+  });
+  const foundIds = new Set(found.map((l) => l.id));
+  const missing = input.leadIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw Object.assign(new Error('One or more leads were not found'), { statusCode: 400 });
+  }
+
+  const results: { id: string; ok: boolean; error?: string }[] = [];
+  for (const leadId of input.leadIds) {
+    try {
+      const patch: UpdateLeadInput = {};
+      if (input.ownerId !== undefined) patch.ownerId = input.ownerId;
+      if (input.stage !== undefined) {
+        patch.stage = input.stage;
+        patch.pipelineMove = input.pipelineMove ?? true;
+      }
+      const lead = await updateLead(leadId, organizationId, userId, patch, actorRole);
+      if (!lead) {
+        results.push({ id: leadId, ok: false, error: 'Lead not found' });
+      } else {
+        results.push({ id: leadId, ok: true });
+      }
+    } catch (e) {
+      const err = e as Error;
+      results.push({ id: leadId, ok: false, error: err.message });
+    }
+  }
+
+  const updated = results.filter((r) => r.ok).length;
+  const failed = results.filter((r) => !r.ok);
+  return { updated, failed: failed.length, results };
 }
 
 export { findDuplicateLeads };

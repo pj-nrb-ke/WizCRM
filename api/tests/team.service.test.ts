@@ -9,7 +9,7 @@ describe('UT team stats', () => {
   it('flags stale when no activity for 7+ days', () => {
     const old = new Date();
     old.setDate(old.getDate() - 10);
-    expect(isStaleLead(null, old, new Date())).toBe(true);
+    expect(isStaleLead(null, old, 7, new Date())).toBe(true);
   });
 
   it('mergeMemberStats counts open and stale leads', () => {
@@ -26,6 +26,7 @@ describe('UT team stats', () => {
         { stage: 'WON', lastActivityAt: recent, createdAt: recent },
       ],
       2,
+      7,
       now,
     );
     expect(stats.openLeads).toBe(2);

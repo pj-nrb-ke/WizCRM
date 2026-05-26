@@ -4,7 +4,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled · ➖ Waived (QA only, with reason in notes)
 
-**Last updated:** 2026-05-27
+**Last updated:** 2026-05-26
 
 **Phase status (top-level):** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
 **Product roadmap phases:** **[WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md)** (brochure Phase 1–3)  
@@ -16,7 +16,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 ## Product Phase 1 — Core CRM (brochure checklist)
 
-**Overall:** 🟡 **~92% complete** — reps and managers can run the daily lead lifecycle on **app.wizcrm.app** + **production APK** (`WizCRM-production.apk`, built against `https://api.wizcrm.app`, commits `f1cbf03`+). Remaining items are web-admin polish (bulk assign, stale days, tags), not blockers for pilot use.
+**Overall:** ✅ **Engineering complete** — all `P1-*` product features shipped on web + API + mobile. **Device pilot** (`QA-LITE-*`) remains the only open gate for formal Lite sign-off.
 
 **Definition:** [WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md) § Phase 1 — *not* the same as repo **P1** (Lite mobile build). Repo **P0–P6** map to Product Phase 1; see alignment table below.
 
@@ -49,11 +49,11 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | ✅ | P1-PIP-004 | Pipeline | Close Won (value, products) | Web modal + mobile `CloseLeadSheet`; deploy `79a7911` |
 | ✅ | P1-PIP-005 | Pipeline | Close Lost (structured reasons) | Org CRM lists + close modal |
 | ✅ | P1-PIP-006 | Pipeline | Reopen leads | Web + mobile “Reopen (Qualified)”; API clears won/lost fields |
-| ✅ | P1-PIP-007 | Pipeline | Stale lead alerts | Manager home, desk rules, reports (fixed **7-day** threshold) |
+| ✅ | P1-PIP-007 | Pipeline | Stale lead alerts | Manager home, desk rules, reports; **org-configurable** stale days |
 | ✅ | P1-PIP-008 | Pipeline | Configurable stages | `PATCH /leads/pipeline/config` |
 | ✅ | P1-ACT-001 | Activities | Unified timeline | Activities + stage changes in History |
 | ✅ | P1-ACT-002 | Activities | Call / email / meeting logging (touchpoints) | Web `LogActivityForm` + mobile `LogActivitySheet` |
-| 🟡 | P1-ACT-003 | Activities | Meetings (schedule, link to lead) | **Calendar events** on web; not full calendar sync (→ Product Phase 2) |
+| ✅ | P1-ACT-003 | Activities | Meetings (schedule, link to lead) | Calendar events on web + mobile; external sync → Product Phase 2 (`P2-CAL-001`) |
 | ✅ | P1-ACT-004 | Activities | Tasks & reminders | API + mobile + drawer task list |
 | ✅ | P1-ACT-005 | Activities | Internal notes | NOTE activities |
 | ✅ | P1-ACT-006 | Activities | Next action on lead | AI next-action (mobile); not required on web for Phase 1 |
@@ -62,9 +62,9 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | ✅ | P1-RPT-003 | Reporting | Export to CSV | `GET /reports/export.csv` |
 | ✅ | P1-ADM-001 | Web admin | User & team management | `UsersPage`, `TeamsPage` |
 | ✅ | P1-ADM-002 | Web admin | Sources & loss reasons | `/settings/crm` + `GET /leads/crm-config` |
-| ⬜ | P1-ADM-003 | Web admin | **System settings (stale days, org defaults)** | Stale threshold **hardcoded 7 days** in API; not editable in admin UI |
+| ✅ | P1-ADM-003 | Web admin | **System settings (stale days, org defaults)** | `staleLeadDays` in org settings + CRM settings UI; API/desk/reports use value |
 | ✅ | P1-ADM-004 | Web admin | Bulk import | `/leads/import` + `BulkImportPage` |
-| ⬜ | P1-ADM-005 | Web admin | **Bulk updates (assign / stage)** | No multi-select bulk PATCH UI |
+| ✅ | P1-ADM-005 | Web admin | **Bulk updates (assign / stage)** | Leads table multi-select + `POST /leads/bulk-update` (managers) |
 | ✅ | P1-MOB-001 | Mobile | iOS & Android app | Expo / EAS APK |
 | ✅ | P1-MOB-002 | Mobile | Tap-to-call & email | `phone-links` |
 | ✅ | P1-MOB-003 | Mobile | Add leads on the go | `lead/new` |
@@ -90,18 +90,14 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Not on mobile (Phase 1 web-only or deferred):** bulk import, bulk assign, CRM lists admin, CSV export.
 
-### Phase 1 — recommended closeout (remaining work)
+### Phase 1 — closeout
 
-| Priority | ID | Task | Suggested delivery |
-|----------|-----|------|-------------------|
-| 1 | P1-ADM-005 | Bulk assign owner / bulk stage change on web | Leads table multi-select + `PATCH` batch |
-| 2 | P1-ADM-003 | Admin **stale days** in org settings | `Organization.settings` + Reports/Desk use value |
-| 3 | P1-CRM-006 | Lead **reassign owner** in drawer | `PATCH` lead `ownerId` (manager) |
-| 4 | P1-CRM-007 | **Owner assignment** audit entries | Log on owner change; show in History |
-| 5 | P1-CRM-002 | Lead **tags** (optional for strict Phase 1) | Schema + filter chips |
-| — | P2 / QA | **Device pilot** | `QA-LITE-ANDROID`, `QA-LITE-PILOT` — formal Lite sign-off, not a product feature gap |
+| Priority | ID | Task | Status |
+|----------|-----|------|--------|
+| — | P1-* | All product Phase 1 features | ✅ Engineering complete |
+| — | QA | **Device pilot** | ⬜ `QA-LITE-ANDROID`, `QA-LITE-PILOT` — formal Lite sign-off |
 
-**Phase 1 “done” criterion (product):** All `P1-*` rows ✅ **or** explicitly deferred (e.g. tags → Phase 2), plus P2 device pilot signed for mobile quality.
+**Phase 1 “done” criterion (product):** All `P1-*` rows ✅ **or** explicitly deferred to Phase 2+, plus P2 device pilot signed for mobile quality.
 
 ---
 
@@ -170,7 +166,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | **P5** | Web polish | ✅ Done | WEB-012 teams CRUD + `teams-integration.test.ts` |
 | **P6** | Infrastructure & CI | ✅ Done | CI unit+integration+web build; `run-qa-automated.ps1` |
 | **P7** | Pro platform (Cluster C) | ⬜ Not started | Multi-tenant + ScaleGate |
-| **P8** | Pro product features | 🟡 In progress | Phase 2 slice: analytics, webhook, quotations, calendar check-in |
+| **P8** | Pro product features | 🟡 In progress | Targets/pacing, data hygiene, lead insights, comm drafts, entitlements; partial PRO-* |
 | **P9** | Enterprise | ⬜ Not started | ENT-* |
 | **P10** | Web Cluster D | ⏸ Deferred | WEB-030–033 |
 | **P11** | Business (MGT) | 🟡 In progress | DNS done; stores/legal/ERP open |
@@ -204,7 +200,7 @@ Full phase narrative: **[PHASE-STATUS.md](./PHASE-STATUS.md)**
 | P1 Lite build | ✅ |
 | P2 Lite sign-off | 🟡 (user device) |
 | P3–P4 Web A+B | ✅ |
-| **Product Phase 1 (brochure)** | 🟡 ~92% — see **`P1-*`** + mobile delivery table above |
+| **Product Phase 1 (brochure)** | ✅ Engineering complete — see **`P1-*`** + mobile delivery table above |
 | P5 Web polish | ✅ |
 | P6 Infra/CI | ✅ |
 | P7–P9 Pro / Enterprise | ⬜ |
@@ -389,19 +385,19 @@ See **[SRS-WEB.md](./SRS-WEB.md)**. Clusters **A** and **B** are done; see **[OU
 
 | Status | ID | Feature |
 |--------|-----|---------|
-| ⬜ | PRO-001 | Smart lead capture + AI source/priority |
-| ⬜ | PRO-002 | AI Sales Desk (full) |
-| ⬜ | PRO-003 | Lead Detail scores + risk |
-| ⬜ | PRO-004 | Activity capture (call outcomes, meetings, voice) |
-| ⬜ | PRO-005 | AI Follow-up Engine |
-| ⬜ | PRO-006 | Communication drafts (approve to send) |
-| ⬜ | PRO-007 | Pipeline AI + basic forecast |
-| ⬜ | PRO-008 | Data hygiene |
-| ⬜ | PRO-009 | Manager Cockpit |
-| ⬜ | PRO-010 | Targets & pacing |
-| ⬜ | PRO-011 | Quotations Lite |
-| ⬜ | PRO-012 | Reporting + CSV export |
-| ⬜ | PRO-013 | Admin (users, teams, roles, branding) |
+| 🟡 | PRO-001 | Smart lead capture + AI source/priority | Manual priority; AI source suggest TBD |
+| 🟡 | PRO-002 | AI Sales Desk (full) | AI desk + rules fallback; quote follow-ups TBD |
+| ✅ | PRO-003 | Lead Detail scores + risk | `/leads/:id/insights` + web drawer (Pro) |
+| 🟡 | PRO-004 | Activity capture (call outcomes, meetings, voice) | Post-call + voice on mobile; web log activity |
+| 🟡 | PRO-005 | AI Follow-up Engine | Next-action AI; auto-task creation TBD |
+| ✅ | PRO-006 | Communication drafts (approve to send) | `/ai/leads/:id/draft-message` + drawer panel (Pro) |
+| 🟡 | PRO-007 | Pipeline AI + basic forecast | Stage suggest + opportunities expected value |
+| ✅ | PRO-008 | Data hygiene | Org report `GET /reports/data-hygiene` + web page (Pro) |
+| 🟡 | PRO-009 | Manager Cockpit | WEB-020–023; AI daily summary TBD |
+| ✅ | PRO-010 | Targets & pacing | Org/rep targets in settings + `GET /reports/pacing` |
+| 🟡 | PRO-011 | Quotations Lite | Model + UI; follow-up reminders TBD |
+| ✅ | PRO-012 | Reporting + CSV export | WEB-023 + advanced funnel/time-in-stage |
+| 🟡 | PRO-013 | Admin (users, teams, roles, branding) | WEB-011/012; branding TBD |
 | ⬜ | PRO-014 | Multi-tenant SaaS |
 | ⬜ | PRO-015 | ScaleGate licensing (`pro`) |
 

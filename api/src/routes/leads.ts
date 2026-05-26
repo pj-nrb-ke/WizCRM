@@ -8,12 +8,14 @@ import {
   pipelineReorderSchema,
   updateLeadSchema,
   bulkImportLeadsSchema,
+  bulkUpdateLeadsSchema,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
 import {
   createLead,
   updateLead,
+  bulkUpdateLeads,
   reorderPipelineLeads,
   findDuplicateLeads,
   loadLeadContext,
@@ -21,6 +23,8 @@ import {
 import { getCrmConfig } from '../services/crm-config.service.js';
 import { bulkImportLeads } from '../services/lead-import.service.js';
 import { buildLeadInsights } from '../services/lead-insights.service.js';
+import { getOrganizationEntitlements } from '../services/entitlements.service.js';
+import { resolveStaleLeadDays } from '../services/stale-lead.service.js';
 import { getTeamMemberIds } from '../services/team.service.js';
 
 const ownerSelect = {
@@ -158,6 +162,21 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     return getCrmConfig(organizationId);
   });
 
+  app.post('/bulk-update', { preHandler: requireManager() }, async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const parsed = bulkUpdateLeadsSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    try {
+      const result = await bulkUpdateLeads(organizationId, userId, role, parsed.data);
+      return result;
+    } catch (e) {
+      const err = e as Error & { statusCode?: number };
+      return reply.status(err.statusCode ?? 500).send({ error: err.message });
+    }
+  });
+
   app.post('/import', async (request, reply) => {
     const { organizationId, sub: userId, role } = request.user;
     if (!isManagerRole(role)) {
@@ -205,6 +224,10 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/:id/insights', async (request, reply) => {
     const { organizationId } = request.user;
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.leadInsights) {
+      return reply.status(403).send({ error: 'Pro plan required for lead insights' });
+    }
     const { id } = request.params as { id: string };
     const lead = await prisma.lead.findFirst({
       where: { id, organizationId },
@@ -213,7 +236,8 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       },
     });
     if (!lead) return reply.status(404).send({ error: 'Lead not found' });
-    return { insights: buildLeadInsights(lead) };
+    const staleDays = await resolveStaleLeadDays(organizationId);
+    return { insights: buildLeadInsights(lead, staleDays) };
   });
 
   app.get('/:id', async (request, reply) => {

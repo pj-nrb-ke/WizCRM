@@ -72,6 +72,12 @@ export function Layout() {
               <NavItem to="/reports" icon="reports">
                 Reports
               </NavItem>
+              <NavItem to="/targets" icon="reports">
+                Targets
+              </NavItem>
+              <NavItem to="/data-hygiene" icon="leads">
+                Data hygiene
+              </NavItem>
             </NavSection>
           )}
 

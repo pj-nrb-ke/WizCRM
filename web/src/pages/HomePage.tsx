@@ -66,9 +66,12 @@ export function HomePage() {
       api<PersonalDashboardLeadsResponse>(`/leads?ownerId=${encodeURIComponent(user.id)}`),
       api<PersonalDashboardTasksResponse>('/tasks'),
       api<PersonalDashboardEventsResponse>(`/calendar/events?${calendarQuery.toString()}`),
+      api<{ staleLeadDays?: number }>('/leads/crm-config'),
     ])
-      .then(([leadsRes, tasksRes, eventsRes]) => {
-        setPersonal(buildPersonalMetrics(leadsRes, tasksRes, eventsRes, now));
+      .then(([leadsRes, tasksRes, eventsRes, crmConfig]) => {
+        const staleDays =
+          typeof crmConfig.staleLeadDays === 'number' ? crmConfig.staleLeadDays : 7;
+        setPersonal(buildPersonalMetrics(leadsRes, tasksRes, eventsRes, now, staleDays));
       })
       .catch((e) => {
         setPersonalError(e instanceof Error ? e.message : 'Failed to load personal metrics');
@@ -308,8 +311,9 @@ function buildPersonalMetrics(
   tasksRes: PersonalDashboardTasksResponse,
   eventsRes: PersonalDashboardEventsResponse,
   now: Date,
+  staleDays = 7,
 ): PersonalDashboardMetrics {
-  const staleCutoffMs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+  const staleCutoffMs = now.getTime() - staleDays * 24 * 60 * 60 * 1000;
   const dueCutoff = new Date(now);
   dueCutoff.setHours(23, 59, 59, 999);
   const upcomingCutoffMs = now.getTime() + 7 * 24 * 60 * 60 * 1000;

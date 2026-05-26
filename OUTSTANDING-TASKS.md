@@ -3,7 +3,13 @@
 **Phase-level status:** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
 **Automated QA:** **[docs/QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md)** — run `.\scripts\run-qa-automated.ps1`  
 **Legend:** 🟡 In progress · ⬜ Not started · ✅ Done (removed from list when complete)  
-**Last updated:** 2026-05-27
+**Last updated:** 2026-05-26
+
+## Product Phase 1 — engineering closeout ✅
+
+All `P1-*` features are implemented (web + API + mobile). Remaining Phase 1 gate is **device pilot only** (see User testing below).
+
+---
 
 ## Phase snapshot
 

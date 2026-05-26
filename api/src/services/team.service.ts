@@ -1,7 +1,15 @@
 import type { LeadStage } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import {
+  DEFAULT_STALE_LEAD_DAYS,
+  isStaleLead as isStaleLeadWithDays,
+  resolveStaleLeadDays,
+} from './stale-lead.service.js';
 
-export const STALE_LEAD_DAYS = 7;
+/** @deprecated Use resolveStaleLeadDays(orgId) — kept for tests importing constant */
+export const STALE_LEAD_DAYS = DEFAULT_STALE_LEAD_DAYS;
+
+export { isStaleLeadWithDays as isStaleLead };
 
 const CLOSED_STAGES: LeadStage[] = ['WON', 'LOST'];
 
@@ -17,17 +25,6 @@ export type TeamStats = MemberStats & {
   wonLeads: number;
 };
 
-export function isStaleLead(
-  lastActivityAt: Date | null,
-  createdAt: Date,
-  now = new Date(),
-): boolean {
-  const ref = lastActivityAt ?? createdAt;
-  const cutoff = new Date(now);
-  cutoff.setDate(cutoff.getDate() - STALE_LEAD_DAYS);
-  return ref < cutoff;
-}
-
 export function emptyMemberStats(): MemberStats {
   return {
     openLeads: 0,
@@ -40,6 +37,7 @@ export function emptyMemberStats(): MemberStats {
 export function mergeMemberStats(
   leads: { stage: LeadStage; lastActivityAt: Date | null; createdAt: Date }[],
   overdueTaskCount: number,
+  staleDays = DEFAULT_STALE_LEAD_DAYS,
   now = new Date(),
 ): MemberStats {
   let openLeads = 0;
@@ -49,7 +47,7 @@ export function mergeMemberStats(
   for (const lead of leads) {
     if (!CLOSED_STAGES.includes(lead.stage)) {
       openLeads += 1;
-      if (isStaleLead(lead.lastActivityAt, lead.createdAt, now)) {
+      if (isStaleLeadWithDays(lead.lastActivityAt, lead.createdAt, staleDays, now)) {
         staleLeads += 1;
       }
     }
@@ -99,6 +97,7 @@ function pickLatest(a: string | null, b: string | null): string | null {
 
 export async function loadOrganizationTeamContext(organizationId: string) {
   const now = new Date();
+  const staleDays = await resolveStaleLeadDays(organizationId);
   const [teams, leads, overdueTasks, users] = await Promise.all([
     prisma.team.findMany({
       where: { organizationId },
@@ -158,6 +157,7 @@ export async function loadOrganizationTeamContext(organizationId: string) {
     return mergeMemberStats(
       leadsByOwner.get(userId) ?? [],
       overdueByUser.get(userId) ?? 0,
+      staleDays,
       now,
     );
   }

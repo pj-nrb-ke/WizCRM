@@ -22,8 +22,11 @@ vi.mock('../src/lib/prisma.js', () => ({
 }));
 
 vi.mock('../src/services/team.service.js', () => ({
-  STALE_LEAD_DAYS: 7,
   getTeamMemberIds: teamServiceMocks.getTeamMemberIds,
+}));
+
+vi.mock('../src/services/stale-lead.service.js', () => ({
+  resolveStaleLeadDays: vi.fn().mockResolvedValue(7),
   isStaleLead: teamServiceMocks.isStaleLead,
 }));
 

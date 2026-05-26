@@ -34,8 +34,9 @@ type Props = {
 };
 
 export function LeadQuotations({ leadId }: Props) {
-  const { user } = useAuth();
+  const { user, entitlements } = useAuth();
   const manager = isManager(user?.role);
+  const proQuotes = entitlements?.features.quotations ?? false;
   const [rows, setRows] = useState<Quotation[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -111,6 +112,14 @@ export function LeadQuotations({ leadId }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (!proQuotes) {
+    return (
+      <p className="muted">
+        Quotations are available on <strong>Pro</strong>. Upgrade plan in Platform settings.
+      </p>
+    );
   }
 
   return (

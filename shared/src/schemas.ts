@@ -205,7 +205,28 @@ export const orgSettingsSchema = z.object({
   erpConnectorType: z.enum(['stub', 'sage', 'sapb1', 'quickbooks', 'tally']).optional(),
   /** Phase 3: last GDPR export request timestamp (audit). */
   gdprExportRequestedAt: z.string().datetime().optional(),
+  /** Open leads with no activity for this many days count as stale (default 7). */
+  staleLeadDays: z.number().int().min(1).max(90).optional(),
+  /** PRO-010: default monthly revenue target (currency units) for reps without an override. */
+  orgMonthlyRevenueTarget: z.number().min(0).max(1_000_000_000).optional(),
+  /** PRO-010: per-user monthly revenue targets (userId → amount). */
+  userMonthlyTargets: z.record(z.string().uuid(), z.number().min(0).max(1_000_000_000)).optional(),
 });
+
+export const bulkUpdateLeadsSchema = z
+  .object({
+    leadIds: z.array(z.string().uuid()).min(1).max(100),
+    ownerId: z.string().uuid().optional(),
+    stage: z.enum(LEAD_STAGES).optional(),
+    pipelineMove: z.boolean().optional(),
+  })
+  .refine((d) => d.ownerId !== undefined || d.stage !== undefined, {
+    message: 'Provide ownerId and/or stage',
+  })
+  .refine((d) => !d.stage || !['WON', 'LOST'].includes(d.stage), {
+    message: 'Bulk stage change does not support WON or LOST — close leads individually',
+    path: ['stage'],
+  });
 
 export const createAdminUserSchema = z.object({
   email: z.string().email(),
@@ -230,4 +251,5 @@ export const sendLeadEmailSchema = z.object({
 export type OrgSettings = z.infer<typeof orgSettingsSchema>;
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
+export type BulkUpdateLeadsInput = z.infer<typeof bulkUpdateLeadsSchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;

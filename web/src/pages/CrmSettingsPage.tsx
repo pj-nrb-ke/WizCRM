@@ -11,6 +11,7 @@ type SettingsPayload = {
   leadSources?: string[];
   leadTags?: string[];
   lossReasons?: LossReason[];
+  staleLeadDays?: number;
 };
 
 export function CrmSettingsPage() {
@@ -19,6 +20,7 @@ export function CrmSettingsPage() {
   const [leadSources, setLeadSources] = useState('');
   const [leadTags, setLeadTags] = useState('');
   const [lossReasons, setLossReasons] = useState<LossReason[]>([]);
+  const [staleLeadDays, setStaleLeadDays] = useState(7);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -37,6 +39,9 @@ export function CrmSettingsPage() {
           d.settings.lossReasons && d.settings.lossReasons.length > 0
             ? d.settings.lossReasons
             : DEFAULT_LOSS_REASONS.map((r) => ({ code: r.code, label: r.label })),
+        );
+        setStaleLeadDays(
+          typeof d.settings.staleLeadDays === 'number' ? d.settings.staleLeadDays : 7,
         );
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
@@ -77,10 +82,15 @@ export function CrmSettingsPage() {
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean);
+    const days = Number(staleLeadDays);
+    if (!Number.isInteger(days) || days < 1 || days > 90) {
+      setError('Stale lead days must be between 1 and 90.');
+      return;
+    }
     try {
       await api('/admin/settings', {
         method: 'PATCH',
-        body: { leadSources: sources, leadTags: tags, lossReasons },
+        body: { leadSources: sources, leadTags: tags, lossReasons, staleLeadDays: days },
       });
       setMessage('CRM settings saved.');
     } catch (err) {
@@ -92,7 +102,7 @@ export function CrmSettingsPage() {
     <div className="page-wide">
       <PageHeader
         title="CRM lists"
-        subtitle="Lead sources and structured loss reasons used when closing deals and in reports."
+        subtitle="Lead sources, stale lead threshold, and structured loss reasons used when closing deals and in reports."
       />
       {!canEdit ? (
         <p className="muted">Managers can view lists in the lead drawer; admins can edit here.</p>
@@ -118,6 +128,22 @@ export function CrmSettingsPage() {
             disabled={!canEdit}
             placeholder="VIP&#10;Enterprise&#10;Partner referral"
           />
+        </label>
+
+        <label>
+          Stale lead threshold (days)
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={staleLeadDays}
+            onChange={(e) => setStaleLeadDays(Number(e.target.value))}
+            disabled={!canEdit}
+          />
+          <span className="muted">
+            Open leads with no activity for this many days appear as stale on dashboards and
+            reports.
+          </span>
         </label>
 
         <h3>Loss reasons</h3>

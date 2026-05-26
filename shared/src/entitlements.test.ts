@@ -14,6 +14,9 @@ describe('resolveEntitlements', () => {
     const e = resolveEntitlements({ plan: 'pro' });
     expect(e.features.erpSync).toBe(true);
     expect(e.features.geofence).toBe(true);
+    expect(e.features.leadInsights).toBe(true);
+    expect(e.features.targetsPacing).toBe(true);
+    expect(e.features.quotations).toBe(true);
   });
 
   it('grace shows banner', () => {

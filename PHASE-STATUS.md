@@ -10,11 +10,11 @@ Single view of **where the programme is by phase**. Task-level detail: [OUTSTAND
 | **P1** | **Lite mobile (build)** | ✅ **Done** | Feature-complete APK; Lite+ Pro; **Product Phase 1 mobile parity** (close Won/Lost, log activity, timeline, reopen, org CRM lists on device) — `f1cbf03` | Install/reflash `WizCRM-production.apk` on pilot phones |
 | **P2** | **Lite sign-off (quality)** | 🟡 **Engineering QA done** | All UT/E2E + [QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md) | **User:** [MOBILE-PILOT.md](./MOBILE-PILOT.md) only |
 | **P3** | **Web — Cluster A (admin)** | ✅ **Done** | Login, org, users, platform, connection, audit | — |
-| **P4** | **Web — Cluster B (manager)** | ✅ **Done** | Manager home, pipeline, leads, reports/CSV; close Won/Lost drawer, bulk import, CRM lists (`79a7911`+) | — |
+| **P4** | **Web — Cluster B (manager)** | ✅ **Done** | Manager home, pipeline, leads, reports/CSV; close Won/Lost drawer, bulk import, bulk assign/stage, CRM lists + stale days (`79a7911`+) | — |
 | **P5** | **Web — polish** | ✅ **Done** | **WEB-012** teams CRUD on web + integration tests | — |
 | **P6** | **Infrastructure & CI** | ✅ **Done** | GitHub Actions, integration smoke, `run-qa-automated.ps1` | — |
 | **P7** | **Pro platform (Cluster C)** | ⬜ **Not started** | — | Multi-tenant, ScaleGate |
-| **P8** | **Pro product features** | 🟡 **In progress** | Product Phase 2 kickoff: funnel/time-in-stage reports, webhook, quotations, calendar check-in | Full PRO-004–013 + remaining `P2-*` |
+| **P8** | **Pro product features** | 🟡 **In progress** | Pro entitlements; targets/pacing; data hygiene; lead insights; comm drafts; quotations/reports (partial) | PRO-001/002/005/007/011 polish, ScaleGate (P7) |
 | **P9** | **Enterprise** | ⬜ **Not started** | — | ENT-* |
 | **P10** | **Web — Cluster D (sales parity)** | ⏸ **Deferred** | — | WEB-030–033 |
 | **P11** | **Business & compliance (MGT)** | 🟡 **In progress** | MGT-020 DNS/hosting | Stores, legal, ERP |

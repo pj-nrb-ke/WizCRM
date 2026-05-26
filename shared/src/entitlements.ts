@@ -13,6 +13,16 @@ export type EntitlementFeatures = {
   geofence: boolean;
   advancedReports: boolean;
   webhook: boolean;
+  /** PRO-003: lead priority / risk scores on detail */
+  leadInsights: boolean;
+  /** PRO-005/006: draft email/WhatsApp with approve-before-send */
+  communicationDrafts: boolean;
+  /** PRO-010: monthly targets and pacing */
+  targetsPacing: boolean;
+  /** PRO-008: org-wide data hygiene report */
+  dataHygiene: boolean;
+  /** PRO-011: quotations on leads */
+  quotations: boolean;
 };
 
 export type Entitlements = {
@@ -50,6 +60,11 @@ export function resolveEntitlements(settings: OrgSettings = {}): Entitlements {
       geofence: isProOrEnt,
       advancedReports: isProOrEnt,
       webhook: isProOrEnt || settings.webhookEnabled === true,
+      leadInsights: isProOrEnt,
+      communicationDrafts: isProOrEnt,
+      targetsPacing: isProOrEnt,
+      dataHygiene: isProOrEnt,
+      quotations: isProOrEnt,
     },
   };
 }

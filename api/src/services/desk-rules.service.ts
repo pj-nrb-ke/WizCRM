@@ -10,7 +10,7 @@ export type DeskItem = { leadId: string; title: string; reason: string };
 const MS_DAY = 24 * 60 * 60 * 1000;
 
 /** Rules-based desk when LLM returns few/no items (LITE-005 fallback). */
-export function buildRulesDesk(leads: LeadRow[]): DeskItem[] {
+export function buildRulesDesk(leads: LeadRow[], staleLeadDays = 7): DeskItem[] {
   const now = Date.now();
   const items: DeskItem[] = [];
 
@@ -33,7 +33,7 @@ export function buildRulesDesk(leads: LeadRow[]): DeskItem[] {
         leadId: lead.id,
         title: `Follow up: ${lead.name}`,
         reason:
-          daysIdle >= 7
+          daysIdle >= staleLeadDays
             ? `No activity for ${Math.floor(daysIdle)} days`
             : `Check in (${lead.stage})`,
       });
@@ -61,8 +61,8 @@ export function buildRulesDesk(leads: LeadRow[]): DeskItem[] {
 }
 
 /** Pro/Lite+ desk: up to 8 items including stale and priority-hot leads. */
-export function buildExtendedDesk(leads: LeadRow[]): DeskItem[] {
-  const base = buildRulesDesk(leads);
+export function buildExtendedDesk(leads: LeadRow[], staleLeadDays = 7): DeskItem[] {
+  const base = buildRulesDesk(leads, staleLeadDays);
   const now = Date.now();
   const extras: DeskItem[] = [];
 
@@ -76,7 +76,7 @@ export function buildExtendedDesk(leads: LeadRow[]): DeskItem[] {
     }
     const last = lead.lastActivityAt?.getTime() ?? lead.createdAt.getTime();
     const daysIdle = (now - last) / MS_DAY;
-    if (daysIdle >= 7 && lead.stage !== 'WON' && lead.stage !== 'LOST') {
+    if (daysIdle >= staleLeadDays && lead.stage !== 'WON' && lead.stage !== 'LOST') {
       extras.push({
         leadId: lead.id,
         title: `Stale: ${lead.name}`,

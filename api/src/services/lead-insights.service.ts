@@ -15,7 +15,7 @@ export type LeadInsights = {
   hygiene: string[];
 };
 
-export function buildLeadInsights(lead: LeadRow): LeadInsights {
+export function buildLeadInsights(lead: LeadRow, staleDays = 7): LeadInsights {
   const hygiene: string[] = [];
   if (!lead.email && !lead.phone) hygiene.push('Missing email and phone');
   else if (!lead.email) hygiene.push('Missing email');
@@ -27,7 +27,9 @@ export function buildLeadInsights(lead: LeadRow): LeadInsights {
   const last = lead.lastActivityAt?.getTime() ?? lead.createdAt.getTime();
   const daysIdle = (now - last) / (24 * 60 * 60 * 1000);
 
-  if (daysIdle >= 7 && !isClosed(lead.stage)) hygiene.push(`Stale ${Math.floor(daysIdle)}d — follow up`);
+  if (daysIdle >= staleDays && !isClosed(lead.stage)) {
+    hygiene.push(`Stale ${Math.floor(daysIdle)}d — follow up`);
+  }
   if (lead.stage === 'NEW' && daysIdle >= 2) hygiene.push('New lead not contacted yet');
 
   const overdue = lead.tasks.filter((t) => !t.completedAt && t.dueAt && t.dueAt.getTime() <= now).length;
@@ -37,7 +39,7 @@ export function buildLeadInsights(lead: LeadRow): LeadInsights {
   if (lead.priority === 'HOT') urgency += 35;
   if (lead.priority === 'WARM') urgency += 15;
   if (overdue > 0) urgency += 25;
-  if (daysIdle >= 7) urgency += 20;
+  if (daysIdle >= staleDays) urgency += 20;
   if (lead.stage === 'NEGOTIATION' || lead.stage === 'PROPOSAL') urgency += 15;
 
   let engagement = 50;

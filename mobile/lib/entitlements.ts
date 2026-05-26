@@ -14,6 +14,11 @@ export type Entitlements = {
     geofence: boolean;
     advancedReports: boolean;
     webhook: boolean;
+    leadInsights: boolean;
+    communicationDrafts: boolean;
+    targetsPacing: boolean;
+    dataHygiene: boolean;
+    quotations: boolean;
   };
 };
 

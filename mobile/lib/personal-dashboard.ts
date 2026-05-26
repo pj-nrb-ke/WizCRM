@@ -29,8 +29,9 @@ export function buildPersonalMetrics(
   tasks: TaskRow[],
   events: EventRow[],
   now = new Date(),
+  staleDays = 7,
 ): PersonalDashboardMetrics {
-  const staleCutoffMs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+  const staleCutoffMs = now.getTime() - staleDays * 24 * 60 * 60 * 1000;
   const dueCutoff = new Date(now);
   dueCutoff.setHours(23, 59, 59, 999);
   const upcomingCutoffMs = now.getTime() + 7 * 24 * 60 * 60 * 1000;

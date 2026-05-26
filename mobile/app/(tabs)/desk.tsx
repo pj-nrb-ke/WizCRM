@@ -38,7 +38,7 @@ export default function DeskScreen() {
     const to = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const calendarQuery = new URLSearchParams({ from, to, view: 'week' });
     try {
-      const [leadsRes, tasksRes, eventsRes] = await Promise.all([
+      const [leadsRes, tasksRes, eventsRes, crmConfig] = await Promise.all([
         api<{ leads: { stage: string; updatedAt: string; lastActivityAt?: string | null }[] }>(
           `/leads?ownerId=${encodeURIComponent(user.id)}`,
         ),
@@ -54,8 +54,19 @@ export default function DeskScreen() {
         api<{ events: { id: string; title: string; startAt: string }[] }>(`/calendar/events?${calendarQuery}`).catch(() => ({
           events: [],
         })),
+        api<{ staleLeadDays?: number }>('/leads/crm-config').catch(() => ({ staleLeadDays: 7 })),
       ]);
-      setPersonal(buildPersonalMetrics(leadsRes.leads ?? [], tasksRes.tasks ?? [], eventsRes.events ?? [], now));
+      const staleDays =
+        typeof crmConfig.staleLeadDays === 'number' ? crmConfig.staleLeadDays : 7;
+      setPersonal(
+        buildPersonalMetrics(
+          leadsRes.leads ?? [],
+          tasksRes.tasks ?? [],
+          eventsRes.events ?? [],
+          now,
+          staleDays,
+        ),
+      );
       void rescheduleLocalReminders({
         tasks: tasksRes.tasks ?? [],
         events: eventsRes.events ?? [],

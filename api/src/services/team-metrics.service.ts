@@ -1,6 +1,7 @@
 import type { LeadStage } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { getTeamMemberIds, isStaleLead, STALE_LEAD_DAYS } from './team.service.js';
+import { getTeamMemberIds } from './team.service.js';
+import { isStaleLead, resolveStaleLeadDays } from './stale-lead.service.js';
 
 const CLOSED: LeadStage[] = ['WON', 'LOST'];
 
@@ -60,11 +61,14 @@ export async function loadMetricDetails(
   });
 
   const now = new Date();
+  const staleDays = await resolveStaleLeadDays(organizationId);
   const filtered = leads.filter((l) => {
     if (metric === 'won') return l.stage === 'WON';
     if (metric === 'open') return !CLOSED.includes(l.stage);
     if (metric === 'stale') {
-      return !CLOSED.includes(l.stage) && isStaleLead(l.lastActivityAt, l.createdAt, now);
+      return (
+        !CLOSED.includes(l.stage) && isStaleLead(l.lastActivityAt, l.createdAt, staleDays, now)
+      );
     }
     return false;
   });
@@ -83,6 +87,6 @@ export async function loadMetricDetails(
       owner: l.owner,
     })),
     tasks: [],
-    staleDays: metric === 'stale' ? STALE_LEAD_DAYS : undefined,
+    staleDays: metric === 'stale' ? staleDays : undefined,
   };
 }

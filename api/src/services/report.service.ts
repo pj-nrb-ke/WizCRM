@@ -2,7 +2,7 @@ import type { LeadStage, Prisma } from '@prisma/client';
 import { lossReasonLabel } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getTeamMemberIds } from './team.service.js';
-import { STALE_LEAD_DAYS, isStaleLead } from './team.service.js';
+import { isStaleLead, resolveStaleLeadDays } from './stale-lead.service.js';
 
 const CLOSED: LeadStage[] = ['WON', 'LOST'];
 const DEFAULT_RANGE_DAYS = 90;
@@ -36,6 +36,7 @@ export async function loadReportSummary(
     ...ownerFilter,
     createdAt: { gte: dateFrom, lte: dateTo },
   };
+  const staleDays = await resolveStaleLeadDays(organizationId);
   const leads = await prisma.lead.findMany({
     where: leadWhere,
     select: {
@@ -73,7 +74,7 @@ export async function loadReportSummary(
     const isOpenLead = !CLOSED.includes(lead.stage);
     if (isOpenLead) {
       openLeads += 1;
-      if (isStaleLead(lead.lastActivityAt, lead.createdAt)) {
+      if (isStaleLead(lead.lastActivityAt, lead.createdAt, staleDays)) {
         staleCount += 1;
       }
     }
@@ -127,7 +128,7 @@ export async function loadReportSummary(
     byOwner,
     activitiesLast30Days,
     staleCount,
-    staleDays: STALE_LEAD_DAYS,
+    staleDays,
     dateFrom: dateFrom.toISOString(),
     dateTo: dateTo.toISOString(),
   };

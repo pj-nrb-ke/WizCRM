@@ -21,6 +21,8 @@ import {
 import { config } from '../config.js';
 import { buildExtendedDesk, mergeDueTasksIntoDesk } from '../services/desk-rules.service.js';
 import { resolveDeskUseAi } from '../services/org-settings.service.js';
+import { resolveStaleLeadDays } from '../services/stale-lead.service.js';
+import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { isNextActionSuppressed, shouldApplySuggestedStage } from '@wizcrm/shared';
 
 export const aiRoutes: FastifyPluginAsync = async (app) => {
@@ -61,7 +63,8 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
           })
         : [];
     const leads = [...overdueLeads, ...baseLeads] as typeof baseLeads;
-    const rulesItems = buildExtendedDesk(leads);
+    const staleLeadDays = await resolveStaleLeadDays(organizationId);
+    const rulesItems = buildExtendedDesk(leads, staleLeadDays);
     const deskUseAi = await resolveDeskUseAi(organizationId);
     if (!deskUseAi || !config.aiEnabled) {
       return { items: rulesItems, source: 'rules' as const };
@@ -293,6 +296,10 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/leads/:leadId/draft-message', async (request, reply) => {
     const { organizationId } = request.user;
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.communicationDrafts) {
+      return reply.status(403).send({ error: 'Pro plan required for communication drafts' });
+    }
     const { leadId } = request.params as { leadId: string };
     const q = request.query as { channel?: string; tone?: string };
     const lead = await loadLeadContext(leadId, organizationId);

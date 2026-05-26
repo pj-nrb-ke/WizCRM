@@ -24,6 +24,14 @@ vi.mock('../src/lib/prisma.js', () => ({
   },
 }));
 
+vi.mock('../src/services/stale-lead.service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/services/stale-lead.service.js')>();
+  return {
+    ...actual,
+    resolveStaleLeadDays: vi.fn().mockResolvedValue(7),
+  };
+});
+
 vi.mock('../src/services/team.service.js', async () => {
   const actual = await vi.importActual<typeof import('../src/services/team.service.js')>(
     '../src/services/team.service.js',
