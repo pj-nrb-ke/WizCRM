@@ -4,11 +4,88 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled · ➖ Waived (QA only, with reason in notes)
 
-**Last updated:** 2026-05-22
+**Last updated:** 2026-05-26
 
 **Phase status (top-level):** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
+**Product roadmap phases:** **[WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md)** (brochure Phase 1–3)  
 **Outstanding work (task table):** **[OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md)**  
 **Manager tasks:** [manager_task_tracker.md](./manager_task_tracker.md) (`MGT-*`)
+
+---
+
+## Product Phase 1 — Core CRM (brochure checklist)
+
+**Overall:** 🟡 **~90% complete** — reps and managers can run the daily lead lifecycle on **app.wizcrm.app** + mobile APK. Remaining items are polish/admin gaps, not blockers for pilot use.
+
+**Definition:** [WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md) § Phase 1 — *not* the same as repo **P1** (Lite mobile build). Repo **P0–P6** map to Product Phase 1; see alignment table below.
+
+### Repo phases → Product Phase 1
+
+| Repo phase | Maps to Product Phase 1 | Status |
+|------------|---------------------------|--------|
+| P0 Hosting | Platforms (web + API live) | ✅ Done |
+| P1 Lite build | Mobile baseline | ✅ Done |
+| P2 Lite sign-off | Mobile QA gate | 🟡 Engineering QA ✅; **device pilot open** (`QA-LITE-ANDROID`, `QA-LITE-PILOT`) |
+| P3 Web Cluster A | Web admin baseline | ✅ Done |
+| P4 Web Cluster B | Manager workspace + reporting | ✅ Done (+ Phase 1 close/import slice, see `P1-*` below) |
+| P5 Web polish | Teams / UX | ✅ Done |
+| P6 Infra/CI | CI & automated tests | ✅ Done |
+
+### Phase 1 feature status (`P1-*`)
+
+| Status | ID | Area | Feature | Notes |
+|--------|-----|------|---------|-------|
+| ✅ | P1-CRM-001 | Core CRM | Lead management (contact, company, source, owner) | Web drawer + mobile detail/edit |
+| ⬜ | P1-CRM-002 | Core CRM | **Lead tags** | Not in schema or UI |
+| ✅ | P1-CRM-003 | Core CRM | Lead search & filters | `LeadsPage`, pipeline filters |
+| ✅ | P1-CRM-004 | Core CRM | Lead detail (stage, history) | Drawer tabs; mobile timeline |
+| ✅ | P1-CRM-005 | Core CRM | Duplicate detection (email/phone) | API + mobile create; **web create with warning** (`CreateLeadModal`) |
+| 🟡 | P1-CRM-006 | Core CRM | **Assignment & handoff** | Owner at create/import; **no web “reassign owner” on lead** |
+| 🟡 | P1-CRM-007 | Core CRM | **Audit trail** | Stage changes + activities in drawer **History**; **no owner-assignment history** |
+| ✅ | P1-PIP-001 | Pipeline | Lifecycle stages (New → … → Won/Lost) | Shared enum + mobile/web |
+| ✅ | P1-PIP-002 | Pipeline | Visual pipeline (Kanban) | `PipelinePage` |
+| ✅ | P1-PIP-003 | Pipeline | Stage history | `StageChange` + audit UI |
+| ✅ | P1-PIP-004 | Pipeline | Close Won (value, products) | Web modal + mobile `CloseLeadSheet`; deploy `79a7911` |
+| ✅ | P1-PIP-005 | Pipeline | Close Lost (structured reasons) | Org CRM lists + close modal |
+| ✅ | P1-PIP-006 | Pipeline | Reopen leads | Web “Reopen (Qualified)”; API clears won/lost fields |
+| ✅ | P1-PIP-007 | Pipeline | Stale lead alerts | Manager home, desk rules, reports (fixed **7-day** threshold) |
+| ✅ | P1-PIP-008 | Pipeline | Configurable stages | `PATCH /leads/pipeline/config` |
+| ✅ | P1-ACT-001 | Activities | Unified timeline | Activities + stage changes in History |
+| ✅ | P1-ACT-002 | Activities | Call / email / meeting logging (touchpoints) | `LogActivityForm` in drawer; mobile notes |
+| 🟡 | P1-ACT-003 | Activities | Meetings (schedule, link to lead) | **Calendar events** on web; not full calendar sync (→ Product Phase 2) |
+| ✅ | P1-ACT-004 | Activities | Tasks & reminders | API + mobile + drawer task list |
+| ✅ | P1-ACT-005 | Activities | Internal notes | NOTE activities |
+| ✅ | P1-ACT-006 | Activities | Next action on lead | AI next-action (mobile); not required on web for Phase 1 |
+| ✅ | P1-RPT-001 | Reporting | Personal dashboard | `HomePage` KPIs |
+| ✅ | P1-RPT-002 | Reporting | Manager dashboard (team funnel) | `ManagerHomePage` + drill-down |
+| ✅ | P1-RPT-003 | Reporting | Export to CSV | `GET /reports/export.csv` |
+| ✅ | P1-ADM-001 | Web admin | User & team management | `UsersPage`, `TeamsPage` |
+| ✅ | P1-ADM-002 | Web admin | Sources & loss reasons | `/settings/crm` + `GET /leads/crm-config` |
+| ⬜ | P1-ADM-003 | Web admin | **System settings (stale days, org defaults)** | Stale threshold **hardcoded 7 days** in API; not editable in admin UI |
+| ✅ | P1-ADM-004 | Web admin | Bulk import | `/leads/import` + `BulkImportPage` |
+| ⬜ | P1-ADM-005 | Web admin | **Bulk updates (assign / stage)** | No multi-select bulk PATCH UI |
+| ✅ | P1-MOB-001 | Mobile | iOS & Android app | Expo / EAS APK |
+| ✅ | P1-MOB-002 | Mobile | Tap-to-call & email | `phone-links` |
+| ✅ | P1-MOB-003 | Mobile | Add leads on the go | `lead/new` |
+| ✅ | P1-MOB-004 | Mobile | Compact mobile pipeline | `(tabs)/pipeline` |
+| ✅ | P1-MOB-005 | Mobile | Post-call lead prompt | Android post-call flow |
+| 🟡 | P1-MOB-006 | Mobile | Close Won/Lost parity | `CloseLeadSheet` on lead detail (deploy `79a7911`) |
+| ✅ | P1-SEC-001 | Security | Secure sign-in | JWT web + mobile |
+| ✅ | P1-PLT-001 | Platforms | Web application | app.wizcrm.app |
+| ✅ | P1-PLT-002 | Platforms | Mobile application | APK / Expo |
+
+### Phase 1 — recommended closeout (remaining work)
+
+| Priority | ID | Task | Suggested delivery |
+|----------|-----|------|-------------------|
+| 1 | P1-ADM-005 | Bulk assign owner / bulk stage change on web | Leads table multi-select + `PATCH` batch |
+| 2 | P1-ADM-003 | Admin **stale days** in org settings | `Organization.settings` + Reports/Desk use value |
+| 3 | P1-CRM-006 | Lead **reassign owner** in drawer | `PATCH` lead `ownerId` (manager) |
+| 4 | P1-CRM-007 | **Owner assignment** audit entries | Log on owner change; show in History |
+| 5 | P1-CRM-002 | Lead **tags** (optional for strict Phase 1) | Schema + filter chips |
+| — | P2 / QA | **Device pilot** | `QA-LITE-ANDROID`, `QA-LITE-PILOT` — formal Lite sign-off, not a product feature gap |
+
+**Phase 1 “done” criterion (product):** All `P1-*` rows ✅ **or** explicitly deferred (e.g. tags → Phase 2), plus P2 device pilot signed for mobile quality.
 
 ---
 
@@ -20,7 +97,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | **P1** | Lite mobile (build) | ✅ Done | APK + Lite+ Pro features |
 | **P2** | Lite sign-off (UT/QA/E2E) | 🟡 In progress | **Engineering QA done** — [QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md); user device only |
 | **P3** | Web Cluster A (admin) | ✅ Done | WEB-001–015 |
-| **P4** | Web Cluster B (manager) | ✅ Done | WEB-020–023 |
+| **P4** | Web Cluster B (manager) | ✅ Done | WEB-020–023; Phase 1 slice: close Won/Lost, bulk import, CRM lists (`79a7911`) |
 | **P5** | Web polish | ✅ Done | WEB-012 teams CRUD + `teams-integration.test.ts` |
 | **P6** | Infrastructure & CI | ✅ Done | CI unit+integration+web build; `run-qa-automated.ps1` |
 | **P7** | Pro platform (Cluster C) | ⬜ Not started | Multi-tenant + ScaleGate |
@@ -58,6 +135,7 @@ Full phase narrative: **[PHASE-STATUS.md](./PHASE-STATUS.md)**
 | P1 Lite build | ✅ |
 | P2 Lite sign-off | 🟡 (user device) |
 | P3–P4 Web A+B | ✅ |
+| **Product Phase 1 (brochure)** | 🟡 ~90% — see **`P1-*`** table above |
 | P5 Web polish | ✅ |
 | P6 Infra/CI | ✅ |
 | P7–P9 Pro / Enterprise | ⬜ |
@@ -226,6 +304,10 @@ See **[SRS-WEB.md](./SRS-WEB.md)**. Clusters **A** and **B** are done; see **[OU
 | ✅ | WEB-021 | Pipeline board |
 | ✅ | WEB-022 | Leads table + drawer |
 | ✅ | WEB-023 | Reports + CSV export |
+| ✅ | WEB-024 | Lead drawer: close Won/Lost, activity log, audit History |
+| ✅ | WEB-025 | Bulk lead import (`/leads/import`) |
+| ✅ | WEB-026 | CRM lists admin (sources, loss reasons) |
+| ✅ | WEB-027 | Create lead + duplicate warning (web) |
 
 | Cluster | IDs | When |
 |---------|-----|------|
