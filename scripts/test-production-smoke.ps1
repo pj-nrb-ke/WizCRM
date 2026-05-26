@@ -205,7 +205,23 @@ finally {
   }
 }
 
-# 5. GET /leads/pipeline
+# 5. Reports analytics
+try {
+  $rep = Invoke-Api -Path '/reports/analytics' -Headers $authHeaders
+  if ($null -eq $rep.summary) { Fail 'reports/analytics: summary missing' }
+  $s = $rep.summary
+  foreach ($k in @('totalLeads', 'openLeads', 'wonCount', 'lostCount', 'byStage', 'bySource', 'byOwner', 'wonLoss')) {
+    if ($null -eq $s.$k) { Fail "reports/analytics: summary.$k missing" }
+  }
+  if ($null -eq $s.activitiesLast30Days) { Fail 'reports/analytics: activitiesLast30Days missing' }
+  if ($null -eq $s.staleCount) { Fail 'reports/analytics: staleCount missing' }
+  Pass "GET /reports/analytics (totalLeads=$($s.totalLeads), stale=$($s.staleCount))"
+}
+catch {
+  Fail "GET /reports/analytics: $_"
+}
+
+# 6. GET /leads/pipeline
 try {
   $pipe = Invoke-Api -Path '/leads/pipeline' -Headers $authHeaders
   if ($null -eq $pipe.stages) { Fail 'pipeline: stages missing' }
@@ -221,7 +237,7 @@ catch {
   Fail "GET /leads/pipeline: $_"
 }
 
-# 6. GET /teams/activity-feed
+# 7. GET /teams/activity-feed
 try {
   $feed = Invoke-Api -Path '/teams/activity-feed?dateFrom=2020-01-01&dateTo=2030-12-31' -Headers $authHeaders
   if ($null -eq $feed.items) { Fail 'activity-feed: items missing' }

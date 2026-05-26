@@ -44,13 +44,3 @@ export type LeadSummary = {
   updatedAt?: string;
   owner?: LeadOwner;
 };
-
-export type ReportSummary = {
-  totalLeads: number;
-  openLeads: number;
-  wonCount: number;
-  lostCount: number;
-  winRate: number | null;
-  byStage: Record<string, number>;
-  bySource: { source: string; count: number }[];
-};

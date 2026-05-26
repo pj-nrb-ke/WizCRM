@@ -29,9 +29,14 @@ export function pipelineQueryPath(filter: ManagerFilter): string {
   return q ? `/leads/pipeline?${q}` : '/leads/pipeline';
 }
 
-export function reportsQueryPath(filter: ManagerFilter): string {
+export function reportsQueryPath(
+  filter: ManagerFilter,
+  extra?: { dateFrom?: string; dateTo?: string },
+): string {
   const qs = new URLSearchParams();
   if (filter.teamId) qs.set('teamId', filter.teamId);
+  if (extra?.dateFrom) qs.set('dateFrom', extra.dateFrom);
+  if (extra?.dateTo) qs.set('dateTo', extra.dateTo);
   const q = qs.toString();
   return q ? `/reports/summary?${q}` : '/reports/summary';
 }
