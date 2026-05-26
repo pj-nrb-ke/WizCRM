@@ -22,6 +22,12 @@ type CalendarEvent = {
   allDay: boolean;
   recurrence: string;
   reminderMinutes: number | null;
+  meetingAddress: string | null;
+  meetingLat: number | null;
+  meetingLng: number | null;
+  checkInAt: string | null;
+  checkOutAt: string | null;
+  attendanceStatus: string | null;
   user: { id: string; name: string };
   lead: { id: string; name: string; company: string | null } | null;
 };
@@ -39,8 +45,15 @@ export function CalendarPage() {
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [allDay, setAllDay] = useState(false);
+  const [meetingAddress, setMeetingAddress] = useState('');
+  const [meetingLat, setMeetingLat] = useState('');
+  const [meetingLng, setMeetingLng] = useState('');
+  const [checkInAt, setCheckInAt] = useState<string | null>(null);
+  const [checkOutAt, setCheckOutAt] = useState<string | null>(null);
+  const [attendanceStatus, setAttendanceStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
 
   const range = useMemo(() => buildCalendarRange(view, cursor), [view, cursor]);
 
@@ -83,6 +96,12 @@ export function CalendarPage() {
     setStartAt(toLocalDateTimeInput(start));
     setEndAt(toLocalDateTimeInput(end));
     setAllDay(false);
+    setMeetingAddress('');
+    setMeetingLat('');
+    setMeetingLng('');
+    setCheckInAt(null);
+    setCheckOutAt(null);
+    setAttendanceStatus(null);
     setModalOpen(true);
   }
 
@@ -97,6 +116,12 @@ export function CalendarPage() {
     setStartAt(ev.allDay ? allDayInputStart(ev.startAt) : toLocalDateTimeInput(new Date(ev.startAt)));
     setEndAt(ev.allDay ? allDayInputEnd(ev.endAt) : toLocalDateTimeInput(new Date(ev.endAt)));
     setAllDay(ev.allDay);
+    setMeetingAddress(ev.meetingAddress ?? '');
+    setMeetingLat(ev.meetingLat != null ? String(ev.meetingLat) : '');
+    setMeetingLng(ev.meetingLng != null ? String(ev.meetingLng) : '');
+    setCheckInAt(ev.checkInAt);
+    setCheckOutAt(ev.checkOutAt);
+    setAttendanceStatus(ev.attendanceStatus);
     setModalOpen(true);
   }
 
@@ -105,12 +130,17 @@ export function CalendarPage() {
     setSaving(true);
     setError('');
     const isoRange = buildEventIsoRange(startAt, endAt, allDay);
+    const lat = meetingLat.trim() ? Number(meetingLat) : undefined;
+    const lng = meetingLng.trim() ? Number(meetingLng) : undefined;
     const body = {
       title: title.trim(),
       notes: notes.trim() || undefined,
       startAt: isoRange.startAt,
       endAt: isoRange.endAt,
       allDay,
+      meetingAddress: meetingAddress.trim() || undefined,
+      meetingLat: lat != null && !Number.isNaN(lat) ? lat : undefined,
+      meetingLng: lng != null && !Number.isNaN(lng) ? lng : undefined,
     };
     try {
       if (editingId) {
@@ -124,6 +154,77 @@ export function CalendarPage() {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function checkIn() {
+    if (!editingId) return;
+    setCheckingIn(true);
+    setError('');
+    try {
+      let lat: number | undefined;
+      let lng: number | undefined;
+      if (navigator.geolocation) {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+        });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      }
+      const res = await api<{ event: CalendarEvent }>(`/calendar/events/${editingId}/check-in`, {
+        method: 'POST',
+        body: { lat, lng },
+      });
+      setCheckInAt(res.event.checkInAt);
+      setAttendanceStatus(res.event.attendanceStatus);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Check-in failed');
+    } finally {
+      setCheckingIn(false);
+    }
+  }
+
+  async function checkOut() {
+    if (!editingId) return;
+    setCheckingIn(true);
+    setError('');
+    try {
+      let lat: number | undefined;
+      let lng: number | undefined;
+      if (navigator.geolocation) {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+        });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      }
+      const res = await api<{ event: CalendarEvent }>(`/calendar/events/${editingId}/check-out`, {
+        method: 'POST',
+        body: { lat, lng },
+      });
+      setCheckOutAt(res.event.checkOutAt);
+      setAttendanceStatus(res.event.attendanceStatus);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Check-out failed');
+    } finally {
+      setCheckingIn(false);
+    }
+  }
+
+  function openMaps() {
+    const lat = meetingLat.trim();
+    const lng = meetingLng.trim();
+    if (lat && lng) {
+      window.open(`https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`, '_blank');
+      return;
+    }
+    if (meetingAddress.trim()) {
+      window.open(
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meetingAddress.trim())}`,
+        '_blank',
+      );
     }
   }
 
@@ -147,7 +248,7 @@ export function CalendarPage() {
     <div className="page-wide">
       <PageHeader
         title="My calendar"
-        subtitle="Click a day to add an event, or click an event to edit. Day, week, and month views."
+        subtitle="Schedule meetings, set visit locations, and check in/out for field attendance (Phase 2)."
         actions={
           <button type="button" className="btn-primary" onClick={openNewEvent}>
             Add event
@@ -294,6 +395,70 @@ export function CalendarPage() {
                 Notes
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               </label>
+              <h3>Meeting location</h3>
+              <label>
+                Address
+                <input
+                  value={meetingAddress}
+                  onChange={(e) => setMeetingAddress(e.target.value)}
+                  placeholder="Street, city"
+                />
+              </label>
+              <div className="field-row">
+                <label>
+                  Latitude
+                  <input
+                    value={meetingLat}
+                    onChange={(e) => setMeetingLat(e.target.value)}
+                    placeholder="-26.20"
+                  />
+                </label>
+                <label>
+                  Longitude
+                  <input
+                    value={meetingLng}
+                    onChange={(e) => setMeetingLng(e.target.value)}
+                    placeholder="28.04"
+                  />
+                </label>
+              </div>
+              {(meetingAddress.trim() || (meetingLat && meetingLng)) && (
+                <button type="button" className="btn-secondary" onClick={openMaps}>
+                  Open in Google Maps
+                </button>
+              )}
+              {editingId ? (
+                <div className="calendar-attendance">
+                  <p className="muted">
+                    {checkInAt
+                      ? `Checked in ${new Date(checkInAt).toLocaleString()}`
+                      : 'Not checked in'}
+                    {checkOutAt ? ` · Out ${new Date(checkOutAt).toLocaleString()}` : ''}
+                    {attendanceStatus ? ` · ${attendanceStatus}` : ''}
+                  </p>
+                  <div className="form-actions">
+                    {!checkInAt ? (
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        disabled={checkingIn}
+                        onClick={() => void checkIn()}
+                      >
+                        {checkingIn ? 'Working…' : 'Check in'}
+                      </button>
+                    ) : !checkOutAt ? (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={checkingIn}
+                        onClick={() => void checkOut()}
+                      >
+                        {checkingIn ? 'Working…' : 'Check out'}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               <div className="form-actions calendar-form-actions">
                 {editingId ? (
                   <button

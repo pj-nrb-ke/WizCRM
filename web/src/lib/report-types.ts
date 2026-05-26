@@ -1,3 +1,16 @@
+export type ConversionFunnelRow = {
+  stage: string;
+  reached: number;
+  pctOfTotal: number;
+  pctFromPrevious: number | null;
+};
+
+export type TimeInStageRow = {
+  stage: string;
+  avgDays: number;
+  samples: number;
+};
+
 export type ReportSummary = {
   totalLeads: number;
   openLeads: number;
@@ -26,6 +39,8 @@ export type ReportSummary = {
   staleDays: number;
   dateFrom: string;
   dateTo: string;
+  conversionFunnel?: ConversionFunnelRow[];
+  timeInStage?: TimeInStageRow[];
 };
 
 export type ReportsSummaryResponse = {

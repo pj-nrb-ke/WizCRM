@@ -14,6 +14,8 @@ import { reportRoutes } from './routes/reports.js';
 import { emailRoutes } from './routes/email.js';
 import { opportunityRoutes } from './routes/opportunities.js';
 import { calendarRoutes } from './routes/calendar.js';
+import { integrationRoutes } from './routes/integrations.js';
+import { quotationRoutes } from './routes/quotations.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
 export async function buildApp() {
@@ -27,7 +29,7 @@ export async function buildApp() {
     origin: true,
     // Default is GET,HEAD,POST only — browser blocks PATCH (pipeline drag-drop, settings).
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-WizCRM-Webhook-Key'],
   });
   await app.register(jwt, { secret: config.jwtSecret });
 
@@ -51,6 +53,8 @@ export async function buildApp() {
   await app.register(emailRoutes, { prefix: '/email' });
   await app.register(opportunityRoutes, { prefix: '/opportunities' });
   await app.register(calendarRoutes, { prefix: '/calendar' });
+  await app.register(integrationRoutes, { prefix: '/integrations' });
+  await app.register(quotationRoutes, { prefix: '/quotations' });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error as Error & { statusCode?: number };

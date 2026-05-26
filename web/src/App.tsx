@@ -17,6 +17,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { BulkImportPage } from './pages/BulkImportPage';
 import { CrmSettingsPage } from './pages/CrmSettingsPage';
+import { IntegrationsPage } from './pages/IntegrationsPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -147,6 +148,14 @@ export default function App() {
               element={
                 <AdminOnly>
                   <AuditPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/integrations"
+              element={
+                <AdminOnly>
+                  <IntegrationsPage />
                 </AdminOnly>
               }
             />

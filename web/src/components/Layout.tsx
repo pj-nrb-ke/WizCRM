@@ -99,6 +99,9 @@ export function Layout() {
               <NavItem to="/connection" icon="mobile">
                 Mobile connection
               </NavItem>
+              <NavItem to="/integrations" icon="leads">
+                Integrations
+              </NavItem>
               <NavItem to="/audit" icon="audit">
                 AI audit log
               </NavItem>

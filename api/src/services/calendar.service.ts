@@ -67,6 +67,9 @@ export async function createCalendarEvent(
       recurrenceIntervalDays: input.recurrenceIntervalDays,
       recurrenceUntil: input.recurrenceUntil ? new Date(input.recurrenceUntil) : null,
       reminderMinutes: input.reminderMinutes,
+      meetingAddress: input.meetingAddress,
+      meetingLat: input.meetingLat,
+      meetingLng: input.meetingLng,
     },
     include: {
       user: { select: { id: true, name: true } },
@@ -133,6 +136,9 @@ export async function updateCalendarEvent(
     data.recurrenceUntil = input.recurrenceUntil ? new Date(input.recurrenceUntil) : null;
   }
   if (input.reminderMinutes !== undefined) data.reminderMinutes = input.reminderMinutes;
+  if (input.meetingAddress !== undefined) data.meetingAddress = input.meetingAddress;
+  if (input.meetingLat !== undefined) data.meetingLat = input.meetingLat;
+  if (input.meetingLng !== undefined) data.meetingLng = input.meetingLng;
 
   return prisma.calendarEvent.update({
     where: { id },
@@ -161,4 +167,65 @@ export async function deleteCalendarEvent(
   if (!existing) return false;
   await prisma.calendarEvent.delete({ where: { id } });
   return true;
+}
+
+export async function checkInCalendarEvent(
+  id: string,
+  organizationId: string,
+  userId: string,
+  role: string,
+  input: { lat?: number; lng?: number; attendanceStatus?: 'ON_TIME' | 'LATE' | 'NO_SHOW' | 'PARTIAL' },
+) {
+  const isManager = role === 'MANAGER' || role === 'ADMIN';
+  const existing = await prisma.calendarEvent.findFirst({
+    where: { id, organizationId, ...(isManager ? {} : { userId }) },
+  });
+  if (!existing) return null;
+
+  const now = new Date();
+  let status = input.attendanceStatus;
+  if (!status && existing.startAt) {
+    const lateMs = now.getTime() - existing.startAt.getTime();
+    status = lateMs > 15 * 60_000 ? 'LATE' : 'ON_TIME';
+  }
+
+  return prisma.calendarEvent.update({
+    where: { id },
+    data: {
+      checkInAt: now,
+      attendanceStatus: status ?? 'ON_TIME',
+      ...(input.lat !== undefined ? { meetingLat: input.lat } : {}),
+      ...(input.lng !== undefined ? { meetingLng: input.lng } : {}),
+    },
+    include: {
+      user: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true, company: true } },
+    },
+  });
+}
+
+export async function checkOutCalendarEvent(
+  id: string,
+  organizationId: string,
+  userId: string,
+  role: string,
+  input: { lat?: number; lng?: number; attendanceStatus?: 'ON_TIME' | 'LATE' | 'NO_SHOW' | 'PARTIAL' },
+) {
+  const isManager = role === 'MANAGER' || role === 'ADMIN';
+  const existing = await prisma.calendarEvent.findFirst({
+    where: { id, organizationId, ...(isManager ? {} : { userId }) },
+  });
+  if (!existing) return null;
+
+  return prisma.calendarEvent.update({
+    where: { id },
+    data: {
+      checkOutAt: new Date(),
+      ...(input.attendanceStatus ? { attendanceStatus: input.attendanceStatus } : {}),
+    },
+    include: {
+      user: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true, company: true } },
+    },
+  });
 }

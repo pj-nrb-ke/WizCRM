@@ -14,7 +14,7 @@ import { api, type Lead, type LeadInsights } from '../../lib/api';
 import { LEAD_STAGES } from '../../constants/stages';
 import { priorityLabel } from '../../constants/priorities';
 import { markCallStarted } from '../../lib/call-return';
-import { queueOfflineNote, listPendingNotes } from '../../lib/offline-notes';
+import { queueOfflineNote, listPendingNotes, flushOfflineNotes } from '../../lib/offline-notes';
 import { openTel, openWhatsApp } from '../../lib/phone-links';
 import { openGoogleMaps } from '../../lib/maps-links';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
@@ -87,6 +87,12 @@ export default function LeadDetailScreen() {
     if (Number.isNaN(d.getTime())) return 'Due date unknown';
     return `Due ${d.toLocaleDateString()}`;
   }
+
+  const refreshPending = useCallback(async () => {
+    if (!id) return;
+    const pending = await listPendingNotes();
+    setPendingCount(pending.filter((n) => n.leadId === id).length);
+  }, [id]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -532,9 +538,28 @@ export default function LeadDetailScreen() {
       ) : null}
 
       {pendingCount > 0 ? (
-        <Text style={styles.offlineBadge}>
-          {pendingCount} note(s) waiting to sync
-        </Text>
+        <Pressable
+          style={styles.syncBtn}
+          onPress={() => {
+            void flushOfflineNotes()
+              .then((r) => {
+                void refreshPending();
+                Alert.alert(
+                  'Sync complete',
+                  r.synced > 0
+                    ? `${r.synced} note(s) synced.${r.failed > 0 ? ` ${r.failed} failed.` : ''}`
+                    : r.failed > 0
+                      ? `${r.failed} note(s) could not sync.`
+                      : 'Nothing to sync.',
+                );
+              })
+              .catch(() => Alert.alert('Sync failed', 'Check your connection and try again.'));
+          }}
+        >
+          <Text style={styles.syncBtnText}>
+            Sync now — {pendingCount} offline note{pendingCount === 1 ? '' : 's'}
+          </Text>
+        </Pressable>
       ) : null}
 
       {insights ? (
@@ -815,6 +840,15 @@ const styles = StyleSheet.create({
   mutedHint: { color: '#64748b', marginBottom: 8, fontSize: 13 },
   activitySubject: { color: '#cbd5e1', fontWeight: '600', marginBottom: 4 },
   offlineBadge: { color: '#fbbf24', fontSize: 12, marginBottom: 8 },
+  syncBtn: {
+    backgroundColor: '#422006',
+    borderColor: '#fbbf24',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  syncBtnText: { color: '#fbbf24', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   insightsBox: {
     backgroundColor: '#1e293b',
     padding: 12,

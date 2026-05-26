@@ -156,6 +156,28 @@ export function ReportsPage() {
     [summary],
   );
 
+  const conversionFunnelData = useMemo(
+    () =>
+      (summary?.conversionFunnel ?? []).map((row, idx) => ({
+        label: row.stage,
+        value: row.reached,
+        color: `hsl(${220 + idx * 12} 70% ${50 + idx * 3}%)`,
+      })),
+    [summary],
+  );
+
+  const timeInStageData = useMemo(
+    () =>
+      (summary?.timeInStage ?? [])
+        .filter((row) => row.samples > 0)
+        .map((row, idx) => ({
+          label: row.stage,
+          value: row.avgDays,
+          color: idx % 2 === 0 ? '#0ea5e9' : '#38bdf8',
+        })),
+    [summary],
+  );
+
   const leaderboard = useMemo<LeaderboardRow[]>(
     () =>
       teams
@@ -223,7 +245,7 @@ export function ReportsPage() {
     <div className="report-dashboard page-wide">
       <PageHeader
         title="Executive reports"
-        subtitle="Phase 1 visibility into funnel health, conversion outcomes, and top-performing reps."
+        subtitle="Funnel health, conversion analytics, win/loss, and rep performance (Phase 1–2)."
         actions={chartActions}
       />
       <TeamFilterBar basePath="/reports" />
@@ -327,6 +349,43 @@ export function ReportsPage() {
             {lossReasonData.length > 0 ? (
               <ChartCard title="Loss reasons" subtitle="Why deals were marked lost in this period.">
                 <BarChart data={lossReasonData} ariaLabel="Loss reasons breakdown" compact />
+              </ChartCard>
+            ) : null}
+
+            {conversionFunnelData.length > 0 ? (
+              <ChartCard
+                title="Conversion funnel (reached)"
+                subtitle="Leads that reached each open pipeline stage in the selected period."
+                className="analytics-span-2"
+              >
+                <BarChart data={conversionFunnelData} ariaLabel="Conversion funnel by stage reached" />
+                <table className="funnel-meta-table" style={{ marginTop: 12, width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th>Stage</th>
+                      <th>% of cohort</th>
+                      <th>% from previous</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(summary.conversionFunnel ?? []).map((row) => (
+                      <tr key={row.stage}>
+                        <td>{row.stage}</td>
+                        <td>{row.pctOfTotal}%</td>
+                        <td>{row.pctFromPrevious != null ? `${row.pctFromPrevious}%` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ChartCard>
+            ) : null}
+
+            {timeInStageData.length > 0 ? (
+              <ChartCard
+                title="Avg time in stage (days)"
+                subtitle="Dwell time from stage history in the reporting window."
+              >
+                <BarChart data={timeInStageData} ariaLabel="Average days in each stage" compact />
               </ChartCard>
             ) : null}
 

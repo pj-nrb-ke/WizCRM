@@ -13,6 +13,7 @@ import {
   mergeOrgSettings,
   resolveDeskUseAi,
 } from '../services/org-settings.service.js';
+import { disableWebhook, enableWebhook } from '../services/webhook.service.js';
 
 function isAdmin(role: string) {
   return role === 'ADMIN';
@@ -247,5 +248,30 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       },
     });
     return { logs };
+  });
+
+  app.get('/integrations/webhook', { preHandler: requireAdmin() }, async (request) => {
+    const settings = await getOrgSettings(request.user.organizationId);
+    const base = (process.env.PUBLIC_API_URL ?? 'https://api.wizcrm.app').replace(/\/$/, '');
+    return {
+      enabled: Boolean(settings.webhookEnabled),
+      hasSecret: Boolean(settings.webhookSecret),
+      endpoint: `${base}/integrations/webhook/leads`,
+    };
+  });
+
+  app.post('/integrations/webhook/enable', { preHandler: requireAdmin() }, async (request) => {
+    const secret = await enableWebhook(request.user.organizationId);
+    const base = (process.env.PUBLIC_API_URL ?? 'https://api.wizcrm.app').replace(/\/$/, '');
+    return {
+      secret,
+      enabled: true,
+      endpoint: `${base}/integrations/webhook/leads`,
+    };
+  });
+
+  app.post('/integrations/webhook/disable', { preHandler: requireAdmin() }, async (request) => {
+    await disableWebhook(request.user.organizationId);
+    return { ok: true, enabled: false };
   });
 };

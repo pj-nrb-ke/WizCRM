@@ -186,6 +186,9 @@ export const orgSettingsSchema = z.object({
   pipelineStages: z.array(pipelineStageConfigSchema).optional(),
   leadSources: z.array(z.string().min(1).max(100)).max(50).optional(),
   lossReasons: z.array(lossReasonOptionSchema).max(30).optional(),
+  /** Phase 2: inbound web lead capture */
+  webhookSecret: z.string().min(16).max(128).optional(),
+  webhookEnabled: z.boolean().optional(),
 });
 
 export const createAdminUserSchema = z.object({

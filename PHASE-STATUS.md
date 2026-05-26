@@ -14,7 +14,7 @@ Single view of **where the programme is by phase**. Task-level detail: [OUTSTAND
 | **P5** | **Web — polish** | ✅ **Done** | **WEB-012** teams CRUD on web + integration tests | — |
 | **P6** | **Infrastructure & CI** | ✅ **Done** | GitHub Actions, integration smoke, `run-qa-automated.ps1` | — |
 | **P7** | **Pro platform (Cluster C)** | ⬜ **Not started** | — | Multi-tenant, ScaleGate |
-| **P8** | **Pro product features** | 🟡 **In progress** | PRO slice on mobile/API | Full PRO-004–013 |
+| **P8** | **Pro product features** | 🟡 **In progress** | Product Phase 2 kickoff: funnel/time-in-stage reports, webhook, quotations, calendar check-in | Full PRO-004–013 + remaining `P2-*` |
 | **P9** | **Enterprise** | ⬜ **Not started** | — | ENT-* |
 | **P10** | **Web — Cluster D (sales parity)** | ⏸ **Deferred** | — | WEB-030–033 |
 | **P11** | **Business & compliance (MGT)** | 🟡 **In progress** | MGT-020 DNS/hosting | Stores, legal, ERP |

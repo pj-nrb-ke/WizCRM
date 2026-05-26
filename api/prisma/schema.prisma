@@ -46,6 +46,7 @@ model User {
   tasks          Task[]
   calendarEvents CalendarEvent[]
   salesOpportunities SalesOpportunity[] @relation("OpportunityOwner")
+  quotations         Quotation[]
   aiAuditLogs    AiAuditLog[]
   stageChanges   StageChange[]
 
@@ -91,6 +92,7 @@ model Lead {
   tasks            Task[]
   stageChanges     StageChange[]
   salesOpportunities SalesOpportunity[]
+  quotations       Quotation[]
   calendarEvents   CalendarEvent[]
   aiSuggestions    AiSuggestion[]
 
@@ -222,6 +224,44 @@ model SalesOpportunity {
   @@index([organizationId, ownerId])
 }
 
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  NO_SHOW
+  PARTIAL
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Quotation {
+  id               String          @id @default(uuid())
+  organizationId   String
+  leadId           String
+  lead             Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  ownerId          String
+  owner            User            @relation(fields: [ownerId], references: [id])
+  referenceNumber  String
+  status           QuotationStatus @default(DRAFT)
+  taxRatePct       Float           @default(0)
+  subtotal         Decimal         @db.Decimal(14, 2)
+  taxAmount        Decimal         @db.Decimal(14, 2)
+  total            Decimal         @db.Decimal(14, 2)
+  lines            Json
+  notes            String?
+  validUntil       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId, leadId])
+}
+
 model CalendarEvent {
   id                    String             @id @default(uuid())
   organizationId        String
@@ -238,6 +278,12 @@ model CalendarEvent {
   recurrenceIntervalDays Int?
   recurrenceUntil       DateTime?
   reminderMinutes       Int?
+  meetingAddress        String?
+  meetingLat            Float?
+  meetingLng            Float?
+  checkInAt             DateTime?
+  checkOutAt            DateTime?
+  attendanceStatus      AttendanceStatus?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

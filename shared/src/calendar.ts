@@ -13,6 +13,23 @@ const calendarEventFieldsSchema = z.object({
   recurrenceIntervalDays: z.number().int().min(1).max(365).optional(),
   recurrenceUntil: z.string().datetime().optional(),
   reminderMinutes: z.number().int().min(0).max(10080).optional(),
+  meetingAddress: z.string().max(500).optional(),
+  meetingLat: z.number().min(-90).max(90).optional(),
+  meetingLng: z.number().min(-180).max(180).optional(),
+});
+
+export const ATTENDANCE_STATUSES = ['ON_TIME', 'LATE', 'NO_SHOW', 'PARTIAL'] as const;
+
+export const calendarCheckInSchema = z.object({
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  attendanceStatus: z.enum(ATTENDANCE_STATUSES).optional(),
+});
+
+export const calendarCheckOutSchema = z.object({
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  attendanceStatus: z.enum(ATTENDANCE_STATUSES).optional(),
 });
 
 export const createCalendarEventSchema = calendarEventFieldsSchema.refine(

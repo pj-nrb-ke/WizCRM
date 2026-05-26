@@ -102,6 +102,35 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 ---
 
+## Product Phase 2 — Field proof, analytics & integrations (kickoff)
+
+**Overall:** 🟡 **~35% complete** — first delivery slice: advanced reports, webhook lead capture, quotations on leads, calendar meeting location + check-in/out on web, mobile offline sync button.
+
+**Definition:** [WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md) § Phase 2 · Repo **P7–P8** map here.
+
+### Phase 2 feature status (`P2-*`)
+
+| Status | ID | Area | Feature | Notes |
+|--------|-----|------|---------|-------|
+| 🟡 | P2-FLD-001 | Field sales | Push notifications | Not started |
+| 🟡 | P2-FLD-002 | Field sales | Offline mobile (draft + sync) | Queue exists; **Sync now** on lead detail |
+| 🟡 | P2-MTG-001 | Meeting & attendance | Meeting destination + maps | Web calendar address/lat/lng + Google Maps link |
+| 🟡 | P2-MTG-002 | Meeting & attendance | Geofence check-in / check-out | API + web check-in/out (GPS when available); no geofence radius yet |
+| ⬜ | P2-MTG-003 | Meeting & attendance | Attendance reports | Not started |
+| ✅ | P2-RPT-001 | Reporting | Conversion funnel analytics | `conversionFunnel` on `/reports/summary` + charts |
+| ✅ | P2-RPT-002 | Reporting | Time in stage | `timeInStage` on reports API + bar chart |
+| 🟡 | P2-RPT-003 | Reporting | Win/loss analysis | Phase 1 loss reasons; advanced cohort views TBD |
+| ⬜ | P2-RPT-004 | Reporting | Saved views | Not started |
+| ✅ | P2-QTE-001 | Quotations | Lines, tax, link to lead | `Quotation` model + drawer UI + API |
+| ✅ | P2-INT-001 | Integrations | Webhook lead capture | `POST /integrations/webhook/leads` + admin enable |
+| ⬜ | P2-INT-002 | Integrations | Automation rules | Not started |
+| ⬜ | P2-CAL-001 | Calendar sync | Google / Microsoft sync | Beyond Phase 1 event CRUD |
+| ⬜ | P2-ADM-001 | Admin depth | Custom fields, branding | Not started |
+
+**Phase 2 “done” criterion (product):** Field attendance proof on mobile + manager reports; quotations + webhook in daily use; analytics beyond Phase 1 baseline.
+
+---
+
 ## Phase status
 
 | Phase | Name | Status | Notes |
@@ -114,7 +143,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | **P5** | Web polish | ✅ Done | WEB-012 teams CRUD + `teams-integration.test.ts` |
 | **P6** | Infrastructure & CI | ✅ Done | CI unit+integration+web build; `run-qa-automated.ps1` |
 | **P7** | Pro platform (Cluster C) | ⬜ Not started | Multi-tenant + ScaleGate |
-| **P8** | Pro product features | ⬜ Not started | PRO-001–013 |
+| **P8** | Pro product features | 🟡 In progress | Phase 2 slice: analytics, webhook, quotations, calendar check-in |
 | **P9** | Enterprise | ⬜ Not started | ENT-* |
 | **P10** | Web Cluster D | ⏸ Deferred | WEB-030–033 |
 | **P11** | Business (MGT) | 🟡 In progress | DNS done; stores/legal/ERP open |

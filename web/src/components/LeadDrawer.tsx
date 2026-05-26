@@ -7,6 +7,7 @@ import { SALES_OPP_STAGE_LABELS, SALES_OPP_STATUS_LABELS } from '../lib/opportun
 import { CloseLeadModal, type CrmConfig } from './CloseLeadModal';
 import { LogActivityForm } from './LogActivityForm';
 import { CloseOutcomeBanner, LeadAuditTrail } from './LeadAuditTrail';
+import { LeadQuotations } from './LeadQuotations';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -295,6 +296,8 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                 ) : (
                   <p className="muted">No sales opportunities yet.</p>
                 )}
+
+                <LeadQuotations leadId={lead.id} />
               </>
             )}
 

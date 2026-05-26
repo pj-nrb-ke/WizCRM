@@ -1,10 +1,14 @@
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  calendarCheckInSchema,
+  calendarCheckOutSchema,
   calendarQuerySchema,
   createCalendarEventSchema,
   updateCalendarEventSchema,
 } from '@wizcrm/shared';
 import {
+  checkInCalendarEvent,
+  checkOutCalendarEvent,
   createCalendarEvent,
   deleteCalendarEvent,
   listCalendarEvents,
@@ -45,6 +49,30 @@ export const calendarRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
     const event = await updateCalendarEvent(id, organizationId, userId, role, parsed.data);
+    if (!event) return reply.status(404).send({ error: 'Event not found' });
+    return { event };
+  });
+
+  app.post('/events/:id/check-in', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const { id } = request.params as { id: string };
+    const parsed = calendarCheckInSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const event = await checkInCalendarEvent(id, organizationId, userId, role, parsed.data);
+    if (!event) return reply.status(404).send({ error: 'Event not found' });
+    return { event };
+  });
+
+  app.post('/events/:id/check-out', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const { id } = request.params as { id: string };
+    const parsed = calendarCheckOutSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const event = await checkOutCalendarEvent(id, organizationId, userId, role, parsed.data);
     if (!event) return reply.status(404).send({ error: 'Event not found' });
     return { event };
   });

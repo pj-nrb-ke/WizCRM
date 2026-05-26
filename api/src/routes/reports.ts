@@ -5,6 +5,7 @@ import {
   loadLeadsForExport,
   loadReportSummary,
 } from '../services/report.service.js';
+import { loadAdvancedAnalytics } from '../services/report-analytics.service.js';
 
 function isManagerRole(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
@@ -23,9 +24,18 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!parsedRange.ok) {
       return reply.status(400).send({ error: parsedRange.error });
     }
-    const summary = await loadReportSummary(organizationId, q.teamId, parsedRange.range);
-    if (!summary) return reply.status(404).send({ error: 'Team not found' });
-    return { summary };
+    const [summary, advanced] = await Promise.all([
+      loadReportSummary(organizationId, q.teamId, parsedRange.range),
+      loadAdvancedAnalytics(organizationId, q.teamId, parsedRange.range),
+    ]);
+    if (!summary || !advanced) return reply.status(404).send({ error: 'Team not found' });
+    return {
+      summary: {
+        ...summary,
+        conversionFunnel: advanced.conversionFunnel,
+        timeInStage: advanced.timeInStage,
+      },
+    };
   };
 
   app.get('/summary', analyticsHandler);

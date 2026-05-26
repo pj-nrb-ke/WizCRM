@@ -51,6 +51,8 @@ WizCRM is a lead-lifecycle CRM for sales and field teams (Wise & Agile Solutions
 
 **Repo alignment:** P7–P8 (Pro platform + product features) map primarily here.
 
+**Phase 2 kickoff (2026-05):** Advanced report analytics, inbound webhook, lead quotations, calendar meeting location + check-in/out on web; mobile offline **Sync now**. Track in [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) (`P2-*`).
+
 ---
 
 ## Phase 3 — ERP, commercial platform & premium roadmap (lower priority / scale)
