@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { DEFAULT_LOSS_REASONS } from '@wizcrm/shared';
+import { DEFAULT_LOSS_REASONS } from '../lib/close-lead';
 
 type Props = {
   visible: boolean;

@@ -23,7 +23,7 @@ import { CloseLeadSheet } from '../../components/CloseLeadSheet';
 import { LogActivitySheet } from '../../components/LogActivitySheet';
 import { fetchCrmConfig, type CrmConfig } from '../../lib/crm-config';
 import { mergeLeadTimeline } from '../../lib/lead-timeline';
-import { lossReasonLabel } from '@wizcrm/shared';
+import { lossReasonLabel } from '../../lib/close-lead';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
 
