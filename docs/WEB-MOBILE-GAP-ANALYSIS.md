@@ -201,10 +201,10 @@ Aligned with [WizCRM_Development_Phases.md](../WizCRM_Development_Phases.md). ID
 
 | ID | Feature | Notes |
 |----|---------|-------|
-| MOB-GAP-301 | ERP quote sync status (read-only) | After ERP integration |
-| MOB-GAP-302 | SSO / biometric unlock | Enterprise security |
-| MOB-GAP-303 | Plan/license banner (ScaleGate) | Read-only entitlement UX |
-| MOB-GAP-304 | GDPR export request trigger | Rare; can remain web |
+| 🟡 | MOB-GAP-301 | ERP quote sync status (read-only) | ERP badge on quotations; stub sync API |
+| ⬜ | MOB-GAP-302 | SSO / biometric unlock | Enterprise security |
+| 🟡 | MOB-GAP-303 | Plan/license banner (ScaleGate) | `/auth/me` entitlements + banner |
+| 🟡 | MOB-GAP-304 | GDPR export request trigger | `POST /auth/gdpr-export-request` |
 
 ---
 

@@ -14,12 +14,13 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { buildPersonalMetrics, type PersonalDashboardMetrics } from '../../lib/personal-dashboard';
 import { PersonalDashboardCard } from '../../components/PersonalDashboardCard';
+import { LicenseBanner } from '../../components/LicenseBanner';
 import { rescheduleLocalReminders } from '../../lib/notifications';
 
 type DeskItem = { leadId: string; title: string; reason: string };
 
 export default function DeskScreen() {
-  const { user } = useAuth();
+  const { user, entitlements } = useAuth();
   const [items, setItems] = useState<DeskItem[]>([]);
   const [personal, setPersonal] = useState<PersonalDashboardMetrics | null>(null);
   const [personalError, setPersonalError] = useState('');
@@ -121,6 +122,7 @@ export default function DeskScreen() {
         }
         ListHeaderComponent={
           <>
+            <LicenseBanner entitlements={entitlements} />
             <PersonalDashboardCard metrics={personal} loading={personalLoading} error={personalError} />
             <Text style={styles.heading}>Do today</Text>
             {error ? <Text style={styles.error}>{error}</Text> : null}

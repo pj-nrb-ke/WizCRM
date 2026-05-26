@@ -240,6 +240,13 @@ enum QuotationStatus {
   EXPIRED
 }
 
+enum ErpSyncStatus {
+  NONE
+  PENDING
+  SYNCED
+  FAILED
+}
+
 model Quotation {
   id               String          @id @default(uuid())
   organizationId   String
@@ -256,11 +263,30 @@ model Quotation {
   lines            Json
   notes            String?
   validUntil       DateTime?
+  erpSyncStatus    ErpSyncStatus   @default(NONE)
+  erpReference     String?
+  erpSyncedAt      DateTime?
+  erpLastError     String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+  erpSyncLogs      ErpSyncLog[]
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId, leadId])
+}
+
+model ErpSyncLog {
+  id             String        @id @default(uuid())
+  organizationId String
+  quotationId    String?
+  quotation      Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  action         String
+  status         ErpSyncStatus
+  message        String?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([quotationId])
 }
 
 model CalendarEvent {

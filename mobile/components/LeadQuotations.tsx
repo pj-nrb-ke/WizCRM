@@ -11,6 +11,7 @@ import {
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { isManagerRole } from '../lib/roles';
+import { erpSyncStatusLabel, type ErpSyncStatus } from '../lib/entitlements';
 
 type QuotationLine = {
   description: string;
@@ -24,6 +25,8 @@ type Quotation = {
   referenceNumber: string;
   status: string;
   total: string | number;
+  erpSyncStatus?: ErpSyncStatus;
+  erpReference?: string | null;
   owner: { name: string };
 };
 
@@ -88,6 +91,12 @@ export function LeadQuotations({ leadId }: Props) {
             <Text style={styles.meta}>
               {q.status} · {Number(q.total).toLocaleString()} · {q.owner.name}
             </Text>
+            {q.erpSyncStatus ? (
+              <Text style={styles.erp}>
+                {erpSyncStatusLabel(q.erpSyncStatus)}
+                {q.erpReference ? ` · ${q.erpReference}` : ''}
+              </Text>
+            ) : null}
             {manager && q.status === 'DRAFT' ? (
               <Pressable
                 onPress={() =>
@@ -181,6 +190,7 @@ const styles = StyleSheet.create({
   },
   ref: { color: '#f8fafc', fontWeight: '600' },
   meta: { color: '#94a3b8', fontSize: 13, marginTop: 4 },
+  erp: { color: '#38bdf8', fontSize: 12, marginTop: 4 },
   action: { color: '#38bdf8', marginTop: 6, fontWeight: '600' },
   addBtn: {
     alignSelf: 'flex-start',

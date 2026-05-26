@@ -274,4 +274,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     await disableWebhook(request.user.organizationId);
     return { ok: true, enabled: false };
   });
+
+  app.get('/integrations/erp', { preHandler: requireAdmin() }, async (request) => {
+    const { getErpConnectorStatus } = await import('../services/erp-sync.service.js');
+    const status = await getErpConnectorStatus(request.user.organizationId);
+    return status;
+  });
+
 };

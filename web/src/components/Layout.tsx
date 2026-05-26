@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
 import { NavIcon } from './NavIcon';
+import { LicenseBanner } from './LicenseBanner';
 
 function NavItem({ to, end, icon, children }: {
   to: string;
@@ -28,7 +29,7 @@ function NavSection({ label, children }: { label: string; children: ReactNode })
 }
 
 export function Layout() {
-  const { user, logout } = useAuth();
+  const { user, entitlements, logout } = useAuth();
   const manager = isManager(user?.role);
   const admin = isAdmin(user?.role);
   const roleLabel = admin ? 'Administrator' : manager ? 'Manager' : 'User';
@@ -127,6 +128,7 @@ export function Layout() {
       </aside>
 
       <div className="workspace">
+        <LicenseBanner entitlements={entitlements} />
         <main className="main">
           <Outlet />
         </main>

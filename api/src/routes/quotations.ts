@@ -5,6 +5,7 @@ import {
   listQuotationsForLead,
   updateQuotation,
 } from '../services/quotation.service.js';
+import { syncQuotationToErp } from '../services/erp-sync.service.js';
 
 function isManager(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
@@ -48,5 +49,21 @@ export const quotationRoutes: FastifyPluginAsync = async (app) => {
     const q = await updateQuotation(id, organizationId, parsed.data);
     if (!q) return reply.status(404).send({ error: 'Quotation not found' });
     return { quotation: q };
+  });
+
+  app.post('/:id/erp-sync', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManager(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const { id } = request.params as { id: string };
+    try {
+      const q = await syncQuotationToErp(id, organizationId);
+      if (!q) return reply.status(404).send({ error: 'Quotation not found' });
+      return { quotation: q };
+    } catch (e) {
+      const err = e as Error & { statusCode?: number };
+      return reply.status(err.statusCode ?? 500).send({ error: err.message });
+    }
   });
 };

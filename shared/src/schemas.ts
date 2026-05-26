@@ -196,6 +196,15 @@ export const orgSettingsSchema = z.object({
   webhookEnabled: z.boolean().optional(),
   /** Meeting check-in geofence radius in meters (default 150). */
   checkInRadiusMeters: z.number().int().min(25).max(2000).optional(),
+  /** Phase 3: commercial plan (ScaleGate placeholder). */
+  plan: z.enum(['lite', 'pro', 'enterprise']).optional(),
+  licenseStatus: z.enum(['active', 'grace', 'expired', 'read_only']).optional(),
+  licenseExpiresAt: z.string().datetime().optional(),
+  /** Phase 3: ERP connector (stub until real SDK). */
+  erpConnectorEnabled: z.boolean().optional(),
+  erpConnectorType: z.enum(['stub', 'sage', 'sapb1', 'quickbooks', 'tally']).optional(),
+  /** Phase 3: last GDPR export request timestamp (audit). */
+  gdprExportRequestedAt: z.string().datetime().optional(),
 });
 
 export const createAdminUserSchema = z.object({

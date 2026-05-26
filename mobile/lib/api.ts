@@ -177,3 +177,5 @@ export async function login(email: string, password: string) {
   await setToken(data.token);
   return data.user;
 }
+
+export type { Entitlements } from './entitlements';

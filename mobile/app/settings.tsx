@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { clearApiUrlCache, resolveApiUrl } from '../lib/api-url-file';
 import { importApiUrlFromDocument, saveApiUrlToAppStorage } from '../lib/api-url-store';
@@ -102,6 +103,21 @@ export default function SettingsScreen() {
           <Text style={styles.btnSecondaryText}>Import api-url.txt</Text>
         </Pressable>
         <Text style={styles.hint}>Production: https://api.wizcrm.app (no :3000)</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>Privacy</Text>
+        <Pressable
+          style={styles.btnSecondary}
+          disabled={busy}
+          onPress={() => {
+            void api<{ message: string }>('/auth/gdpr-export-request', { method: 'POST' })
+              .then((r) => setMessage(r.message))
+              .catch((e) => setMessage(e instanceof Error ? e.message : 'Request failed'));
+          }}
+        >
+          <Text style={styles.btnSecondaryText}>Request data export (GDPR)</Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>

@@ -136,6 +136,28 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 ---
 
+## Product Phase 3 — ERP, licensing & enterprise (kickoff)
+
+**Overall:** 🟡 **~5% complete** — entitlements model, license banner, ERP quotation sync stub, GDPR export request.
+
+**Definition:** [WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md) § Phase 3 · Repo **P9** Enterprise + ScaleGate (`SG-*`).
+
+### Phase 3 kickoff (2026-05)
+
+| Status | ID | Feature | Notes |
+|--------|-----|---------|-------|
+| 🟡 | P3-LIC-001 | ScaleGate / plan entitlements | `plan`, `licenseStatus` in org settings; `/auth/me` returns `entitlements`; web + mobile banner |
+| 🟡 | P3-ERP-001 | ERP quotation sync (stub) | `erpSyncStatus` on quotations; `POST /quotations/:id/erp-sync`; audit `ErpSyncLog` |
+| 🟡 | P3-ERP-002 | ERP connector admin view | `GET /admin/integrations/erp` + Integrations page |
+| 🟡 | MOB-GAP-301 | ERP quote sync status (read-only) | Badge on mobile + web quotations |
+| 🟡 | MOB-GAP-303 | Plan/license banner | Desk + web layout |
+| 🟡 | MOB-GAP-304 | GDPR export request | `POST /auth/gdpr-export-request`; mobile Settings |
+| ⬜ | MOB-GAP-302 | SSO / biometric unlock | Not started |
+| ⬜ | ENT-003 | ERP connector framework (real SDKs) | After vendor SDKs |
+| ⬜ | SG-001–005 | ScaleGate production integration | Not started |
+
+---
+
 ## Phase status
 
 | Phase | Name | Status | Notes |

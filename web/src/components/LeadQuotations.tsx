@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { erpSyncStatusLabel, type ErpSyncStatus } from '@wizcrm/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { isManager } from '../lib/roles';
@@ -21,6 +22,8 @@ type Quotation = {
   lines: QuotationLine[];
   notes: string | null;
   validUntil: string | null;
+  erpSyncStatus: ErpSyncStatus;
+  erpReference: string | null;
   owner: { name: string };
 };
 
@@ -84,6 +87,19 @@ export function LeadQuotations({ leadId }: Props) {
     }
   }
 
+  async function syncToErp(id: string) {
+    setSaving(true);
+    setError('');
+    try {
+      await api(`/quotations/${id}/erp-sync`, { method: 'POST' });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'ERP sync failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function patchStatus(id: string, status: string) {
     setSaving(true);
     setError('');
@@ -112,6 +128,23 @@ export function LeadQuotations({ leadId }: Props) {
               <strong>{q.referenceNumber}</strong> — {q.status} ·{' '}
               {Number(q.total).toLocaleString(undefined, { style: 'currency', currency: 'ZAR' })}
               <span className="muted"> · {q.owner.name}</span>
+              <span
+                className={`erp-sync-badge erp-sync-badge--${q.erpSyncStatus.toLowerCase()}`}
+              >
+                {erpSyncStatusLabel(q.erpSyncStatus)}
+                {q.erpReference ? ` (${q.erpReference})` : ''}
+              </span>
+              {manager && q.status !== 'DRAFT' && q.erpSyncStatus !== 'SYNCED' ? (
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  style={{ marginLeft: 8 }}
+                  disabled={saving}
+                  onClick={() => void syncToErp(q.id)}
+                >
+                  Sync to ERP
+                </button>
+              ) : null}
               {manager && q.status === 'DRAFT' ? (
                 <button
                   type="button"

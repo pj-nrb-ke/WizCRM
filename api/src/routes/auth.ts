@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { loginSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
+import { getOrganizationEntitlements } from '../services/entitlements.service.js';
+import { requestGdprExport } from '../services/erp-sync.service.js';
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post('/login', async (request, reply) => {
@@ -24,6 +26,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       role: user.role,
     });
 
+    const entitlements = await getOrganizationEntitlements(user.organizationId);
+
     return {
       token,
       user: {
@@ -33,6 +37,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         role: user.role,
         organizationId: user.organizationId,
       },
+      entitlements,
     };
   });
 
@@ -41,6 +46,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       where: { id: request.user.sub },
       select: { id: true, email: true, name: true, role: true, organizationId: true },
     });
-    return { user };
+    if (!user) return { user: null };
+    const entitlements = await getOrganizationEntitlements(user.organizationId);
+    return { user, entitlements };
+  });
+
+  app.post('/gdpr-export-request', { onRequest: [app.authenticate] }, async (request) => {
+    return requestGdprExport(request.user.organizationId);
   });
 };
