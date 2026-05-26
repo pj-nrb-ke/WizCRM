@@ -16,6 +16,7 @@ import { opportunityRoutes } from './routes/opportunities.js';
 import { calendarRoutes } from './routes/calendar.js';
 import { integrationRoutes } from './routes/integrations.js';
 import { quotationRoutes } from './routes/quotations.js';
+import { leadThreadRoutes } from './routes/lead-thread.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
 export async function buildApp() {
@@ -44,6 +45,7 @@ export async function buildApp() {
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(leadRoutes, { prefix: '/leads' });
+  await app.register(leadThreadRoutes, { prefix: '/leads' });
   await app.register(activityRoutes, { prefix: '/leads' });
   await app.register(taskRoutes, { prefix: '/tasks' });
   await app.register(aiRoutes, { prefix: '/ai' });

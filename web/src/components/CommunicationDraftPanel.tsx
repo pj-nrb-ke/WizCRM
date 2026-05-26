@@ -7,14 +7,25 @@ type Props = {
   leadPhone?: string | null;
 };
 
+type EmailStatus = { configured: boolean; method: string };
+
 export function CommunicationDraftPanel({ leadId, leadEmail, leadPhone }: Props) {
   const [channel, setChannel] = useState<'email' | 'whatsapp'>('email');
   const [tone, setTone] = useState<'friendly' | 'formal'>('friendly');
+  const [subject, setSubject] = useState('');
   const [draft, setDraft] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<EmailStatus | null>(null);
+
+  useEffect(() => {
+    api<EmailStatus>('/email/status')
+      .then(setEmailStatus)
+      .catch(() => setEmailStatus({ configured: false, method: 'none' }));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -24,6 +35,9 @@ export function CommunicationDraftPanel({ leadId, leadEmail, leadPhone }: Props)
       .then((d) => {
         setDraft(d.draft);
         setNote(d.note ?? '');
+        if (channel === 'email' && !subject) {
+          setSubject(`Follow up`);
+        }
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load draft'))
       .finally(() => setLoading(false));
@@ -39,6 +53,39 @@ export function CommunicationDraftPanel({ leadId, leadEmail, leadPhone }: Props)
     }
   }
 
+  async function sendViaBrevo() {
+    if (!leadEmail?.trim()) {
+      setError('Lead has no email address');
+      return;
+    }
+    if (!draft.trim()) {
+      setError('Draft is empty');
+      return;
+    }
+    setSending(true);
+    setError('');
+    try {
+      await api(`/email/leads/${leadId}/send`, {
+        method: 'POST',
+        body: {
+          subject: subject.trim() || `Follow up`,
+          body: draft.trim(),
+        },
+      });
+      setDraft('');
+      setNote('Email sent via Brevo and logged on the timeline.');
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      if (err.status === 503) {
+        setError('Brevo is not configured on the server (docs/brevo.local.txt).');
+      } else {
+        setError(err.message || 'Send failed');
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+
   const mailto =
     leadEmail && channel === 'email'
       ? `mailto:${encodeURIComponent(leadEmail)}?body=${encodeURIComponent(draft)}`
@@ -51,7 +98,7 @@ export function CommunicationDraftPanel({ leadId, leadEmail, leadPhone }: Props)
   return (
     <section className="communication-draft-panel">
       <h3 className="section-title">Communication draft</h3>
-      <p className="muted">Approve before sending — copy or open your mail/WhatsApp app.</p>
+      <p className="muted">Approve before sending — copy, send via Brevo, or open your mail/WhatsApp app.</p>
       <div className="toolbar">
         <select value={channel} onChange={(e) => setChannel(e.target.value as 'email' | 'whatsapp')}>
           <option value="email">Email</option>
@@ -64,15 +111,41 @@ export function CommunicationDraftPanel({ leadId, leadEmail, leadPhone }: Props)
       </div>
       {loading ? <p className="muted">Generating draft…</p> : null}
       {error ? <p className="error">{error}</p> : null}
+      {channel === 'email' ? (
+        <label className="field">
+          Subject
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Follow up"
+          />
+        </label>
+      ) : null}
       <textarea rows={6} value={draft} onChange={(e) => setDraft(e.target.value)} readOnly={loading} />
       {note ? <p className="muted">{note}</p> : null}
       <div className="toolbar">
         <button type="button" className="btn-secondary btn-sm" onClick={() => void copyDraft()}>
           {copied ? 'Copied' : 'Copy'}
         </button>
+        {channel === 'email' && leadEmail ? (
+          <button
+            type="button"
+            className="btn-primary btn-sm"
+            disabled={sending || loading || !emailStatus?.configured}
+            title={
+              emailStatus?.configured
+                ? 'Send via Brevo'
+                : 'Configure Brevo on the API server first'
+            }
+            onClick={() => void sendViaBrevo()}
+          >
+            {sending ? 'Sending…' : 'Send via Brevo'}
+          </button>
+        ) : null}
         {mailto ? (
           <a className="btn-secondary btn-sm" href={mailto}>
-            Open email
+            Open in mail app
           </a>
         ) : null}
         {wa ? (

@@ -14,6 +14,7 @@ import { isManager } from '../lib/roles';
 import { LeadInsightsPanel } from './LeadInsightsPanel';
 import { CommunicationDraftPanel } from './CommunicationDraftPanel';
 import { LeadNextActionPanel } from './LeadNextActionPanel';
+import { LeadTeamChat } from './LeadTeamChat';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -394,6 +395,8 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                     leadPhone={lead.phone}
                   />
                 ) : null}
+
+                <LeadTeamChat leadId={lead.id} leadName={lead.name} />
 
                 <LeadQuotations leadId={lead.id} />
               </>

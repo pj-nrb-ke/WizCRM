@@ -113,8 +113,8 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 | Status | ID | Area | Feature | Notes |
 |--------|-----|------|---------|-------|
-| 🟡 | P2-FLD-001 | Field sales | Push notifications | Not started |
-| 🟡 | P2-FLD-002 | Field sales | Offline mobile (draft + sync) | Queue exists; **Sync now** on lead detail |
+| 🟡 | P2-FLD-001 | Field sales | Push notifications | Local reminders on mobile; **push-to-email** via Brevo (@mentions) |
+| 🟡 | P2-FLD-002 | Field sales | Offline mobile (draft + sync) | Unified queue: notes, tasks, activities; list/detail cache |
 | 🟡 | P2-MTG-001 | Meeting & attendance | Meeting destination + maps | Web calendar address/lat/lng + Google Maps link |
 | 🟡 | P2-MTG-002 | Meeting & attendance | Geofence check-in / check-out | API + web check-in/out (GPS when available); no geofence radius yet |
 | ⬜ | P2-MTG-003 | Meeting & attendance | Attendance reports | Not started |

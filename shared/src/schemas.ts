@@ -274,6 +274,18 @@ export const sendLeadEmailSchema = z.object({
   html: z.string().max(50000).optional(),
 });
 
+export const createLeadMessageSchema = z.object({
+  body: z.string().min(1).max(10000),
+});
+
+export const createLeadAttachmentSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(120),
+  /** Base64 payload (no data: prefix). Max ~5MB decoded enforced server-side. */
+  dataBase64: z.string().min(1).max(7_000_000),
+  messageId: z.string().uuid().optional(),
+});
+
 export type OrgSettings = z.infer<typeof orgSettingsSchema>;
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;

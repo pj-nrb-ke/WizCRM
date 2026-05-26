@@ -60,6 +60,17 @@ export const teamRoutes: FastifyPluginAsync = async (app) => {
     return data;
   });
 
+  /** All org users — for @mentions in lead team chat (any authenticated role). */
+  app.get('/org-members', async (request) => {
+    const { organizationId } = request.user;
+    const users = await prisma.user.findMany({
+      where: { organizationId },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+    });
+    return { users };
+  });
+
   app.get('/assignable-users', async (request, reply) => {
     const { organizationId, role } = request.user;
     if (!isManagerRole(role)) {

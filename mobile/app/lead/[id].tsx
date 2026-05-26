@@ -14,7 +14,14 @@ import { api, type Lead, type LeadInsights } from '../../lib/api';
 import { LEAD_STAGES } from '../../constants/stages';
 import { priorityLabel } from '../../constants/priorities';
 import { markCallStarted } from '../../lib/call-return';
-import { queueOfflineNote, listPendingNotes, flushOfflineNotes } from '../../lib/offline-notes';
+import {
+  queueOfflineNote,
+  flushOfflineQueue,
+  listPendingMutations,
+  queueOfflineMutation,
+  isOfflineError,
+} from '../../lib/offline-queue';
+import { LeadTeamChat } from '../../components/LeadTeamChat';
 import { openTel, openWhatsApp } from '../../lib/phone-links';
 import { openGoogleMaps } from '../../lib/maps-links';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
@@ -98,8 +105,8 @@ export default function LeadDetailScreen() {
 
   const refreshPending = useCallback(async () => {
     if (!id) return;
-    const pending = await listPendingNotes();
-    setPendingCount(pending.filter((n) => n.leadId === id).length);
+    const pending = await listPendingMutations();
+    setPendingCount(pending.filter((m) => m.leadId === id).length);
   }, [id]);
 
   const load = useCallback(async () => {
@@ -111,7 +118,7 @@ export default function LeadDetailScreen() {
         api<{ lead: Lead }>(`/leads/${id}`),
         api<{ tasks: Task[] }>(`/leads/${id}/tasks`),
         api<{ insights: LeadInsights }>(`/leads/${id}/insights`).catch(() => ({ insights: null })),
-        listPendingNotes(),
+        listPendingMutations(),
         fetchCrmConfig(),
       ]);
       const leadData = leadRes.lead;
@@ -219,10 +226,7 @@ export default function LeadDetailScreen() {
       load();
     } catch (e) {
       const msg = e instanceof Error ? e.message : '';
-      const offline =
-        msg.includes('Cannot reach') ||
-        msg.includes('Network request failed') ||
-        msg.includes('timed out');
+      const offline = isOfflineError(msg);
       if (useAiClean && !offline) {
         try {
           await api(`/leads/${id}/activities`, {
@@ -322,7 +326,19 @@ export default function LeadDetailScreen() {
       setTaskTitle('');
       load();
     } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Could not add task');
+      const msg = e instanceof Error ? e.message : '';
+      if (isOfflineError(msg)) {
+        await queueOfflineMutation({
+          type: 'TASK_CREATE',
+          leadId: id,
+          payload: { title: taskTitle.trim(), dueAt: due.toISOString() },
+        });
+        setTaskTitle('');
+        void refreshPending();
+        Alert.alert('Saved offline', 'Task will sync when you are back online.');
+        return;
+      }
+      Alert.alert('Error', msg || 'Could not add task');
     }
   }
 
@@ -634,15 +650,16 @@ export default function LeadDetailScreen() {
         <Pressable
           style={styles.syncBtn}
           onPress={() => {
-            void flushOfflineNotes()
+            void flushOfflineQueue()
               .then((r) => {
                 void refreshPending();
+                load();
                 Alert.alert(
                   'Sync complete',
                   r.synced > 0
-                    ? `${r.synced} note(s) synced.${r.failed > 0 ? ` ${r.failed} failed.` : ''}`
+                    ? `${r.synced} change(s) synced.${r.failed > 0 ? ` ${r.failed} failed.` : ''}`
                     : r.failed > 0
-                      ? `${r.failed} note(s) could not sync.`
+                      ? `${r.failed} change(s) could not sync.`
                       : 'Nothing to sync.',
                 );
               })
@@ -650,7 +667,7 @@ export default function LeadDetailScreen() {
           }}
         >
           <Text style={styles.syncBtnText}>
-            Sync now — {pendingCount} offline note{pendingCount === 1 ? '' : 's'}
+            Sync now — {pendingCount} offline change{pendingCount === 1 ? '' : 's'}
           </Text>
         </Pressable>
       ) : null}
@@ -673,6 +690,8 @@ export default function LeadDetailScreen() {
           )}
         </View>
       ) : null}
+
+      <LeadTeamChat leadId={id!} readOnly={readOnly} />
 
       {!readOnly ? (
         <View style={styles.draftBox}>

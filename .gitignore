@@ -34,6 +34,10 @@ config/secrets/hosting.local.txt
 secrets/brevo.local.txt
 secrets/hosting.local.txt
 
+# Uploads (lead attachments)
+uploads/
+api/uploads/
+
 # Build
 shared/dist/
 api/dist/

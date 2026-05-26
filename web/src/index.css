@@ -1122,6 +1122,74 @@ tbody tr:last-child td {
   margin: 8px 0;
 }
 
+.lead-team-chat {
+  margin: 16px 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.lead-team-chat-messages {
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 8px 0;
+}
+
+.lead-team-chat-msg {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--surface-muted);
+  border-radius: 8px;
+}
+
+.lead-team-chat-msg header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.lead-team-chat-msg p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.lead-team-chat-compose textarea {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.mention-suggestions {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.mention-suggestions li button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.mention-suggestions li button:hover {
+  background: var(--surface-muted);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
 .targets-user-list {
   list-style: none;
   padding: 0;
