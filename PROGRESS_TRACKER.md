@@ -9,6 +9,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 **Phase status (top-level):** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
 **Product roadmap phases:** **[WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md)** (brochure Phase 1–3)  
 **Outstanding work (task table):** **[OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md)**  
+**Web ↔ Mobile gaps:** **[docs/WEB-MOBILE-GAP-ANALYSIS.md](./docs/WEB-MOBILE-GAP-ANALYSIS.md)** (`MOB-GAP-*` by product phase)  
 **Manager tasks:** [manager_task_tracker.md](./manager_task_tracker.md) (`MGT-*`)
 
 ---
@@ -85,7 +86,9 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | Org sources on new lead | ✅ | Chips from `GET /leads/crm-config` (all roles) |
 | Production APK | ✅ | `.\scripts\build-apk.ps1 -Production` → repo root `WizCRM-production.apk` |
 
-**Not on mobile (Phase 1 web-only or deferred):** bulk import, bulk assign, CRM lists admin, CSV export, lead tags, owner reassignment.
+**Phase 1 mobile parity (2026-05):** Manager org snapshot + metric drill-down, team activity feed, personal dashboard on Desk, pipeline stage change/reorder + org stage labels (`MOB-GAP-101`–`105`, `108`). Rebuild APK after pull.
+
+**Not on mobile (Phase 1 web-only or deferred):** bulk import, bulk assign, CRM lists admin, CSV export, lead tags, owner reassignment (`MOB-GAP-106`–`107`).
 
 ### Phase 1 — recommended closeout (remaining work)
 

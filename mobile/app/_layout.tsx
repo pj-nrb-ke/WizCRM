@@ -96,6 +96,26 @@ function RootNavigator() {
             headerRight: () => <HeaderActions />,
           }}
         />
+        <Stack.Screen
+          name="team/activity"
+          options={{
+            headerShown: true,
+            title: 'Team activity',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <HeaderActions />,
+          }}
+        />
+        <Stack.Screen
+          name="team/metrics"
+          options={{
+            headerShown: true,
+            title: 'Metric drill-down',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <HeaderActions />,
+          }}
+        />
       </Stack>
     </>
   );

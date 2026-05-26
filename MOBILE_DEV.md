@@ -14,6 +14,8 @@ Output: **`WizCRM-production.apk`** at the repo root (~30 MB). Copy to the devic
 
 **Phase 1 features in this build** (see [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — mobile delivery table): close Won/Lost with deal value and org loss reasons, log call/email/meeting/note, stage+activity timeline, reopen lead, org source chips on new lead.
 
+**Phase 1 parity slice:** Desk **My dashboard** KPIs; Team **organization snapshot** + activity feed + metric lists; Pipeline long-press (change stage, manager reorder) with org-configured stage labels. See [docs/WEB-MOBILE-GAP-ANALYSIS.md](./docs/WEB-MOBILE-GAP-ANALYSIS.md).
+
 After API deploys, rebuild the APK so the JS bundle matches server behavior. Mobile does not import `@wizcrm/shared` at bundle time — mirror types in `mobile/lib/close-lead.ts` when shared enums change.
 
 ## Prerequisites installed via winget

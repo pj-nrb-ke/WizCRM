@@ -13,6 +13,8 @@ import { useRefreshOnFocus } from '../../hooks/useRefreshOnFocus';
 import { api, type TeamsResponse } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
+import { aggregateOrgStats } from '../../lib/manager-home';
+import { KpiRow, type KpiItem } from '../../components/KpiRow';
 
 function formatLastActivity(iso: string | null) {
   if (!iso) return 'No activity yet';
@@ -72,6 +74,53 @@ export default function TeamScreen() {
     return <Redirect href="/(tabs)/desk" />;
   }
 
+  const orgStats = data ? aggregateOrgStats(data.teams) : null;
+
+  const metricLabels: Record<'open' | 'stale' | 'won' | 'overdue', string> = {
+    open: 'Open leads',
+    stale: 'Stale leads',
+    won: 'Won leads',
+    overdue: 'Overdue tasks',
+  };
+
+  function openOrgMetric(metric: 'open' | 'stale' | 'won' | 'overdue') {
+    router.push({
+      pathname: '/team/metrics',
+      params: { metric, title: `Organization · ${metricLabels[metric]}` },
+    });
+  }
+
+  const orgKpis: KpiItem[] = orgStats
+    ? [
+        {
+          key: 'open',
+          label: 'Open',
+          value: orgStats.open,
+          onPress: () => openOrgMetric('open'),
+        },
+        {
+          key: 'overdue',
+          label: 'Overdue',
+          value: orgStats.overdue,
+          warn: true,
+          onPress: () => openOrgMetric('overdue'),
+        },
+        {
+          key: 'stale',
+          label: 'Stale',
+          value: orgStats.stale,
+          warn: true,
+          onPress: () => openOrgMetric('stale'),
+        },
+        {
+          key: 'won',
+          label: 'Won',
+          value: orgStats.won,
+          onPress: () => openOrgMetric('won'),
+        },
+      ]
+    : [];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -93,6 +142,18 @@ export default function TeamScreen() {
               onRefresh={() => load(true)}
               tintColor="#38bdf8"
             />
+          }
+          ListHeaderComponent={
+            orgStats ? (
+              <View style={styles.snapshot}>
+                <Text style={styles.snapshotTitle}>Organization snapshot</Text>
+                <Text style={styles.snapshotHint}>Tap a metric to see underlying leads and tasks.</Text>
+                <KpiRow items={orgKpis} />
+                <Pressable style={styles.activityBtn} onPress={() => router.push('/team/activity')}>
+                  <Text style={styles.activityBtnText}>Team activity feed →</Text>
+                </Pressable>
+              </View>
+            ) : null
           }
           ListEmptyComponent={
             <Text style={styles.empty}>
@@ -123,7 +184,16 @@ export default function TeamScreen() {
             ) : null
           }
           renderItem={({ item }) => (
-            <Pressable style={styles.card} onPress={() => router.push(`/team/${item.id}`)}>
+            <Pressable
+              style={styles.card}
+              onPress={() => router.push(`/team/${item.id}`)}
+              onLongPress={() =>
+                router.push({
+                  pathname: '/(tabs)/pipeline',
+                  params: { teamId: item.id, title: item.name },
+                })
+              }
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.teamName}>{item.name}</Text>
                 <Text style={styles.memberCount}>
@@ -196,6 +266,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 24,
   },
+  snapshot: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    backgroundColor: '#172033',
+    borderRadius: 12,
+  },
+  snapshotTitle: { color: '#f8fafc', fontSize: 17, fontWeight: '700' },
+  snapshotHint: { color: '#64748b', fontSize: 13, marginTop: 4, marginBottom: 12 },
+  activityBtn: { marginTop: 12, alignSelf: 'flex-start' },
+  activityBtnText: { color: '#38bdf8', fontWeight: '600', fontSize: 14 },
   unassignedTitle: { color: '#94a3b8', fontWeight: '600', marginBottom: 8 },
   unassignedRow: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#1e293b' },
   memberName: { color: '#e2e8f0', fontWeight: '600' },
