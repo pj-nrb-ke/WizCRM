@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,7 @@ import {
   scanBusinessCardAsset,
 } from '../../lib/card-scan';
 import { buildGoogleMapsSearchUrl } from '../../lib/maps-links';
+import { fetchCrmConfig } from '../../lib/crm-config';
 
 const emptyForm = (): LeadFormState => ({
   name: '',
@@ -44,6 +45,11 @@ export default function NewLeadScreen() {
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<CardImageAsset | null>(null);
+  const [leadSources, setLeadSources] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchCrmConfig().then((c) => setLeadSources(c?.leadSources ?? []));
+  }, []);
 
   async function choosePhoto(pick: () => Promise<CardImageAsset | null>) {
     try {
@@ -220,6 +226,23 @@ export default function NewLeadScreen() {
       />
 
       <Text style={styles.label}>Source</Text>
+      {leadSources.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sourceRow}>
+          {leadSources.map((s) => (
+            <Pressable
+              key={s}
+              style={[styles.sourceChip, form.source === s && styles.sourceChipActive]}
+              onPress={() => patch({ source: form.source === s ? '' : s })}
+            >
+              <Text
+                style={[styles.sourceChipText, form.source === s && styles.sourceChipTextActive]}
+              >
+                {s}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
       <TextInput
         style={styles.input}
         value={form.source}
@@ -308,6 +331,17 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
+  sourceRow: { marginBottom: 8, maxHeight: 44 },
+  sourceChip: {
+    backgroundColor: '#1e293b',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  sourceChipActive: { backgroundColor: '#38bdf8' },
+  sourceChipText: { color: '#f8fafc', fontSize: 12 },
+  sourceChipTextActive: { color: '#0f172a', fontWeight: '700' },
   priorityRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   priorityChip: {
     backgroundColor: '#1e293b',

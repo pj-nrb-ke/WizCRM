@@ -41,17 +41,17 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | ✅ | P1-CRM-004 | Core CRM | Lead detail (stage, history) | Drawer tabs; mobile timeline |
 | ✅ | P1-CRM-005 | Core CRM | Duplicate detection (email/phone) | API + mobile create; **web create with warning** (`CreateLeadModal`) |
 | 🟡 | P1-CRM-006 | Core CRM | **Assignment & handoff** | Owner at create/import; **no web “reassign owner” on lead** |
-| 🟡 | P1-CRM-007 | Core CRM | **Audit trail** | Stage changes + activities in drawer **History**; **no owner-assignment history** |
+| 🟡 | P1-CRM-007 | Core CRM | **Audit trail** | Stage + activities on web & mobile timeline; **no owner-assignment history** |
 | ✅ | P1-PIP-001 | Pipeline | Lifecycle stages (New → … → Won/Lost) | Shared enum + mobile/web |
 | ✅ | P1-PIP-002 | Pipeline | Visual pipeline (Kanban) | `PipelinePage` |
 | ✅ | P1-PIP-003 | Pipeline | Stage history | `StageChange` + audit UI |
 | ✅ | P1-PIP-004 | Pipeline | Close Won (value, products) | Web modal + mobile `CloseLeadSheet`; deploy `79a7911` |
 | ✅ | P1-PIP-005 | Pipeline | Close Lost (structured reasons) | Org CRM lists + close modal |
-| ✅ | P1-PIP-006 | Pipeline | Reopen leads | Web “Reopen (Qualified)”; API clears won/lost fields |
+| ✅ | P1-PIP-006 | Pipeline | Reopen leads | Web + mobile “Reopen (Qualified)”; API clears won/lost fields |
 | ✅ | P1-PIP-007 | Pipeline | Stale lead alerts | Manager home, desk rules, reports (fixed **7-day** threshold) |
 | ✅ | P1-PIP-008 | Pipeline | Configurable stages | `PATCH /leads/pipeline/config` |
 | ✅ | P1-ACT-001 | Activities | Unified timeline | Activities + stage changes in History |
-| ✅ | P1-ACT-002 | Activities | Call / email / meeting logging (touchpoints) | `LogActivityForm` in drawer; mobile notes |
+| ✅ | P1-ACT-002 | Activities | Call / email / meeting logging (touchpoints) | Web `LogActivityForm` + mobile `LogActivitySheet` |
 | 🟡 | P1-ACT-003 | Activities | Meetings (schedule, link to lead) | **Calendar events** on web; not full calendar sync (→ Product Phase 2) |
 | ✅ | P1-ACT-004 | Activities | Tasks & reminders | API + mobile + drawer task list |
 | ✅ | P1-ACT-005 | Activities | Internal notes | NOTE activities |
@@ -69,7 +69,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | ✅ | P1-MOB-003 | Mobile | Add leads on the go | `lead/new` |
 | ✅ | P1-MOB-004 | Mobile | Compact mobile pipeline | `(tabs)/pipeline` |
 | ✅ | P1-MOB-005 | Mobile | Post-call lead prompt | Android post-call flow |
-| 🟡 | P1-MOB-006 | Mobile | Close Won/Lost parity | `CloseLeadSheet` on lead detail (deploy `79a7911`) |
+| ✅ | P1-MOB-006 | Mobile | Close Won/Lost parity | `CloseLeadSheet` + org loss reasons via `GET /leads/crm-config` |
 | ✅ | P1-SEC-001 | Security | Secure sign-in | JWT web + mobile |
 | ✅ | P1-PLT-001 | Platforms | Web application | app.wizcrm.app |
 | ✅ | P1-PLT-002 | Platforms | Mobile application | APK / Expo |

@@ -150,11 +150,9 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     return { stages, pipeline };
   });
 
-  app.get('/crm-config', async (request, reply) => {
-    const { organizationId, role } = request.user;
-    if (!isManagerRole(role)) {
-      return reply.status(403).send({ error: 'Managers only' });
-    }
+  /** Read-only CRM lists (sources, loss reasons) for all authenticated users (mobile + web). */
+  app.get('/crm-config', async (request) => {
+    const { organizationId } = request.user;
     return getCrmConfig(organizationId);
   });
 

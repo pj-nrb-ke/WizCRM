@@ -109,6 +109,22 @@ export type Lead = {
   lossReason?: string | null;
   lastActivityAt?: string | null;
   owner?: LeadOwner;
+  activities?: {
+    id: string;
+    type: string;
+    subject?: string | null;
+    body: string;
+    createdAt: string;
+    user?: { name: string };
+  }[];
+  stageChanges?: {
+    id: string;
+    fromStage: string;
+    toStage: string;
+    note: string | null;
+    createdAt: string;
+    user: { name: string };
+  }[];
 };
 
 export function leadContactLists(lead: Lead) {

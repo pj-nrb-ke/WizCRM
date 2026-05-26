@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,9 @@ import { openGoogleMaps } from '../../lib/maps-links';
 import { DueDatePickerModal } from '../../components/DueDatePickerModal';
 import { VoiceNoteButton } from '../../components/VoiceNoteButton';
 import { CloseLeadSheet } from '../../components/CloseLeadSheet';
+import { LogActivitySheet } from '../../components/LogActivitySheet';
+import { fetchCrmConfig, type CrmConfig } from '../../lib/crm-config';
+import { mergeLeadTimeline } from '../../lib/lead-timeline';
 import { lossReasonLabel } from '@wizcrm/shared';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
@@ -30,6 +33,16 @@ type Activity = {
   subject?: string | null;
   body: string;
   createdAt: string;
+  user?: { name: string };
+};
+
+type StageChange = {
+  id: string;
+  fromStage: string;
+  toStage: string;
+  note: string | null;
+  createdAt: string;
+  user: { name: string };
 };
 
 type Task = {
@@ -62,8 +75,12 @@ export default function LeadDetailScreen() {
   const [insights, setInsights] = useState<LeadInsights | null>(null);
   const [draft, setDraft] = useState('');
   const [pendingCount, setPendingCount] = useState(0);
+  const [stageChanges, setStageChanges] = useState<StageChange[]>([]);
+  const [crmConfig, setCrmConfig] = useState<CrmConfig | null>(null);
   const [closeMode, setCloseMode] = useState<'WON' | 'LOST' | null>(null);
   const [closeSaving, setCloseSaving] = useState(false);
+  const [showLogActivity, setShowLogActivity] = useState(false);
+  const [logSaving, setLogSaving] = useState(false);
 
   function formatDue(iso: string) {
     const d = new Date(iso);
@@ -73,19 +90,41 @@ export default function LeadDetailScreen() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [leadRes, actRes, taskRes, insightRes, pending] = await Promise.all([
+    const [leadRes, taskRes, insightRes, pending, crm] = await Promise.all([
       api<{ lead: Lead }>(`/leads/${id}`),
-      api<{ activities: Activity[] }>(`/leads/${id}/activities`),
       api<{ tasks: Task[] }>(`/leads/${id}/tasks`),
       api<{ insights: LeadInsights }>(`/leads/${id}/insights`).catch(() => ({ insights: null })),
       listPendingNotes(),
+      fetchCrmConfig(),
     ]);
-    setLead(leadRes.lead);
-    setActivities(actRes.activities);
+    const leadData = leadRes.lead;
+    setLead(leadData);
+    setCrmConfig(crm);
+    if (leadData.activities?.length) {
+      setActivities(leadData.activities);
+    } else {
+      const actRes = await api<{ activities: Activity[] }>(`/leads/${id}/activities`);
+      setActivities(actRes.activities);
+    }
+    setStageChanges(leadData.stageChanges ?? []);
     setTasks(taskRes.tasks);
     setInsights(insightRes.insights);
     setPendingCount(pending.filter((n) => n.leadId === id).length);
   }, [id]);
+
+  const timeline = useMemo(
+    () =>
+      mergeLeadTimeline(
+        activities.map((a) => ({
+          ...a,
+          userName: a.user?.name,
+        })),
+        stageChanges,
+      ),
+    [activities, stageChanges],
+  );
+
+  const isClosed = lead?.stage === 'WON' || lead?.stage === 'LOST';
 
   useFocusEffect(
     useCallback(() => {
@@ -322,6 +361,37 @@ export default function LeadDetailScreen() {
     }
   }
 
+  async function reopenLead() {
+    if (!id) return;
+    Alert.alert('Reopen lead', 'Move back to Qualified and clear won/lost details?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reopen',
+        onPress: () => {
+          void api(`/leads/${id}`, { method: 'PATCH', body: { stage: 'QUALIFIED' } })
+            .then(() => load())
+            .catch((e) =>
+              Alert.alert('Error', e instanceof Error ? e.message : 'Could not reopen'),
+            );
+        },
+      },
+    ]);
+  }
+
+  async function logActivity(data: { type: string; subject?: string; body: string }) {
+    if (!id) return;
+    setLogSaving(true);
+    try {
+      await api(`/leads/${id}/activities`, { method: 'POST', body: data });
+      setShowLogActivity(false);
+      load();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not log activity');
+    } finally {
+      setLogSaving(false);
+    }
+  }
+
   async function submitCloseLost(data: { lossReason: string }) {
     if (!id) return;
     setCloseSaving(true);
@@ -437,16 +507,27 @@ export default function LeadDetailScreen() {
       ) : null}
 
       {!readOnly ? (
-        <Pressable
-          style={styles.compactBarBtn}
-          onPress={() =>
-            router.push({
-              pathname: '/lead/post-call',
-              params: { leadId: id, leadName: lead.name },
-            })
-          }
-        >
-          <Text style={styles.compactBarBtnText}>Log call (AI)</Text>
+        <View style={styles.logRow}>
+          <Pressable style={styles.compactBarBtn} onPress={() => setShowLogActivity(true)}>
+            <Text style={styles.compactBarBtnText}>Log activity</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.compactBarBtn, styles.compactBarBtnSecondary]}
+            onPress={() =>
+              router.push({
+                pathname: '/lead/post-call',
+                params: { leadId: id, leadName: lead.name },
+              })
+            }
+          >
+            <Text style={styles.compactBarBtnText}>Log call (AI)</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {!readOnly && isClosed ? (
+        <Pressable style={styles.reopenBtn} onPress={reopenLead}>
+          <Text style={styles.reopenBtnText}>Reopen lead (Qualified)</Text>
         </Pressable>
       ) : null}
 
@@ -578,13 +659,16 @@ export default function LeadDetailScreen() {
       ) : null}
 
       <Text style={styles.section}>Stage</Text>
+      {isClosed && !readOnly ? (
+        <Text style={styles.mutedHint}>Closed — use Reopen above or tap Won/Lost to update close details.</Text>
+      ) : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled>
         {LEAD_STAGES.map((s) => (
           <Pressable
             key={s}
             style={[styles.stageChip, lead.stage === s && styles.stageChipActive]}
             onPress={() => !readOnly && onStagePress(s)}
-            disabled={readOnly}
+            disabled={readOnly || (isClosed && s !== 'WON' && s !== 'LOST')}
           >
             <Text style={[styles.stageChipText, lead.stage === s && styles.stageChipTextActive]}>
               {s}
@@ -616,21 +700,49 @@ export default function LeadDetailScreen() {
       ) : null}
 
       <Text style={styles.section}>Timeline</Text>
-      {activities.map((a) => (
-        <View key={a.id} style={styles.activity}>
-          <Text style={styles.activityType}>{a.type}</Text>
-          <Text style={styles.activityBody}>{a.body}</Text>
-          <Text style={styles.activityDate}>{new Date(a.createdAt).toLocaleString()}</Text>
-        </View>
-      ))}
+      {timeline.length === 0 ? (
+        <Text style={styles.mutedHint}>No history yet.</Text>
+      ) : (
+        timeline.map((item) =>
+          item.kind === 'stage' ? (
+            <View key={`stage-${item.data.id}`} style={styles.activity}>
+              <Text style={styles.activityType}>STAGE</Text>
+              <Text style={styles.activityBody}>
+                {item.data.fromStage} → {item.data.toStage}
+                {item.data.note ? `\n${item.data.note}` : ''}
+              </Text>
+              <Text style={styles.activityDate}>
+                {item.data.userName} · {new Date(item.data.createdAt).toLocaleString()}
+              </Text>
+            </View>
+          ) : (
+            <View key={`act-${item.data.id}`} style={styles.activity}>
+              <Text style={styles.activityType}>{item.data.type}</Text>
+              {item.data.subject ? <Text style={styles.activitySubject}>{item.data.subject}</Text> : null}
+              <Text style={styles.activityBody}>{item.data.body}</Text>
+              <Text style={styles.activityDate}>
+                {item.data.userName ? `${item.data.userName} · ` : ''}
+                {new Date(item.data.createdAt).toLocaleString()}
+              </Text>
+            </View>
+          ),
+        )
+      )}
 
       <CloseLeadSheet
         visible={closeMode !== null}
         mode={closeMode ?? 'WON'}
+        lossReasons={crmConfig?.lossReasons}
         saving={closeSaving}
         onClose={() => setCloseMode(null)}
         onSubmitWon={(d) => void submitCloseWon(d)}
         onSubmitLost={(d) => void submitCloseLost(d)}
+      />
+      <LogActivitySheet
+        visible={showLogActivity}
+        saving={logSaving}
+        onClose={() => setShowLogActivity(false)}
+        onSubmit={(d) => void logActivity(d)}
       />
     </ScrollView>
   );
@@ -678,16 +790,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   editBtnText: { color: '#94a3b8', fontWeight: '600', fontSize: 14, lineHeight: 18 },
+  logRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   compactBarBtn: {
+    flex: 1,
     backgroundColor: '#334155',
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 8,
-    marginBottom: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  compactBarBtnText: { color: '#38bdf8', fontWeight: '600', fontSize: 14 },
+  compactBarBtnSecondary: { backgroundColor: '#1e3a5f' },
+  compactBarBtnText: { color: '#38bdf8', fontWeight: '600', fontSize: 13 },
+  reopenBtn: {
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#422006',
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+    alignItems: 'center',
+  },
+  reopenBtnText: { color: '#fbbf24', fontWeight: '700' },
+  mutedHint: { color: '#64748b', marginBottom: 8, fontSize: 13 },
+  activitySubject: { color: '#cbd5e1', fontWeight: '600', marginBottom: 4 },
   offlineBadge: { color: '#fbbf24', fontSize: 12, marginBottom: 8 },
   insightsBox: {
     backgroundColor: '#1e293b',
