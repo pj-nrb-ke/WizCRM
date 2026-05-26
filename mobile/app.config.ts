@@ -32,7 +32,6 @@ const config: ExpoConfig = {
     package: 'com.wizag.wizcrm',
     versionCode: 3,
     edgeToEdgeEnabled: true,
-    usesCleartextTraffic: true,
     permissions: ['READ_EXTERNAL_STORAGE'],
   },
   web: {
@@ -42,6 +41,7 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-document-picker',
     'expo-audio',
+    'expo-notifications',
     'expo-secure-store',
     [
       'expo-image-picker',

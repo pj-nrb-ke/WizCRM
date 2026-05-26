@@ -3,6 +3,7 @@ import { lossReasonLabel } from '@wizcrm/shared';
 
 export type CrmConfig = {
   leadSources: string[];
+  leadTags?: string[];
   lossReasons: { code: string; label: string }[];
 };
 

@@ -9,6 +9,7 @@ type LossReason = { code: string; label: string };
 
 type SettingsPayload = {
   leadSources?: string[];
+  leadTags?: string[];
   lossReasons?: LossReason[];
 };
 
@@ -16,6 +17,7 @@ export function CrmSettingsPage() {
   const { user } = useAuth();
   const canEdit = isAdmin(user?.role);
   const [leadSources, setLeadSources] = useState('');
+  const [leadTags, setLeadTags] = useState('');
   const [lossReasons, setLossReasons] = useState<LossReason[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -30,6 +32,7 @@ export function CrmSettingsPage() {
             ? d.settings.leadSources
             : [...DEFAULT_LEAD_SOURCES];
         setLeadSources(sources.join('\n'));
+        setLeadTags((d.settings.leadTags ?? []).join('\n'));
         setLossReasons(
           d.settings.lossReasons && d.settings.lossReasons.length > 0
             ? d.settings.lossReasons
@@ -70,10 +73,14 @@ export function CrmSettingsPage() {
       setError('At least one loss reason is required.');
       return;
     }
+    const tags = leadTags
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
     try {
       await api('/admin/settings', {
         method: 'PATCH',
-        body: { leadSources: sources, lossReasons },
+        body: { leadSources: sources, leadTags: tags, lossReasons },
       });
       setMessage('CRM settings saved.');
     } catch (err) {
@@ -99,6 +106,17 @@ export function CrmSettingsPage() {
             value={leadSources}
             onChange={(e) => setLeadSources(e.target.value)}
             disabled={!canEdit}
+          />
+        </label>
+
+        <label>
+          Suggested lead tags (one per line, optional)
+          <textarea
+            rows={5}
+            value={leadTags}
+            onChange={(e) => setLeadTags(e.target.value)}
+            disabled={!canEdit}
+            placeholder="VIP&#10;Enterprise&#10;Partner referral"
           />
         </label>
 

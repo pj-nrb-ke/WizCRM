@@ -40,6 +40,7 @@ export type LeadSummary = {
   phone?: string | null;
   stage: string;
   source?: string | null;
+  tags?: string[];
   lastActivityAt?: string | null;
   updatedAt?: string;
   owner?: LeadOwner;

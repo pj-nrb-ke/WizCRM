@@ -91,8 +91,8 @@ export default function TeamMetricsScreen() {
       {loading ? (
         <ActivityIndicator color="#38bdf8" style={{ marginTop: 24 }} />
       ) : (
-        <FlatList
-          data={isOverdue ? tasks : leads}
+        <FlatList<MetricLead | MetricTask>
+          data={(isOverdue ? tasks : leads) as (MetricLead | MetricTask)[]}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor="#38bdf8" />

@@ -12,11 +12,15 @@ export function readManagerFilter(search: URLSearchParams): ManagerFilter {
   };
 }
 
-export function leadsQueryPath(filter: ManagerFilter, extra?: { stage?: string }): string {
+export function leadsQueryPath(
+  filter: ManagerFilter,
+  extra?: { stage?: string; tag?: string },
+): string {
   const qs = new URLSearchParams();
   if (filter.teamId) qs.set('teamId', filter.teamId);
   if (filter.ownerId) qs.set('ownerId', filter.ownerId);
   if (extra?.stage) qs.set('stage', extra.stage);
+  if (extra?.tag) qs.set('tag', extra.tag);
   const q = qs.toString();
   return q ? `/leads?${q}` : '/leads';
 }

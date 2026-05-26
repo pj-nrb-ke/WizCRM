@@ -14,6 +14,7 @@ import {
   listCalendarEvents,
   updateCalendarEvent,
 } from '../services/calendar.service.js';
+import { loadAttendanceReport } from '../services/attendance-report.service.js';
 
 export const calendarRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -60,9 +61,21 @@ export const calendarRoutes: FastifyPluginAsync = async (app) => {
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const event = await checkInCalendarEvent(id, organizationId, userId, role, parsed.data);
-    if (!event) return reply.status(404).send({ error: 'Event not found' });
-    return { event };
+    try {
+      const event = await checkInCalendarEvent(id, organizationId, userId, role, parsed.data);
+      if (!event) return reply.status(404).send({ error: 'Event not found' });
+      return { event };
+    } catch (e) {
+      if (e && typeof e === 'object' && 'code' in e && (e as any).code === 'GEOFENCE') {
+        return reply.status(409).send({
+          error: 'Outside meeting geofence',
+          code: 'GEOFENCE',
+          distanceM: (e as any).distanceM,
+          radiusM: (e as any).radiusM,
+        });
+      }
+      throw e;
+    }
   });
 
   app.post('/events/:id/check-out', async (request, reply) => {
@@ -83,5 +96,24 @@ export const calendarRoutes: FastifyPluginAsync = async (app) => {
     const ok = await deleteCalendarEvent(id, organizationId, userId, role);
     if (!ok) return reply.status(404).send({ error: 'Event not found' });
     return { ok: true };
+  });
+
+  app.get('/attendance/report', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (role !== 'MANAGER' && role !== 'ADMIN') {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const q = request.query as { teamId?: string; dateFrom?: string; dateTo?: string };
+    const now = new Date();
+    const defaultFrom = new Date(now);
+    defaultFrom.setDate(defaultFrom.getDate() - 30);
+    const dateFrom = q.dateFrom ? new Date(q.dateFrom) : defaultFrom;
+    const dateTo = q.dateTo ? new Date(q.dateTo) : now;
+    if (Number.isNaN(dateFrom.getTime()) || Number.isNaN(dateTo.getTime())) {
+      return reply.status(400).send({ error: 'Invalid dateFrom/dateTo. Expected ISO date string.' });
+    }
+    const report = await loadAttendanceReport(organizationId, { dateFrom, dateTo }, q.teamId);
+    if (!report) return reply.status(404).send({ error: 'Team not found' });
+    return { report };
   });
 };

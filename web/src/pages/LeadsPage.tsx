@@ -18,6 +18,7 @@ export function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [stageFilter, setStageFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [crmConfig, setCrmConfig] = useState<CrmConfig | null>(null);
@@ -25,12 +26,15 @@ export function LeadsPage() {
   const load = useCallback(() => {
     setLoading(true);
     setError('');
-    const path = leadsQueryPath(filter, stageFilter ? { stage: stageFilter } : undefined);
+    const extra: Record<string, string> = {};
+    if (stageFilter) extra.stage = stageFilter;
+    if (tagFilter.trim()) extra.tag = tagFilter.trim();
+    const path = leadsQueryPath(filter, Object.keys(extra).length ? extra : undefined);
     api<{ leads: LeadSummary[] }>(path)
       .then((d) => setLeads(d.leads))
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [search.toString(), stageFilter]);
+  }, [search.toString(), stageFilter, tagFilter]);
 
   useEffect(() => {
     load();
@@ -46,7 +50,15 @@ export function LeadsPage() {
     const term = q.trim().toLowerCase();
     if (!term) return leads;
     return leads.filter((l) => {
-      const hay = [l.name, l.company, l.email, l.phone, l.owner?.name, l.owner?.team?.name]
+      const hay = [
+        l.name,
+        l.company,
+        l.email,
+        l.phone,
+        l.owner?.name,
+        l.owner?.team?.name,
+        ...(l.tags ?? []),
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -85,6 +97,19 @@ export function LeadsPage() {
             </option>
           ))}
         </select>
+        <input
+          type="text"
+          placeholder="Filter by tag"
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value)}
+          aria-label="Filter by tag"
+          list="lead-tag-suggestions"
+        />
+        <datalist id="lead-tag-suggestions">
+          {(crmConfig?.leadTags ?? []).map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
         <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
           New lead
         </button>
@@ -119,6 +144,15 @@ export function LeadsPage() {
                 <td>
                   <strong>{l.name}</strong>
                   {l.company ? <div className="muted">{l.company}</div> : null}
+                  {l.tags && l.tags.length > 0 ? (
+                    <div className="lead-row-tags">
+                      {l.tags.slice(0, 3).map((t) => (
+                        <span key={t} className="tag-chip-inline">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </td>
                 <td>{l.stage}</td>
                 <td>

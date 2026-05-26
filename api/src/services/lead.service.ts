@@ -9,7 +9,11 @@ import type { CreateLeadInput, UpdateLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getCrmConfig } from './crm-config.service.js';
 import { findDuplicateLeads, normalizeEmail } from './duplicate.service.js';
-import { normalizePhone, sanitizeStringList } from '@wizcrm/shared';
+import { normalizeLeadTags, normalizePhone, sanitizeStringList } from '@wizcrm/shared';
+
+function isManagerRole(role: string) {
+  return role === 'MANAGER' || role === 'ADMIN';
+}
 
 const TERMINAL: LeadStage[] = ['WON', 'LOST'];
 
@@ -102,6 +106,7 @@ export async function createLead(
       address: input.address,
       googleMapsUrl: input.googleMapsUrl,
       source: input.source,
+      tags: normalizeLeadTags(input.tags),
       priority: input.priority,
     },
   });
@@ -112,6 +117,7 @@ export async function updateLead(
   organizationId: string,
   userId: string,
   input: UpdateLeadInput,
+  actorRole?: string,
 ) {
   const existing = await prisma.lead.findFirst({
     where: { id: leadId, organizationId },
@@ -135,6 +141,34 @@ export async function updateLead(
   if (input.extraEmails !== undefined) data.extraEmails = input.extraEmails ?? [];
   if (input.address !== undefined) data.address = input.address;
   if (input.googleMapsUrl !== undefined) data.googleMapsUrl = input.googleMapsUrl;
+  if (input.tags !== undefined) data.tags = normalizeLeadTags(input.tags);
+
+  if (input.ownerId !== undefined && input.ownerId !== existing.ownerId) {
+    if (!isManagerRole(actorRole ?? '')) {
+      throw Object.assign(new Error('Only managers can reassign lead owner'), { statusCode: 403 });
+    }
+    const newOwner = await prisma.user.findFirst({
+      where: { id: input.ownerId, organizationId },
+      select: { id: true, name: true, role: true },
+    });
+    if (!newOwner || !['SALES', 'MANAGER'].includes(newOwner.role)) {
+      throw Object.assign(new Error('Invalid owner'), { statusCode: 400 });
+    }
+    const prevOwner = await prisma.user.findFirst({
+      where: { id: existing.ownerId },
+      select: { name: true },
+    });
+    data.owner = { connect: { id: newOwner.id } };
+    await prisma.activity.create({
+      data: {
+        leadId,
+        userId,
+        type: 'NOTE',
+        subject: 'Owner assigned',
+        body: `${prevOwner?.name ?? 'Unknown'} → ${newOwner.name}`,
+      },
+    });
+  }
 
   if (input.stage && input.stage !== existing.stage) {
     const allowed = input.pipelineMove

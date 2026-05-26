@@ -166,8 +166,8 @@ Aligned with [WizCRM_Development_Phases.md](../WizCRM_Development_Phases.md). ID
 | ✅ | MOB-GAP-103 | **Pipeline: change stage from pipeline** (long-press menu) | Long-press card → Change stage |
 | ✅ | MOB-GAP-104 | **Pipeline: within-column order** | Manager: Move up/down + `pipeline/reorder` |
 | ✅ | MOB-GAP-105 | **Personal dashboard** — my open tasks, stale, upcoming | Desk tab **My dashboard** card |
-| P1 | MOB-GAP-106 | **Reassign lead owner** (manager) | When web `P1-CRM-006` ships |
-| P1 | MOB-GAP-107 | **Lead tags** (view + filter) | When schema lands (`P1-CRM-002`) |
+| ✅ | MOB-GAP-106 | **Reassign lead owner** (manager) | Web drawer + mobile Reassign owner |
+| ✅ | MOB-GAP-107 | **Lead tags** (view + filter) | Schema `tags[]`, web/mobile editors, leads filter |
 | ✅ | MOB-GAP-108 | **Configurable pipeline stage labels** (read-only) | Labels from `GET /leads/pipeline` `stages` |
 
 *Defer on mobile (stay web):* bulk import, bulk assign, user admin, CRM list editing, CSV export, audit log.
@@ -180,16 +180,16 @@ Aligned with [WizCRM_Development_Phases.md](../WizCRM_Development_Phases.md). ID
 
 | Priority | ID | Feature | Rationale |
 |----------|-----|---------|-----------|
-| P1 | MOB-GAP-201 | **My Calendar** — list/week, create/edit, link to lead | Core for scheduled visits |
-| P1 | MOB-GAP-202 | **Meeting check-in / check-out** with GPS + attendance badge | Field proof; API exists |
-| P1 | MOB-GAP-203 | **Navigate to meeting** (Maps deep link from event) | Pairs with web location fields |
-| P2 | MOB-GAP-204 | **Quotations** — list on lead, create simple quote, mark sent | API exists |
-| P2 | MOB-GAP-205 | **Sales opportunities** — list + add on lead | API exists |
-| P2 | MOB-GAP-206 | **Manager reports lite** — funnel + win/loss KPIs (no CSV) | Read-only charts |
-| P2 | MOB-GAP-207 | **Offline: cache lead list + detail** (read-only when offline) | Beyond note queue |
-| P2 | MOB-GAP-208 | **Push notifications** — task due, meeting reminder | Phase 2 brochure |
-| P3 | MOB-GAP-209 | **Geofence radius** validation on check-in | After basic GPS check-in |
-| P3 | MOB-GAP-210 | **Attendance reports** for managers | After check-in volume |
+| ✅ | MOB-GAP-201 | **My Calendar** — list/week, create/edit, link to lead | `calendar` tab + `calendar/new`, `calendar/[id]` |
+| ✅ | MOB-GAP-202 | **Meeting check-in / check-out** with GPS + attendance badge | `expo-location` on event detail |
+| ✅ | MOB-GAP-203 | **Navigate to meeting** (Maps deep link from event) | Maps link from event address |
+| ✅ | MOB-GAP-204 | **Quotations** — list on lead, create simple quote, mark sent | `LeadQuotations` on lead detail |
+| ✅ | MOB-GAP-205 | **Sales opportunities** — list + add on lead | `LeadOpportunities` + sheet |
+| ✅ | MOB-GAP-206 | **Manager reports lite** — funnel + win/loss KPIs (no CSV) | `reports` tab (managers) |
+| ✅ | MOB-GAP-207 | **Offline: cache lead list + detail** (read-only when offline) | `offline-leads-cache` on leads + detail |
+| ✅ | MOB-GAP-208 | **Push notifications** — task due, meeting reminder | Local scheduled notifications on Desk refresh (tasks due today + meeting 1h reminder) |
+| ✅ | MOB-GAP-209 | **Geofence radius** validation on check-in | API validates meeting geofence radius; managers can override |
+| ✅ | MOB-GAP-210 | **Attendance reports** for managers | `/calendar/attendance/report` + mobile Reports attendance section |
 
 *Defer on mobile:* webhook admin, automation rules builder, Google/Microsoft sync UI.
 

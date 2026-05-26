@@ -16,6 +16,7 @@ import { api, type Lead } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
 import { oneParam } from '../../lib/route-params';
+import { loadLeadsCache, saveLeadsCache } from '../../lib/offline-leads-cache';
 
 function leadsApiPath(teamId?: string, ownerId?: string): string {
   const qs = new URLSearchParams();
@@ -43,6 +44,8 @@ export default function LeadsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [fromCache, setFromCache] = useState(false);
+  const [cacheSavedAt, setCacheSavedAt] = useState('');
 
   const load = useCallback(
     async (isPull = false) => {
@@ -52,13 +55,30 @@ export default function LeadsScreen() {
         setLeads([]);
       }
       setError('');
+      setFromCache(false);
       try {
         const data = await api<{ leads: Lead[] }>(leadsApiPath(teamId, ownerId));
         setLeads(data.leads);
+        if (!teamId && !ownerId) {
+          void saveLeadsCache(data.leads);
+        }
       } catch (e) {
         const err = e as Error;
-        setError(err.message);
-        setLeads([]);
+        if (!teamId && !ownerId) {
+          const cached = await loadLeadsCache();
+          if (cached?.leads.length) {
+            setLeads(cached.leads);
+            setFromCache(true);
+            setCacheSavedAt(cached.savedAt);
+            setError('');
+          } else {
+            setError(err.message);
+            setLeads([]);
+          }
+        } else {
+          setError(err.message);
+          setLeads([]);
+        }
       } finally {
         setInitialLoading(false);
         setRefreshing(false);
@@ -140,6 +160,12 @@ export default function LeadsScreen() {
         autoCorrect={false}
         clearButtonMode="while-editing"
       />
+      {fromCache ? (
+        <Text style={styles.cacheBanner}>
+          Offline — showing cached list
+          {cacheSavedAt ? ` (${new Date(cacheSavedAt).toLocaleString()})` : ''}
+        </Text>
+      ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {initialLoading && leads.length === 0 ? (
         <ActivityIndicator color="#38bdf8" style={{ marginTop: 24 }} />
@@ -244,6 +270,12 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
   },
   error: { color: '#f87171', paddingHorizontal: 16, marginBottom: 8 },
+  cacheBanner: {
+    color: '#fbbf24',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    fontSize: 13,
+  },
   empty: { color: '#64748b', textAlign: 'center', marginTop: 40, paddingHorizontal: 24 },
   row: {
     flexDirection: 'row',

@@ -24,6 +24,8 @@ export const calendarCheckInSchema = z.object({
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   attendanceStatus: z.enum(ATTENDANCE_STATUSES).optional(),
+  /** Manager-only: allow check-in outside geofence. */
+  geofenceOverride: z.boolean().optional(),
 });
 
 export const calendarCheckOutSchema = z.object({

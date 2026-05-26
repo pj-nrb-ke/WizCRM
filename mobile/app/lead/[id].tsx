@@ -26,6 +26,9 @@ import { mergeLeadTimeline } from '../../lib/lead-timeline';
 import { lossReasonLabel } from '../../lib/close-lead';
 import { useAuth } from '../../context/AuthContext';
 import { isManagerRole } from '../../lib/roles';
+import { LeadQuotations } from '../../components/LeadQuotations';
+import { LeadOpportunities } from '../../components/LeadOpportunities';
+import { loadLeadDetailCache, saveLeadDetailCache } from '../../lib/offline-leads-cache';
 
 type Activity = {
   id: string;
@@ -60,7 +63,9 @@ type StageSuggestion = {
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const readOnly = isManagerRole(user?.role);
+  const isManager = isManagerRole(user?.role);
+  const readOnly = isManager;
+  const [assignableUsers, setAssignableUsers] = useState<{ id: string; name: string }[]>([]);
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -76,6 +81,9 @@ export default function LeadDetailScreen() {
   const [draft, setDraft] = useState('');
   const [pendingCount, setPendingCount] = useState(0);
   const [stageChanges, setStageChanges] = useState<StageChange[]>([]);
+  const [fromCache, setFromCache] = useState(false);
+  const [cacheSavedAt, setCacheSavedAt] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [crmConfig, setCrmConfig] = useState<CrmConfig | null>(null);
   const [closeMode, setCloseMode] = useState<'WON' | 'LOST' | null>(null);
   const [closeSaving, setCloseSaving] = useState(false);
@@ -96,27 +104,58 @@ export default function LeadDetailScreen() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [leadRes, taskRes, insightRes, pending, crm] = await Promise.all([
-      api<{ lead: Lead }>(`/leads/${id}`),
-      api<{ tasks: Task[] }>(`/leads/${id}/tasks`),
-      api<{ insights: LeadInsights }>(`/leads/${id}/insights`).catch(() => ({ insights: null })),
-      listPendingNotes(),
-      fetchCrmConfig(),
-    ]);
-    const leadData = leadRes.lead;
-    setLead(leadData);
-    setCrmConfig(crm);
-    if (leadData.activities?.length) {
-      setActivities(leadData.activities);
-    } else {
-      const actRes = await api<{ activities: Activity[] }>(`/leads/${id}/activities`);
-      setActivities(actRes.activities);
+    setFromCache(false);
+    setLoadError('');
+    try {
+      const [leadRes, taskRes, insightRes, pending, crm] = await Promise.all([
+        api<{ lead: Lead }>(`/leads/${id}`),
+        api<{ tasks: Task[] }>(`/leads/${id}/tasks`),
+        api<{ insights: LeadInsights }>(`/leads/${id}/insights`).catch(() => ({ insights: null })),
+        listPendingNotes(),
+        fetchCrmConfig(),
+      ]);
+      const leadData = leadRes.lead;
+      let activityRows: Activity[];
+      if (leadData.activities?.length) {
+        activityRows = leadData.activities;
+      } else {
+        const actRes = await api<{ activities: Activity[] }>(`/leads/${id}/activities`);
+        activityRows = actRes.activities;
+      }
+      const stageRows = leadData.stageChanges ?? [];
+      setLead(leadData);
+      setCrmConfig(crm);
+      setActivities(activityRows);
+      setStageChanges(stageRows);
+      setTasks(taskRes.tasks);
+      setInsights(insightRes.insights);
+      setPendingCount(pending.filter((n) => n.leadId === id).length);
+      void saveLeadDetailCache(id, {
+        savedAt: new Date().toISOString(),
+        lead: leadData,
+        tasks: taskRes.tasks,
+        activities: activityRows,
+        stageChanges: stageRows,
+      });
+      if (isManagerRole(user?.role)) {
+        api<{ users: { id: string; name: string }[] }>('/teams/assignable-users')
+          .then((r) => setAssignableUsers(r.users ?? []))
+          .catch(() => setAssignableUsers([]));
+      }
+    } catch (e) {
+      const cached = await loadLeadDetailCache(id);
+      if (cached) {
+        setLead(cached.lead);
+        setActivities(cached.activities);
+        setStageChanges(cached.stageChanges);
+        setTasks(cached.tasks);
+        setFromCache(true);
+        setCacheSavedAt(cached.savedAt);
+      } else {
+        setLoadError(e instanceof Error ? e.message : 'Failed to load lead');
+      }
     }
-    setStageChanges(leadData.stageChanges ?? []);
-    setTasks(taskRes.tasks);
-    setInsights(insightRes.insights);
-    setPendingCount(pending.filter((n) => n.leadId === id).length);
-  }, [id]);
+  }, [id, user?.role]);
 
   const timeline = useMemo(
     () =>
@@ -125,7 +164,10 @@ export default function LeadDetailScreen() {
           ...a,
           userName: a.user?.name,
         })),
-        stageChanges,
+        stageChanges.map((s) => ({
+          ...s,
+          userName: s.user.name,
+        })),
       ),
     [activities, stageChanges],
   );
@@ -445,7 +487,7 @@ export default function LeadDetailScreen() {
   if (!lead) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#38bdf8" />
+        {loadError ? <Text style={styles.loadError}>{loadError}</Text> : <ActivityIndicator color="#38bdf8" />}
       </View>
     );
   }
@@ -458,6 +500,12 @@ export default function LeadDetailScreen() {
       nestedScrollEnabled
       showsVerticalScrollIndicator
     >
+      {fromCache ? (
+        <Text style={styles.cacheBanner}>
+          Offline — cached lead
+          {cacheSavedAt ? ` (${new Date(cacheSavedAt).toLocaleString()})` : ''}
+        </Text>
+      ) : null}
       {readOnly ? (
         <Text style={styles.readOnlyBadge}>Manager view (read-only)</Text>
       ) : null}
@@ -477,6 +525,47 @@ export default function LeadDetailScreen() {
         <Text style={styles.closeBannerLost}>Lost · {lossReasonLabel(lead.lossReason)}</Text>
       ) : null}
       {lead.company ? <Text style={styles.subMeta}>{lead.company}</Text> : null}
+      {lead.owner ? (
+        <Text style={styles.subMeta}>
+          Owner: {lead.owner.name}
+          {lead.owner.team ? ` · ${lead.owner.team.name}` : ''}
+        </Text>
+      ) : null}
+      {lead.tags && lead.tags.length > 0 ? (
+        <View style={styles.tagRow}>
+          {lead.tags.map((tag) => (
+            <View key={tag} style={styles.tagChip}>
+              <Text style={styles.tagChipText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {isManager && assignableUsers.length > 0 ? (
+        <Pressable
+          style={styles.reassignBtn}
+          onPress={() => {
+            Alert.alert(
+              'Reassign owner',
+              lead.name,
+              [
+                ...assignableUsers.map((u) => ({
+                  text: u.name,
+                  onPress: () => {
+                    void api(`/leads/${id}`, { method: 'PATCH', body: { ownerId: u.id } })
+                      .then(() => load())
+                      .catch((e) =>
+                        Alert.alert('Error', e instanceof Error ? e.message : 'Reassign failed'),
+                      );
+                  },
+                })),
+                { text: 'Cancel', style: 'cancel' },
+              ],
+            );
+          }}
+        >
+          <Text style={styles.reassignBtnText}>Reassign owner</Text>
+        </Pressable>
+      ) : null}
       {lead.address ? (
         <Text style={styles.subMeta} numberOfLines={3}>
           {lead.address}
@@ -491,23 +580,27 @@ export default function LeadDetailScreen() {
         </Pressable>
       ) : null}
 
-      {!readOnly ? (
+      {!readOnly || isManager ? (
         <View style={styles.actionRow}>
-          <Pressable style={styles.callBtn} onPress={startCall} disabled={!lead.phone}>
-            <Text style={styles.callBtnText}>Call</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.callBtn, styles.waBtn]}
-            onPress={() => lead.phone && openWhatsApp(lead.phone)}
-            disabled={!lead.phone}
-          >
-            <Text style={styles.callBtnText}>WhatsApp</Text>
-          </Pressable>
+          {!readOnly ? (
+            <>
+              <Pressable style={styles.callBtn} onPress={startCall} disabled={!lead.phone}>
+                <Text style={styles.callBtnText}>Call</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.callBtn, styles.waBtn]}
+                onPress={() => lead.phone && openWhatsApp(lead.phone)}
+                disabled={!lead.phone}
+              >
+                <Text style={styles.callBtnText}>WhatsApp</Text>
+              </Pressable>
+            </>
+          ) : null}
           <Pressable
             style={styles.editBtn}
             onPress={() => router.push({ pathname: '/lead/edit', params: { id } })}
           >
-            <Text style={styles.editBtnText}>Edit</Text>
+            <Text style={styles.editBtnText}>{readOnly ? 'Edit / tags' : 'Edit'}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -724,6 +817,9 @@ export default function LeadDetailScreen() {
         </>
       ) : null}
 
+      <LeadQuotations leadId={lead.id} />
+      <LeadOpportunities leadId={lead.id} leadName={lead.name} readOnly={readOnly} />
+
       <Text style={styles.section}>Timeline</Text>
       {timeline.length === 0 ? (
         <Text style={styles.mutedHint}>No history yet.</Text>
@@ -777,6 +873,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
   scrollContent: { padding: 16, paddingBottom: 120 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  tagChip: {
+    backgroundColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  tagChipText: { color: '#e2e8f0', fontSize: 12 },
+  reassignBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+  },
+  reassignBtnText: { color: '#38bdf8', fontWeight: '600' },
   readOnlyBadge: {
     color: '#fbbf24',
     fontSize: 12,
@@ -784,6 +898,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
   },
+  cacheBanner: { color: '#fbbf24', fontSize: 13, marginBottom: 8 },
+  loadError: { color: '#f87171', padding: 24, textAlign: 'center' },
   name: { fontSize: 24, fontWeight: '700', color: '#f8fafc' },
   closeBannerWon: { color: '#34d399', marginTop: 8, fontWeight: '600' },
   closeBannerLost: { color: '#f87171', marginTop: 8, fontWeight: '600' },

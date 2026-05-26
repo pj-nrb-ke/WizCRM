@@ -24,6 +24,7 @@ import {
 } from '../../lib/card-scan';
 import { buildGoogleMapsSearchUrl } from '../../lib/maps-links';
 import { fetchCrmConfig } from '../../lib/crm-config';
+import { LeadTagsEditor } from '../../components/LeadTagsEditor';
 
 const emptyForm = (): LeadFormState => ({
   name: '',
@@ -35,6 +36,7 @@ const emptyForm = (): LeadFormState => ({
   address: '',
   googleMapsUrl: '',
   source: '',
+  tags: [],
   priority: null,
 });
 
@@ -46,9 +48,13 @@ export default function NewLeadScreen() {
   const [scanning, setScanning] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<CardImageAsset | null>(null);
   const [leadSources, setLeadSources] = useState<string[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchCrmConfig().then((c) => setLeadSources(c?.leadSources ?? []));
+    fetchCrmConfig().then((c) => {
+      setLeadSources(c?.leadSources ?? []);
+      setTagSuggestions(c?.leadTags ?? []);
+    });
   }, []);
 
   async function choosePhoto(pick: () => Promise<CardImageAsset | null>) {
@@ -249,6 +255,13 @@ export default function NewLeadScreen() {
         onChangeText={(source) => patch({ source })}
         placeholder="Referral, event, website…"
         placeholderTextColor="#64748b"
+      />
+
+      <Text style={styles.label}>Tags</Text>
+      <LeadTagsEditor
+        tags={form.tags}
+        suggestions={tagSuggestions}
+        onChange={(tags) => patch({ tags })}
       />
 
       <Text style={styles.label}>Priority</Text>

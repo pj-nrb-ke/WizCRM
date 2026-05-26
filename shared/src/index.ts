@@ -10,3 +10,5 @@ export * from './opportunity.js';
 export * from './calendar.js';
 export * from './analytics.js';
 export * from './quotation.js';
+export * from './lead-tags.js';
+export * from './geo.js';

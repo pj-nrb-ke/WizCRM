@@ -4,6 +4,7 @@ import { LEAD_PRIORITIES } from './priorities.js';
 import { pipelineStageConfigSchema } from './pipeline-stages.js';
 import { LEAD_STAGES } from './stages.js';
 import { DEFAULT_LOSS_REASONS } from './close-lead.js';
+import { leadTagsField } from './lead-tags.js';
 
 const lossReasonCodes = DEFAULT_LOSS_REASONS.map((r) => r.code) as [string, ...string[]];
 
@@ -26,6 +27,7 @@ export const createLeadSchema = z
     address: z.string().max(500).optional(),
     googleMapsUrl: z.string().url().max(2000).optional(),
     source: z.string().max(100).optional(),
+    tags: leadTagsField,
     priority: z.enum(LEAD_PRIORITIES).optional(),
   })
   .superRefine((d, ctx) => {
@@ -71,6 +73,8 @@ export const updateLeadSchema = z
     wonStartAt: z.string().datetime().optional(),
     wonProducts: z.string().max(2000).optional(),
     lossReason: z.enum(lossReasonCodes).optional(),
+    ownerId: z.string().uuid().optional(),
+    tags: leadTagsField,
   })
   .superRefine((d, ctx) => {
     if (d.stage === 'WON') {
@@ -185,10 +189,13 @@ export const orgSettingsSchema = z.object({
   deskUseAi: z.boolean().optional(),
   pipelineStages: z.array(pipelineStageConfigSchema).optional(),
   leadSources: z.array(z.string().min(1).max(100)).max(50).optional(),
+  leadTags: z.array(z.string().min(1).max(40)).max(50).optional(),
   lossReasons: z.array(lossReasonOptionSchema).max(30).optional(),
   /** Phase 2: inbound web lead capture */
   webhookSecret: z.string().min(16).max(128).optional(),
   webhookEnabled: z.boolean().optional(),
+  /** Meeting check-in geofence radius in meters (default 150). */
+  checkInRadiusMeters: z.number().int().min(25).max(2000).optional(),
 });
 
 export const createAdminUserSchema = z.object({

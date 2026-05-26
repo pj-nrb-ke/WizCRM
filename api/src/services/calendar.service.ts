@@ -1,10 +1,23 @@
 import type { Prisma } from '@prisma/client';
 import type { createCalendarEventSchema, updateCalendarEventSchema } from '@wizcrm/shared';
+import { DEFAULT_CHECK_IN_RADIUS_METERS, haversineDistanceMeters } from '@wizcrm/shared';
 import type { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { getOrgSettings } from './org-settings.service.js';
 
 type CreateInput = z.infer<typeof createCalendarEventSchema>;
 type UpdateInput = z.infer<typeof updateCalendarEventSchema>;
+
+export class GeofenceCheckInError extends Error {
+  readonly code = 'GEOFENCE';
+  constructor(
+    readonly distanceM: number,
+    readonly radiusM: number,
+  ) {
+    super(`Check-in is ${Math.round(distanceM)}m from meeting location (limit ${radiusM}m).`);
+    this.name = 'GeofenceCheckInError';
+  }
+}
 
 function parseRange(from?: string, to?: string) {
   const start = from ? new Date(from) : new Date();
@@ -174,13 +187,40 @@ export async function checkInCalendarEvent(
   organizationId: string,
   userId: string,
   role: string,
-  input: { lat?: number; lng?: number; attendanceStatus?: 'ON_TIME' | 'LATE' | 'NO_SHOW' | 'PARTIAL' },
+  input: {
+    lat?: number;
+    lng?: number;
+    attendanceStatus?: 'ON_TIME' | 'LATE' | 'NO_SHOW' | 'PARTIAL';
+    geofenceOverride?: boolean;
+  },
 ) {
   const isManager = role === 'MANAGER' || role === 'ADMIN';
   const existing = await prisma.calendarEvent.findFirst({
     where: { id, organizationId, ...(isManager ? {} : { userId }) },
   });
   if (!existing) return null;
+
+  const settings = await getOrgSettings(organizationId);
+  const radiusM = settings.checkInRadiusMeters ?? DEFAULT_CHECK_IN_RADIUS_METERS;
+  const allowOverride = isManager && input.geofenceOverride === true;
+
+  if (
+    existing.meetingLat != null &&
+    existing.meetingLng != null &&
+    input.lat != null &&
+    input.lng != null &&
+    !allowOverride
+  ) {
+    const distanceM = haversineDistanceMeters(
+      input.lat,
+      input.lng,
+      existing.meetingLat,
+      existing.meetingLng,
+    );
+    if (distanceM > radiusM) {
+      throw new GeofenceCheckInError(distanceM, radiusM);
+    }
+  }
 
   const now = new Date();
   let status = input.attendanceStatus;
@@ -193,9 +233,10 @@ export async function checkInCalendarEvent(
     where: { id },
     data: {
       checkInAt: now,
+      checkInLat: input.lat,
+      checkInLng: input.lng,
+      geofenceOverride: allowOverride,
       attendanceStatus: status ?? 'ON_TIME',
-      ...(input.lat !== undefined ? { meetingLat: input.lat } : {}),
-      ...(input.lng !== undefined ? { meetingLng: input.lng } : {}),
     },
     include: {
       user: { select: { id: true, name: true } },

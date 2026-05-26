@@ -116,6 +116,26 @@ function RootNavigator() {
             headerRight: () => <HeaderActions />,
           }}
         />
+        <Stack.Screen
+          name="calendar/new"
+          options={{
+            headerShown: true,
+            title: 'New event',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <HeaderActions />,
+          }}
+        />
+        <Stack.Screen
+          name="calendar/[id]"
+          options={{
+            headerShown: true,
+            title: 'Event',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <HeaderActions />,
+          }}
+        />
       </Stack>
     </>
   );

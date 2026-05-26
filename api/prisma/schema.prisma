@@ -77,6 +77,7 @@ model Lead {
   address          String?
   googleMapsUrl    String?
   source           String?
+  tags             String[]   @default([])
   priority         LeadPriority?
   stage            LeadStage  @default(NEW)
   wonValue         Decimal?   @db.Decimal(14, 2)
@@ -282,6 +283,9 @@ model CalendarEvent {
   meetingLat            Float?
   meetingLng            Float?
   checkInAt             DateTime?
+  checkInLat            Float?
+  checkInLng            Float?
+  geofenceOverride      Boolean            @default(false)
   checkOutAt            DateTime?
   attendanceStatus      AttendanceStatus?
   createdAt             DateTime           @default(now())

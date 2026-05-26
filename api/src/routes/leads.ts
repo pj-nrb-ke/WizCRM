@@ -92,7 +92,7 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/', async (request, reply) => {
     const { organizationId } = request.user;
-    const q = request.query as { stage?: string; teamId?: string; ownerId?: string };
+    const q = request.query as { stage?: string; teamId?: string; ownerId?: string; tag?: string };
     let ownerFilter: { ownerId?: string | { in: string[] } } = {};
     if (q.ownerId) {
       ownerFilter = { ownerId: q.ownerId };
@@ -106,10 +106,12 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       }
       ownerFilter = { ownerId: { in: memberIds } };
     }
+    const tag = q.tag?.trim();
     const leads = await prisma.lead.findMany({
       where: {
         organizationId,
         ...(q.stage ? { stage: q.stage as never } : {}),
+        ...(tag ? { tags: { has: tag } } : {}),
         ...ownerFilter,
       },
       include: { owner: { select: ownerSelect } },
@@ -252,7 +254,7 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
     try {
-      const lead = await updateLead(id, organizationId, userId, parsed.data);
+      const lead = await updateLead(id, organizationId, userId, parsed.data, request.user.role);
       if (!lead) return reply.status(404).send({ error: 'Lead not found' });
       return { lead };
     } catch (e) {

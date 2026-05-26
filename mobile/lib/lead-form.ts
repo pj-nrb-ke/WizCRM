@@ -11,6 +11,7 @@ export type LeadFormState = {
   address: string;
   googleMapsUrl: string;
   source: string;
+  tags: string[];
   priority: string | null;
 };
 
@@ -26,6 +27,7 @@ export function leadToFormState(lead: Lead): LeadFormState {
     address: lead.address ?? '',
     googleMapsUrl: lead.googleMapsUrl ?? '',
     source: lead.source ?? '',
+    tags: lead.tags ?? [],
     priority: lead.priority ?? null,
   };
 }
@@ -48,6 +50,7 @@ export function buildLeadPayload(form: LeadFormState) {
     address: form.address.trim() || undefined,
     googleMapsUrl: form.googleMapsUrl.trim() || undefined,
     source: form.source.trim() || undefined,
+    tags: form.tags,
     priority: form.priority ?? undefined,
   };
 }

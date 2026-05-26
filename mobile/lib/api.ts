@@ -101,6 +101,7 @@ export type Lead = {
   address?: string | null;
   googleMapsUrl?: string | null;
   source?: string | null;
+  tags?: string[];
   priority?: string | null;
   stage: string;
   wonValue?: number | string | null;

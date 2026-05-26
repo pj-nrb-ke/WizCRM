@@ -16,6 +16,8 @@ Output: **`WizCRM-production.apk`** at the repo root (~30 MB). Copy to the devic
 
 **Phase 1 parity slice:** Desk **My dashboard** KPIs; Team **organization snapshot** + activity feed + metric lists; Pipeline long-press (change stage, manager reorder) with org-configured stage labels. See [docs/WEB-MOBILE-GAP-ANALYSIS.md](./docs/WEB-MOBILE-GAP-ANALYSIS.md).
 
+**Phase 2 parity slice:** **Calendar** tab (14-day list, create/edit, GPS check-in/out, Maps); **Reports** tab (managers — funnel + time-in-stage); quotations + sales opportunities on lead detail; offline cached leads list and lead detail when the API is unreachable.
+
 After API deploys, rebuild the APK so the JS bundle matches server behavior. Mobile does not import `@wizcrm/shared` at bundle time — mirror types in `mobile/lib/close-lead.ts` when shared enums change.
 
 ## Prerequisites installed via winget

@@ -54,13 +54,13 @@ export async function scanBusinessCardAsset(asset: CardImageAsset): Promise<Card
 }
 
 async function pickCardAsset(
-  launch: () => Promise<{ canceled: boolean; assets: CardImageAsset[] }>,
+  launch: () => Promise<{ canceled: boolean; assets: CardImageAsset[] | null }>,
 ): Promise<CardImageAsset | null> {
   const result = await launch();
-  if (result.canceled || !result.assets[0]) {
+  if (result.canceled || !result.assets?.[0]) {
     return null;
   }
-  return result.assets[0];
+  return result.assets[0]!;
 }
 
 export async function pickBusinessCardImage(): Promise<CardImageAsset | null> {

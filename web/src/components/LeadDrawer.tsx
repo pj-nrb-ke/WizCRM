@@ -8,6 +8,9 @@ import { CloseLeadModal, type CrmConfig } from './CloseLeadModal';
 import { LogActivityForm } from './LogActivityForm';
 import { CloseOutcomeBanner, LeadAuditTrail } from './LeadAuditTrail';
 import { LeadQuotations } from './LeadQuotations';
+import { LeadTagsEditor } from './LeadTagsEditor';
+import { useAuth } from '../lib/auth';
+import { isManager } from '../lib/roles';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -15,6 +18,8 @@ type LeadDetail = LeadSummary & {
   wonStartAt?: string | null;
   wonProducts?: string | null;
   lossReason?: string | null;
+  tags?: string[];
+  owner?: { id: string; name: string; email?: string };
   activities?: {
     id: string;
     type: string;
@@ -42,9 +47,16 @@ type Props = {
 
 type CloseMode = 'WON' | 'LOST' | null;
 
+type AssignableUser = { id: string; name: string; email: string };
+
 export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
+  const { user } = useAuth();
+  const manager = isManager(user?.role);
   const [lead, setLead] = useState<LeadDetail | null>(null);
   const [config, setConfig] = useState<CrmConfig | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [ownerId, setOwnerId] = useState('');
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [stage, setStage] = useState('');
@@ -68,6 +80,8 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
     const d = await api<{ lead: LeadDetail }>(`/leads/${id}`);
     setLead(d.lead);
     setStage(d.lead.stage);
+    setTags(d.lead.tags ?? []);
+    setOwnerId(d.lead.owner?.id ?? '');
     return d.lead;
   }
 
@@ -86,8 +100,13 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
     api<CrmConfig>('/leads/crm-config')
       .then(setConfig)
       .catch(() => setConfig(null));
+    if (isManager(user?.role)) {
+      api<{ users: AssignableUser[] }>('/teams/assignable-users')
+        .then((d) => setAssignableUsers(d.users ?? []))
+        .catch(() => setAssignableUsers([]));
+    }
     setShowOppForm(false);
-  }, [leadId]);
+  }, [leadId, user?.role]);
 
   if (!leadId) return null;
 
@@ -229,7 +248,67 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                     ) : null}
                   </dd>
                   <dt>Owner</dt>
-                  <dd>{lead.owner?.name ?? '—'}</dd>
+                  <dd>
+                    {manager && assignableUsers.length > 0 ? (
+                      <>
+                        <select
+                          value={ownerId}
+                          onChange={(e) => setOwnerId(e.target.value)}
+                        >
+                          {assignableUsers.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                            </option>
+                          ))}
+                        </select>
+                        {ownerId && ownerId !== lead.owner?.id ? (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            style={{ marginTop: 8 }}
+                            disabled={saving}
+                            onClick={() => {
+                              setSaving(true);
+                              void reloadLeadAfterPatch({ ownerId })
+                                .catch((e) =>
+                                  setError(e instanceof Error ? e.message : 'Reassign failed'),
+                                )
+                                .finally(() => setSaving(false));
+                            }}
+                          >
+                            Reassign owner
+                          </button>
+                        ) : null}
+                      </>
+                    ) : (
+                      (lead.owner?.name ?? '—')
+                    )}
+                  </dd>
+                  <dt>Tags</dt>
+                  <dd>
+                    <LeadTagsEditor
+                      tags={tags}
+                      suggestions={config?.leadTags ?? []}
+                      disabled={saving}
+                      onChange={setTags}
+                    />
+                    {JSON.stringify(tags) !== JSON.stringify(lead.tags ?? []) ? (
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        style={{ marginTop: 8 }}
+                        disabled={saving}
+                        onClick={() => {
+                          setSaving(true);
+                          void reloadLeadAfterPatch({ tags })
+                            .catch((e) => setError(e instanceof Error ? e.message : 'Save failed'))
+                            .finally(() => setSaving(false));
+                        }}
+                      >
+                        Save tags
+                      </button>
+                    ) : null}
+                  </dd>
                   <dt>Email</dt>
                   <dd>{lead.email ?? '—'}</dd>
                   <dt>Phone</dt>

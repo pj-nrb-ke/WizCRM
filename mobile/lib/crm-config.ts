@@ -2,6 +2,7 @@ import { api } from './api';
 
 export type CrmConfig = {
   leadSources: string[];
+  leadTags?: string[];
   lossReasons: { code: string; label: string }[];
 };
 

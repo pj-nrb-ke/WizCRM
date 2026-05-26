@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,8 @@ import { api } from '../../lib/api';
 import { LEAD_PRIORITIES, type LeadPriority } from '../../constants/priorities';
 import { ContactFields } from '../../components/ContactFields';
 import { buildLeadPayload, formHasContact, leadToFormState, type LeadFormState } from '../../lib/lead-form';
+import { LeadTagsEditor } from '../../components/LeadTagsEditor';
+import { fetchCrmConfig, type CrmConfig } from '../../lib/crm-config';
 
 const SOURCE_PRESETS = ['Referral', 'Event', 'Website', 'Cold call', 'Partner', 'Other'];
 
@@ -31,8 +33,14 @@ export default function EditLeadScreen() {
     address: '',
     googleMapsUrl: '',
     source: '',
+    tags: [],
     priority: null,
   });
+  const [crmConfig, setCrmConfig] = useState<CrmConfig | null>(null);
+
+  useEffect(() => {
+    fetchCrmConfig().then(setCrmConfig);
+  }, []);
 
   const patch = (partial: Partial<LeadFormState>) => setForm((f) => ({ ...f, ...partial }));
 
@@ -75,6 +83,7 @@ export default function EditLeadScreen() {
           googleMapsUrl: form.googleMapsUrl.trim() || null,
           source: form.source.trim() || null,
           priority: form.priority as LeadPriority | null,
+          tags: form.tags,
           extraPhones: buildLeadPayload(form).extraPhones,
           extraEmails: buildLeadPayload(form).extraEmails,
         },
@@ -147,6 +156,13 @@ export default function EditLeadScreen() {
           </Pressable>
         ))}
       </View>
+
+      <Text style={styles.label}>Tags</Text>
+      <LeadTagsEditor
+        tags={form.tags}
+        suggestions={crmConfig?.leadTags ?? []}
+        onChange={(tags) => patch({ tags })}
+      />
 
       <Text style={styles.label}>Priority</Text>
       <View style={styles.chipRow}>

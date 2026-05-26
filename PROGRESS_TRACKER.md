@@ -37,12 +37,12 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | Status | ID | Area | Feature | Notes |
 |--------|-----|------|---------|-------|
 | ✅ | P1-CRM-001 | Core CRM | Lead management (contact, company, source, owner) | Web drawer + mobile detail/edit |
-| ⬜ | P1-CRM-002 | Core CRM | **Lead tags** | Not in schema or UI |
+| ✅ | P1-CRM-002 | Core CRM | **Lead tags** | `tags[]` on lead; web drawer + CRM tag suggestions; mobile edit |
 | ✅ | P1-CRM-003 | Core CRM | Lead search & filters | `LeadsPage`, pipeline filters |
 | ✅ | P1-CRM-004 | Core CRM | Lead detail (stage, history) | Drawer tabs; mobile timeline |
 | ✅ | P1-CRM-005 | Core CRM | Duplicate detection (email/phone) | API + mobile create; **web create with warning** (`CreateLeadModal`) |
-| 🟡 | P1-CRM-006 | Core CRM | **Assignment & handoff** | Owner at create/import; **no web “reassign owner” on lead** |
-| 🟡 | P1-CRM-007 | Core CRM | **Audit trail** | Stage + activities on web & mobile timeline; **no owner-assignment history** |
+| ✅ | P1-CRM-006 | Core CRM | **Assignment & handoff** | Reassign owner (manager) web drawer + mobile |
+| ✅ | P1-CRM-007 | Core CRM | **Audit trail** | Stage + activities; **Owner assigned** NOTE on reassignment |
 | ✅ | P1-PIP-001 | Pipeline | Lifecycle stages (New → … → Won/Lost) | Shared enum + mobile/web |
 | ✅ | P1-PIP-002 | Pipeline | Visual pipeline (Kanban) | `PipelinePage` |
 | ✅ | P1-PIP-003 | Pipeline | Stage history | `StageChange` + audit UI |
@@ -88,7 +88,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Phase 1 mobile parity (2026-05):** Manager org snapshot + metric drill-down, team activity feed, personal dashboard on Desk, pipeline stage change/reorder + org stage labels (`MOB-GAP-101`–`105`, `108`). Rebuild APK after pull.
 
-**Not on mobile (Phase 1 web-only or deferred):** bulk import, bulk assign, CRM lists admin, CSV export, lead tags, owner reassignment (`MOB-GAP-106`–`107`).
+**Not on mobile (Phase 1 web-only or deferred):** bulk import, bulk assign, CRM lists admin, CSV export.
 
 ### Phase 1 — recommended closeout (remaining work)
 
@@ -107,7 +107,9 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 ## Product Phase 2 — Field proof, analytics & integrations (kickoff)
 
-**Overall:** 🟡 **~35% complete** — first delivery slice: advanced reports, webhook lead capture, quotations on leads, calendar meeting location + check-in/out on web, mobile offline sync button.
+**Overall:** 🟡 **~55% complete** — web/API slice shipped; **mobile Phase 2 parity** (calendar, check-in, quotes, opportunities, reports lite, offline lead cache) in app code — rebuild APK to field-test.
+
+**Phase 2 mobile parity (2026-05):** Calendar tab + event CRUD/check-in/maps (`MOB-GAP-201`–`203`); quotations + opportunities on lead detail (`204`–`205`); manager Reports tab (`206`) + attendance section (`210`); offline leads list + detail cache (`207`); local notifications for tasks due + meeting reminders (`208`); geofence radius validation on check-in with manager override (`209`).
 
 **Definition:** [WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md) § Phase 2 · Repo **P7–P8** map here.
 

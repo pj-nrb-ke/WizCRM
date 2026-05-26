@@ -14,6 +14,7 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { buildPersonalMetrics, type PersonalDashboardMetrics } from '../../lib/personal-dashboard';
 import { PersonalDashboardCard } from '../../components/PersonalDashboardCard';
+import { rescheduleLocalReminders } from '../../lib/notifications';
 
 type DeskItem = { leadId: string; title: string; reason: string };
 
@@ -40,12 +41,24 @@ export default function DeskScreen() {
         api<{ leads: { stage: string; updatedAt: string; lastActivityAt?: string | null }[] }>(
           `/leads?ownerId=${encodeURIComponent(user.id)}`,
         ),
-        api<{ tasks: { dueAt: string | null; completedAt?: string | null }[] }>('/tasks'),
-        api<{ events: { startAt: string }[] }>(`/calendar/events?${calendarQuery}`).catch(() => ({
+        api<{
+          tasks: {
+            id: string;
+            title: string;
+            dueAt: string | null;
+            completedAt?: string | null;
+            lead?: { id: string; name: string } | null;
+          }[];
+        }>('/tasks'),
+        api<{ events: { id: string; title: string; startAt: string }[] }>(`/calendar/events?${calendarQuery}`).catch(() => ({
           events: [],
         })),
       ]);
       setPersonal(buildPersonalMetrics(leadsRes.leads ?? [], tasksRes.tasks ?? [], eventsRes.events ?? [], now));
+      void rescheduleLocalReminders({
+        tasks: tasksRes.tasks ?? [],
+        events: eventsRes.events ?? [],
+      });
     } catch (e) {
       setPersonalError(e instanceof Error ? e.message : 'Failed to load dashboard');
       setPersonal(null);

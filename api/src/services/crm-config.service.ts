@@ -1,4 +1,4 @@
-import { DEFAULT_LEAD_SOURCES, DEFAULT_LOSS_REASONS } from '@wizcrm/shared';
+import { DEFAULT_CHECK_IN_RADIUS_METERS, DEFAULT_LEAD_SOURCES, DEFAULT_LOSS_REASONS } from '@wizcrm/shared';
 import { getOrgSettings } from './org-settings.service.js';
 
 export async function getCrmConfig(organizationId: string) {
@@ -12,5 +12,7 @@ export async function getCrmConfig(organizationId: string) {
       settings.lossReasons && settings.lossReasons.length > 0
         ? settings.lossReasons
         : [...DEFAULT_LOSS_REASONS],
+    leadTags: settings.leadTags ?? [],
+    checkInRadiusMeters: settings.checkInRadiusMeters ?? DEFAULT_CHECK_IN_RADIUS_METERS,
   };
 }
