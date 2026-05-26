@@ -26,6 +26,8 @@ WizCRM is a lead-lifecycle CRM for sales and field teams (Wise & Agile Solutions
 
 **Repo alignment:** P0–P6 (hosting, Lite mobile, web admin/manager clusters, infrastructure) largely map here—many items are delivered or in sign-off.
 
+**Mobile Phase 1 (2026-05):** Production APK includes close Won/Lost, structured loss reasons, activity logging (call/email/meeting/note), merged timeline, and reopen. Track detail in [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) (`P1-MOB-*`, mobile delivery table).
+
 ---
 
 ## Phase 2 — Field proof, analytics & integrations (medium priority)
@@ -91,4 +93,4 @@ WizCRM is a lead-lifecycle CRM for sales and field teams (Wise & Agile Solutions
 
 ---
 
-*Last updated: 2026-05-26*
+*Last updated: 2026-05-27*

@@ -4,7 +4,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 **Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled · ➖ Waived (QA only, with reason in notes)
 
-**Last updated:** 2026-05-26
+**Last updated:** 2026-05-27
 
 **Phase status (top-level):** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
 **Product roadmap phases:** **[WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md)** (brochure Phase 1–3)  
@@ -15,7 +15,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 
 ## Product Phase 1 — Core CRM (brochure checklist)
 
-**Overall:** 🟡 **~90% complete** — reps and managers can run the daily lead lifecycle on **app.wizcrm.app** + mobile APK. Remaining items are polish/admin gaps, not blockers for pilot use.
+**Overall:** 🟡 **~92% complete** — reps and managers can run the daily lead lifecycle on **app.wizcrm.app** + **production APK** (`WizCRM-production.apk`, built against `https://api.wizcrm.app`, commits `f1cbf03`+). Remaining items are web-admin polish (bulk assign, stale days, tags), not blockers for pilot use.
 
 **Definition:** [WizCRM_Development_Phases.md](./WizCRM_Development_Phases.md) § Phase 1 — *not* the same as repo **P1** (Lite mobile build). Repo **P0–P6** map to Product Phase 1; see alignment table below.
 
@@ -24,7 +24,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | Repo phase | Maps to Product Phase 1 | Status |
 |------------|---------------------------|--------|
 | P0 Hosting | Platforms (web + API live) | ✅ Done |
-| P1 Lite build | Mobile baseline | ✅ Done |
+| P1 Lite build | Mobile baseline + **Phase 1 parity** | ✅ Done (`190e10a`, `f1cbf03`) |
 | P2 Lite sign-off | Mobile QA gate | 🟡 Engineering QA ✅; **device pilot open** (`QA-LITE-ANDROID`, `QA-LITE-PILOT`) |
 | P3 Web Cluster A | Web admin baseline | ✅ Done |
 | P4 Web Cluster B | Manager workspace + reporting | ✅ Done (+ Phase 1 close/import slice, see `P1-*` below) |
@@ -74,6 +74,19 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | ✅ | P1-PLT-001 | Platforms | Web application | app.wizcrm.app |
 | ✅ | P1-PLT-002 | Platforms | Mobile application | APK / Expo |
 
+### Mobile Phase 1 delivery (install on device)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Close Won/Lost (`CloseLeadSheet`) | ✅ | Deal value, products, org loss reasons |
+| Log CALL / EMAIL / MEETING / NOTE (`LogActivitySheet`) | ✅ | Lead detail → **Log activity** |
+| Stage + activity timeline | ✅ | Merged `stageChanges` + activities |
+| Reopen closed lead | ✅ | **Reopen (Qualified)** |
+| Org sources on new lead | ✅ | Chips from `GET /leads/crm-config` (all roles) |
+| Production APK | ✅ | `.\scripts\build-apk.ps1 -Production` → repo root `WizCRM-production.apk` |
+
+**Not on mobile (Phase 1 web-only or deferred):** bulk import, bulk assign, CRM lists admin, CSV export, lead tags, owner reassignment.
+
 ### Phase 1 — recommended closeout (remaining work)
 
 | Priority | ID | Task | Suggested delivery |
@@ -94,7 +107,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
 | **P0** | Production hosting | ✅ Done | api + app on Contabo |
-| **P1** | Lite mobile (build) | ✅ Done | APK + Lite+ Pro features |
+| **P1** | Lite mobile (build) | ✅ Done | APK + Lite+ Pro; **Phase 1 parity** close/log/timeline/reopen (`f1cbf03`) |
 | **P2** | Lite sign-off (UT/QA/E2E) | 🟡 In progress | **Engineering QA done** — [QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md); user device only |
 | **P3** | Web Cluster A (admin) | ✅ Done | WEB-001–015 |
 | **P4** | Web Cluster B (manager) | ✅ Done | WEB-020–023; Phase 1 slice: close Won/Lost, bulk import, CRM lists (`79a7911`) |
@@ -135,7 +148,7 @@ Full phase narrative: **[PHASE-STATUS.md](./PHASE-STATUS.md)**
 | P1 Lite build | ✅ |
 | P2 Lite sign-off | 🟡 (user device) |
 | P3–P4 Web A+B | ✅ |
-| **Product Phase 1 (brochure)** | 🟡 ~90% — see **`P1-*`** table above |
+| **Product Phase 1 (brochure)** | 🟡 ~92% — see **`P1-*`** + mobile delivery table above |
 | P5 Web polish | ✅ |
 | P6 Infra/CI | ✅ |
 | P7–P9 Pro / Enterprise | ⬜ |

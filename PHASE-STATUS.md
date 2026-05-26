@@ -2,15 +2,15 @@
 
 Single view of **where the programme is by phase**. Task-level detail: [OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md) · Full tracker: [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)
 
-**Last updated:** 2026-05-22
+**Last updated:** 2026-05-27
 
 | Phase | Name | Status | Delivered / live today | Remaining to close phase |
 |-------|------|--------|-------------------------|---------------------------|
 | **P0** | **Production hosting** | ✅ **Done** | VPS, `api.wizcrm.app`, `app.wizcrm.app`, deploy, Brevo email on server | — |
-| **P1** | **Lite mobile (build)** | ✅ **Done** | Feature-complete APK; Lite+ Pro; email send API | — |
+| **P1** | **Lite mobile (build)** | ✅ **Done** | Feature-complete APK; Lite+ Pro; **Product Phase 1 mobile parity** (close Won/Lost, log activity, timeline, reopen, org CRM lists on device) — `f1cbf03` | Install/reflash `WizCRM-production.apk` on pilot phones |
 | **P2** | **Lite sign-off (quality)** | 🟡 **Engineering QA done** | All UT/E2E + [QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md) | **User:** [MOBILE-PILOT.md](./MOBILE-PILOT.md) only |
 | **P3** | **Web — Cluster A (admin)** | ✅ **Done** | Login, org, users, platform, connection, audit | — |
-| **P4** | **Web — Cluster B (manager)** | ✅ **Done** | Manager home, pipeline, leads, reports/CSV | — |
+| **P4** | **Web — Cluster B (manager)** | ✅ **Done** | Manager home, pipeline, leads, reports/CSV; close Won/Lost drawer, bulk import, CRM lists (`79a7911`+) | — |
 | **P5** | **Web — polish** | ✅ **Done** | **WEB-012** teams CRUD on web + integration tests | — |
 | **P6** | **Infrastructure & CI** | ✅ **Done** | GitHub Actions, integration smoke, `run-qa-automated.ps1` | — |
 | **P7** | **Pro platform (Cluster C)** | ⬜ **Not started** | — | Multi-tenant, ScaleGate |

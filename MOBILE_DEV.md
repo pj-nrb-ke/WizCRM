@@ -2,6 +2,20 @@
 
 WizCRM mobile is built with **React Native** and **Expo** (`mobile/`). This guide covers the Android toolchain installed on your machine and how to run the app on an **Android emulator**.
 
+## Production APK (pilot / field)
+
+Build a standalone release APK against **https://api.wizcrm.app** (no Metro on the phone):
+
+```powershell
+.\scripts\build-apk.ps1 -Production
+```
+
+Output: **`WizCRM-production.apk`** at the repo root (~30 MB). Copy to the device and install.
+
+**Phase 1 features in this build** (see [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — mobile delivery table): close Won/Lost with deal value and org loss reasons, log call/email/meeting/note, stage+activity timeline, reopen lead, org source chips on new lead.
+
+After API deploys, rebuild the APK so the JS bundle matches server behavior. Mobile does not import `@wizcrm/shared` at bundle time — mirror types in `mobile/lib/close-lead.ts` when shared enums change.
+
 ## Prerequisites installed via winget
 
 | Component | Package | Purpose |

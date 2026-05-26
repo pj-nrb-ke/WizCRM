@@ -3,14 +3,14 @@
 **Phase-level status:** **[PHASE-STATUS.md](./PHASE-STATUS.md)**  
 **Automated QA:** **[docs/QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md)** — run `.\scripts\run-qa-automated.ps1`  
 **Legend:** 🟡 In progress · ⬜ Not started · ✅ Done (removed from list when complete)  
-**Last updated:** 2026-05-22
+**Last updated:** 2026-05-27
 
 ## Phase snapshot
 
 | Phase | Name | Status |
 |-------|------|--------|
 | P0 | Production hosting | ✅ |
-| P1 | Lite mobile (build) | ✅ |
+| P1 | Lite mobile (build) | ✅ — Phase 1 parity on APK (`f1cbf03`) |
 | P2 | Lite sign-off | 🟡 — **user device testing only** |
 | P3 | Web Cluster A | ✅ |
 | P4 | Web Cluster B | ✅ |
@@ -29,7 +29,7 @@
 | Status | ID | Task |
 |--------|-----|------|
 | ⬜ | QA-LITE-PILOT | Device pilot — [MOBILE-PILOT.md](./docs/MOBILE-PILOT.md) |
-| ⬜ | QA-LITE-ANDROID | Install production APK; login, lead, note, no crash |
+| ⬜ | QA-LITE-ANDROID | Install **`WizCRM-production.apk`** (`f1cbf03`+); login, lead, note, **close Won/Lost**, **log activity**, reopen, no crash |
 | ⬜ | QA-LITE-003 | Business card photo on device |
 | ⬜ | QA-LITE-004/007/008 | AI confirm + voice on device |
 | ⬜ | QA-NFR-004 | Offline note on device |
