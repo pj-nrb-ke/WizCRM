@@ -211,6 +211,32 @@ export const orgSettingsSchema = z.object({
   orgMonthlyRevenueTarget: z.number().min(0).max(1_000_000_000).optional(),
   /** PRO-010: per-user monthly revenue targets (userId → amount). */
   userMonthlyTargets: z.record(z.string().uuid(), z.number().min(0).max(1_000_000_000)).optional(),
+  /** PRO-013: tenant branding (web console). */
+  brandDisplayName: z.string().max(120).optional(),
+  logoUrl: z.string().url().max(2000).optional(),
+  primaryColorHex: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  /** MGT-021: shown on help / business page */
+  supportEmail: z.string().email().optional(),
+  /** MGT-023: minutes after meeting start before check-in counts as late */
+  meetingGraceMinutes: z.number().int().min(0).max(120).optional(),
+  /** Default days after SENT before quote follow-up if followUpAt not set (PRO-011) */
+  quoteFollowUpDays: z.number().int().min(1).max(90).optional(),
+});
+
+export const suggestLeadCaptureSchema = z.object({
+  name: z.string().min(1).max(200),
+  company: z.string().max(200).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().max(30).optional(),
+  notes: z.string().max(2000).optional(),
+});
+
+export const nextActionTaskSchema = z.object({
+  action: z.string().min(1).max(500),
+  dueAt: z.string().datetime().optional(),
 });
 
 export const bulkUpdateLeadsSchema = z

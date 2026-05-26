@@ -9,6 +9,8 @@ import { loadAdvancedAnalytics } from '../services/report-analytics.service.js';
 import { loadSalesPacing } from '../services/sales-targets.service.js';
 import { loadDataHygieneReport } from '../services/data-hygiene-report.service.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
+import { buildManagerBrief } from '../services/manager-brief.service.js';
+import { loadPipelineForecast } from '../services/pipeline-forecast.service.js';
 
 function isManagerRole(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
@@ -75,6 +77,30 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(403).send({ error: 'Pro plan required for data hygiene report' });
     }
     return loadDataHygieneReport(organizationId);
+  });
+
+  app.get('/forecast', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.advancedReports) {
+      return reply.status(403).send({ error: 'Pro plan required for pipeline forecast' });
+    }
+    return loadPipelineForecast(organizationId);
+  });
+
+  app.get('/manager-brief', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.advancedReports) {
+      return reply.status(403).send({ error: 'Pro plan required for manager brief' });
+    }
+    return buildManagerBrief(organizationId);
   });
 
   app.get('/export.csv', async (request, reply) => {

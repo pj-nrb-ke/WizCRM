@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LEAD_STAGES } from '../lib/stages';
 import { api, downloadAuthenticated } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { filterSearchParams, readManagerFilter, reportsQueryPath } from '../lib/manager-query';
 import type { ReportsSummaryResponse, ReportSummary } from '../lib/report-types';
 import type { TeamsResponse } from '../lib/types';
@@ -51,9 +52,16 @@ function formatLastActivity(iso: string | null): string {
 
 export function ReportsPage() {
   const navigate = useNavigate();
+  const { entitlements } = useAuth();
+  const pro = entitlements?.features.advancedReports ?? false;
   const [search] = useSearchParams();
   const filter = readManagerFilter(search);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
+  const [forecast, setForecast] = useState<{
+    weightedPipeline: number;
+    openOpportunities: number;
+    openLeads: number;
+  } | null>(null);
   const [teams, setTeams] = useState<TeamsResponse['teams']>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -84,6 +92,15 @@ export function ReportsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!pro) return;
+    api<{ weightedPipeline: number; openOpportunities: number; openLeads: number }>(
+      '/reports/forecast',
+    )
+      .then(setForecast)
+      .catch(() => setForecast(null));
+  }, [pro]);
 
   async function exportCsv() {
     setExporting(true);
@@ -250,6 +267,19 @@ export function ReportsPage() {
       />
       <TeamFilterBar basePath="/reports" />
       {error ? <div className="alert alert-error">{error}</div> : null}
+
+      {forecast ? (
+        <div className="card">
+          <strong>Weighted pipeline forecast (PRO-007):</strong>{' '}
+          {forecast.weightedPipeline.toLocaleString(undefined, {
+            style: 'currency',
+            currency: 'ZAR',
+          })}{' '}
+          <span className="muted">
+            · {forecast.openOpportunities} opportunities · {forecast.openLeads} open leads
+          </span>
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="muted">Loading report dashboard…</p>

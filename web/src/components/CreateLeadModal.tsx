@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, getApiBaseUrl, getStoredToken } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import type { CrmConfig } from './CloseLeadModal';
 
 type Duplicate = {
@@ -18,11 +19,15 @@ type Props = {
 };
 
 export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
+  const { entitlements } = useAuth();
+  const proCapture = entitlements?.features.leadInsights ?? false;
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [source, setSource] = useState('');
+  const [priority, setPriority] = useState('');
+  const [captureNotes, setCaptureNotes] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
@@ -35,6 +40,8 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
       setEmail('');
       setPhone('');
       setSource('');
+      setPriority('');
+      setCaptureNotes('');
       setError('');
       setDuplicates([]);
       setPendingForce(false);
@@ -87,6 +94,7 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
           source: source.trim() || undefined,
+          priority: priority || undefined,
           force: force || pendingForce,
         }),
       });
@@ -101,6 +109,33 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Create failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function suggestCapture() {
+    if (!proCapture || !name.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      const s = await api<{ source: string | null; priority: string | null; reason: string }>(
+        '/ai/leads/suggest-capture',
+        {
+          method: 'POST',
+          body: {
+            name: name.trim(),
+            company: company.trim() || undefined,
+            email: email.trim() || undefined,
+            phone: phone.trim() || undefined,
+            notes: captureNotes.trim() || undefined,
+          },
+        },
+      );
+      if (s.source) setSource(s.source);
+      if (s.priority) setPriority(s.priority);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Suggest failed');
     } finally {
       setSaving(false);
     }
@@ -160,6 +195,26 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
               <input value={source} onChange={(e) => setSource(e.target.value)} />
             )}
           </label>
+          {proCapture ? (
+            <>
+              <label>
+                Notes for AI suggest
+                <input value={captureNotes} onChange={(e) => setCaptureNotes(e.target.value)} />
+              </label>
+              <label>
+                Priority
+                <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  <option value="">—</option>
+                  <option value="HOT">HOT</option>
+                  <option value="WARM">WARM</option>
+                  <option value="COLD">COLD</option>
+                </select>
+              </label>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => void suggestCapture()}>
+                Suggest source & priority
+              </button>
+            </>
+          ) : null}
           {error ? <p className="error">{error}</p> : null}
           <div className="form-actions calendar-form-actions">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>

@@ -293,3 +293,61 @@ export async function cleanVoiceNote(
   });
   return result;
 }
+
+/** PRO-001: suggest source + priority for new lead capture. */
+export async function suggestLeadCapture(
+  organizationId: string,
+  userId: string,
+  input: { name: string; company?: string; email?: string; phone?: string; notes?: string },
+): Promise<{ source: string | null; priority: 'HOT' | 'WARM' | 'COLD' | null; reason: string }> {
+  const hay = `${input.name} ${input.company ?? ''} ${input.notes ?? ''}`.toLowerCase();
+  const rulesSource =
+    hay.includes('referral') || hay.includes('partner')
+      ? 'Partner referral'
+      : hay.includes('web') || hay.includes('website')
+        ? 'Website'
+        : hay.includes('event') || hay.includes('expo')
+          ? 'Event'
+          : null;
+  const rulesPriority =
+    hay.includes('urgent') || hay.includes('hot') || hay.includes('asap')
+      ? ('HOT' as const)
+      : hay.includes('cold') || hay.includes('later')
+        ? ('COLD' as const)
+        : null;
+
+  if (!config.aiEnabled) {
+    return {
+      source: rulesSource,
+      priority: rulesPriority ?? 'WARM',
+      reason: 'Rules-based suggestion (AI off).',
+    };
+  }
+
+  try {
+    const client = ensureClient();
+    const result = await chatJson<{
+      source: string | null;
+      priority: 'HOT' | 'WARM' | 'COLD' | null;
+      reason: string;
+    }>(
+      client,
+      'Suggest CRM lead source and priority for a new lead. Return JSON: { "source": string|null, "priority": "HOT"|"WARM"|"COLD"|null, "reason": string }.',
+      JSON.stringify(input),
+    );
+    await audit({
+      organizationId,
+      userId,
+      feature: 'lead_capture_suggest',
+      inputSummary: JSON.stringify(input),
+      outputSummary: `${result.source}/${result.priority}`,
+    });
+    return result;
+  } catch {
+    return {
+      source: rulesSource,
+      priority: rulesPriority ?? 'WARM',
+      reason: 'Fallback rules (AI unavailable).',
+    };
+  }
+}

@@ -14,10 +14,10 @@ Single view of **where the programme is by phase**. Task-level detail: [OUTSTAND
 | **P5** | **Web — polish** | ✅ **Done** | **WEB-012** teams CRUD on web + integration tests | — |
 | **P6** | **Infrastructure & CI** | ✅ **Done** | GitHub Actions, integration smoke, `run-qa-automated.ps1` | — |
 | **P7** | **Pro platform (Cluster C)** | ⬜ **Not started** | — | Multi-tenant, ScaleGate |
-| **P8** | **Pro product features** | 🟡 **In progress** | Pro entitlements; targets/pacing; data hygiene; lead insights; comm drafts; quotations/reports (partial) | PRO-001/002/005/007/011 polish, ScaleGate (P7) |
+| **P8** | **Pro product features** | ✅ **Engineering complete** | PRO-001–013: AI capture, desk+quotes, follow-up tasks, forecast, branding | ScaleGate / multi-tenant (P7) |
 | **P9** | **Enterprise** | ⬜ **Not started** | — | ENT-* |
 | **P10** | **Web — Cluster D (sales parity)** | ⏸ **Deferred** | — | WEB-030–033 |
-| **P11** | **Business & compliance (MGT)** | 🟡 **In progress** | MGT-020 DNS/hosting | Stores, legal, ERP |
+| **P11** | **Business & compliance (MGT)** | 🟡 **Product + templates** | `/business` checklist, CRM ops settings, compliance drafts | Legal, stores, ERP owners |
 
 ---
 
@@ -38,5 +38,5 @@ Document: [docs/QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md)
 | Bucket | Approx. open |
 |--------|----------------|
 | User device QA (P2 closeout) | 2 |
-| Pro / Enterprise | 38+ |
-| Business (MGT) | 23 |
+| Pro (P8 engineering) | 0 (PRO-014/015 → P7) |
+| Business (MGT owners) | ~15 |

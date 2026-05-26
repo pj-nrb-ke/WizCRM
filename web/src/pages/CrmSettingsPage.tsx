@@ -12,6 +12,9 @@ type SettingsPayload = {
   leadTags?: string[];
   lossReasons?: LossReason[];
   staleLeadDays?: number;
+  checkInRadiusMeters?: number;
+  meetingGraceMinutes?: number;
+  quoteFollowUpDays?: number;
 };
 
 export function CrmSettingsPage() {
@@ -21,6 +24,9 @@ export function CrmSettingsPage() {
   const [leadTags, setLeadTags] = useState('');
   const [lossReasons, setLossReasons] = useState<LossReason[]>([]);
   const [staleLeadDays, setStaleLeadDays] = useState(7);
+  const [checkInRadiusMeters, setCheckInRadiusMeters] = useState(150);
+  const [meetingGraceMinutes, setMeetingGraceMinutes] = useState(15);
+  const [quoteFollowUpDays, setQuoteFollowUpDays] = useState(7);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -42,6 +48,15 @@ export function CrmSettingsPage() {
         );
         setStaleLeadDays(
           typeof d.settings.staleLeadDays === 'number' ? d.settings.staleLeadDays : 7,
+        );
+        setCheckInRadiusMeters(
+          typeof d.settings.checkInRadiusMeters === 'number' ? d.settings.checkInRadiusMeters : 150,
+        );
+        setMeetingGraceMinutes(
+          typeof d.settings.meetingGraceMinutes === 'number' ? d.settings.meetingGraceMinutes : 15,
+        );
+        setQuoteFollowUpDays(
+          typeof d.settings.quoteFollowUpDays === 'number' ? d.settings.quoteFollowUpDays : 7,
         );
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
@@ -90,7 +105,15 @@ export function CrmSettingsPage() {
     try {
       await api('/admin/settings', {
         method: 'PATCH',
-        body: { leadSources: sources, leadTags: tags, lossReasons, staleLeadDays: days },
+        body: {
+          leadSources: sources,
+          leadTags: tags,
+          lossReasons,
+          staleLeadDays: days,
+          checkInRadiusMeters: Number(checkInRadiusMeters),
+          meetingGraceMinutes: Number(meetingGraceMinutes),
+          quoteFollowUpDays: Number(quoteFollowUpDays),
+        },
       });
       setMessage('CRM settings saved.');
     } catch (err) {
@@ -127,6 +150,42 @@ export function CrmSettingsPage() {
             onChange={(e) => setLeadTags(e.target.value)}
             disabled={!canEdit}
             placeholder="VIP&#10;Enterprise&#10;Partner referral"
+          />
+        </label>
+
+        <label>
+          Check-in geofence radius (meters, MGT-022)
+          <input
+            type="number"
+            min={25}
+            max={2000}
+            value={checkInRadiusMeters}
+            onChange={(e) => setCheckInRadiusMeters(Number(e.target.value))}
+            disabled={!canEdit}
+          />
+        </label>
+
+        <label>
+          Meeting check-in grace (minutes, MGT-023)
+          <input
+            type="number"
+            min={0}
+            max={120}
+            value={meetingGraceMinutes}
+            onChange={(e) => setMeetingGraceMinutes(Number(e.target.value))}
+            disabled={!canEdit}
+          />
+        </label>
+
+        <label>
+          Quote follow-up default (days after SENT, PRO-011)
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={quoteFollowUpDays}
+            onChange={(e) => setQuoteFollowUpDays(Number(e.target.value))}
+            disabled={!canEdit}
           />
         </label>
 

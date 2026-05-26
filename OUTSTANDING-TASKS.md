@@ -7,7 +7,15 @@
 
 ## Product Phase 1 — engineering closeout ✅
 
-All `P1-*` features are implemented (web + API + mobile). Remaining Phase 1 gate is **device pilot only** (see User testing below).
+All `P1-*` features are implemented. **Device pilot** remains (`QA-LITE-*`).
+
+## P8 Pro — engineering complete ✅
+
+PRO-001 through PRO-013 shipped. Set plan to **Pro** under Platform settings to use new features.
+
+## P11 MGT — engineering deliverables 🟡
+
+Product settings (geofence, grace, support email), **Business checklist** page, and **compliance templates** in `docs/compliance/`. Remaining MGT rows need Legal / IT / Store owners (see `/business`).
 
 ---
 

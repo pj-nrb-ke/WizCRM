@@ -22,6 +22,7 @@ type Quotation = {
   lines: QuotationLine[];
   notes: string | null;
   validUntil: string | null;
+  followUpAt: string | null;
   erpSyncStatus: ErpSyncStatus;
   erpReference: string | null;
   owner: { name: string };
@@ -136,7 +137,13 @@ export function LeadQuotations({ leadId }: Props) {
             <li key={q.id}>
               <strong>{q.referenceNumber}</strong> — {q.status} ·{' '}
               {Number(q.total).toLocaleString(undefined, { style: 'currency', currency: 'ZAR' })}
-              <span className="muted"> · {q.owner.name}</span>
+              {q.followUpAt && q.status === 'SENT' ? (
+                <span className="muted">
+                  {' '}
+                  · follow-up{' '}
+                  {new Date(q.followUpAt).toLocaleDateString()}
+                </span>
+              ) : null}
               <span
                 className={`erp-sync-badge erp-sync-badge--${q.erpSyncStatus.toLowerCase()}`}
               >

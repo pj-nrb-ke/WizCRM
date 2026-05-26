@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { filterSearchParams } from '../lib/manager-query';
 import { aggregateOrgStats } from '../lib/manager-home';
 import type { TeamsResponse } from '../lib/types';
@@ -42,7 +43,12 @@ const METRIC_LABELS: Record<MetricKey, string> = {
 };
 
 export function ManagerHomePage() {
+  const { entitlements } = useAuth();
+  const pro = entitlements?.features.advancedReports ?? false;
   const [data, setData] = useState<TeamsResponse | null>(null);
+  const [brief, setBrief] = useState<{ bullets: string[]; aiSummary: string | null } | null>(
+    null,
+  );
   const [leads, setLeads] = useState<LeadSummary[]>([]);
   const [error, setError] = useState('');
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null);
@@ -58,7 +64,12 @@ export function ManagerHomePage() {
     api<{ leads: LeadSummary[] }>('/leads')
       .then((d) => setLeads(d.leads ?? []))
       .catch(() => setLeads([]));
-  }, []);
+    if (pro) {
+      api<{ bullets: string[]; aiSummary: string | null }>('/reports/manager-brief')
+        .then(setBrief)
+        .catch(() => setBrief(null));
+    }
+  }, [pro]);
 
   const orgStats = data ? aggregateOrgStats(data.teams) : null;
 
@@ -116,6 +127,18 @@ export function ManagerHomePage() {
         subtitle="Click a metric to see underlying leads and tasks. Track team performance at a glance."
       />
       {error ? <div className="alert alert-error">{error}</div> : null}
+
+      {brief && brief.bullets.length > 0 ? (
+        <section className="card manager-brief">
+          <h2 className="section-title">Manager brief</h2>
+          <ul>
+            {brief.bullets.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+          {brief.aiSummary ? <p className="muted">{brief.aiSummary}</p> : null}
+        </section>
+      ) : null}
 
       {orgStats && (
         <section className="manager-hero card">

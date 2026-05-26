@@ -13,6 +13,7 @@ import { useAuth } from '../lib/auth';
 import { isManager } from '../lib/roles';
 import { LeadInsightsPanel } from './LeadInsightsPanel';
 import { CommunicationDraftPanel } from './CommunicationDraftPanel';
+import { LeadNextActionPanel } from './LeadNextActionPanel';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -380,7 +381,12 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                   <p className="muted">No sales opportunities yet.</p>
                 )}
 
-                {proInsights ? <LeadInsightsPanel leadId={lead.id} /> : null}
+                {proInsights ? (
+                  <>
+                    <LeadInsightsPanel leadId={lead.id} />
+                    <LeadNextActionPanel leadId={lead.id} />
+                  </>
+                ) : null}
                 {proDrafts ? (
                   <CommunicationDraftPanel
                     leadId={lead.id}

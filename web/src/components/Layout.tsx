@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
 import { NavIcon } from './NavIcon';
@@ -33,6 +35,21 @@ export function Layout() {
   const manager = isManager(user?.role);
   const admin = isAdmin(user?.role);
   const roleLabel = admin ? 'Administrator' : manager ? 'Manager' : 'User';
+  const [brandName, setBrandName] = useState('WizCRM');
+
+  useEffect(() => {
+    if (!user) return;
+    api<{
+      branding?: { displayName?: string | null; primaryColorHex?: string | null; logoUrl?: string | null };
+    }>('/leads/crm-config')
+      .then((d) => {
+        if (d.branding?.displayName) setBrandName(d.branding.displayName);
+        if (d.branding?.primaryColorHex) {
+          document.documentElement.style.setProperty('--accent', d.branding.primaryColorHex);
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   return (
     <div className="app-shell">
@@ -42,7 +59,7 @@ export function Layout() {
             W
           </div>
           <div className="brand-text">
-            <strong>WizCRM</strong>
+            <strong>{brandName}</strong>
             <span>Web console</span>
           </div>
         </div>
@@ -92,6 +109,9 @@ export function Layout() {
               <NavItem to="/teams" icon="teams">
                 Teams
               </NavItem>
+              <NavItem to="/business" icon="org">
+                Business checklist
+              </NavItem>
             </NavSection>
           )}
 
@@ -99,6 +119,9 @@ export function Layout() {
             <NavSection label="Administration">
               <NavItem to="/users" icon="users">
                 Users
+              </NavItem>
+              <NavItem to="/settings/branding" icon="org">
+                Branding
               </NavItem>
               <NavItem to="/platform" icon="ai">
                 AI & platform

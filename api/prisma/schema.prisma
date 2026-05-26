@@ -263,6 +263,8 @@ model Quotation {
   lines            Json
   notes            String?
   validUntil       DateTime?
+  /** When to follow up on a SENT quote (PRO-011). */
+  followUpAt       DateTime?
   erpSyncStatus    ErpSyncStatus   @default(NONE)
   erpReference     String?
   erpSyncedAt      DateTime?

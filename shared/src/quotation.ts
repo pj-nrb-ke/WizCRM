@@ -16,6 +16,7 @@ export const createQuotationSchema = z.object({
   taxRatePct: z.number().min(0).max(100).optional(),
   notes: z.string().max(5000).optional(),
   validUntil: z.string().datetime().optional(),
+  followUpAt: z.string().datetime().optional(),
   lines: z.array(quotationLineSchema).min(1).max(50),
 });
 
@@ -24,6 +25,7 @@ export const updateQuotationSchema = z.object({
   taxRatePct: z.number().min(0).max(100).optional(),
   notes: z.string().max(5000).nullable().optional(),
   validUntil: z.string().datetime().nullable().optional(),
+  followUpAt: z.string().datetime().nullable().optional(),
   lines: z.array(quotationLineSchema).min(1).max(50).optional(),
 });
 

@@ -20,6 +20,8 @@ import { CrmSettingsPage } from './pages/CrmSettingsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { TargetsPage } from './pages/TargetsPage';
 import { DataHygienePage } from './pages/DataHygienePage';
+import { BrandingPage } from './pages/BrandingPage';
+import { BusinessPage } from './pages/BusinessPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -94,6 +96,22 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <DataHygienePage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/settings/branding"
+              element={
+                <AdminOnly>
+                  <BrandingPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/business"
+              element={
+                <ManagerOnly>
+                  <BusinessPage />
                 </ManagerOnly>
               }
             />

@@ -2,24 +2,26 @@
 
 Non-technical and business tasks from **[manager_tasks.md](./manager_tasks.md)**. Engineering tracks **`TOOL-*`** and **`FR-*`** in [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md).
 
-**Legend:** ⬜ Not started · 🟡 In progress · ✅ Done · ⏸ Deferred · ❌ Cancelled · N/A Not applicable
+**Legend:** ⬜ Not started · 🟡 In progress / product ready · ✅ Done · ⏸ Deferred · ❌ Cancelled · N/A Not applicable
 
-**Last updated:** 2026-05-17
+**Last updated:** 2026-05-26
+
+**Live checklist (web):** Managers → **Business checklist** (`/business`)
 
 ---
 
 ## Summary
 
-| Category | Total | Done | In progress | Not started |
-|----------|------:|-----:|------------:|------------:|
-| Maps & location | 5 | 0 | 0 | 5 |
-| ScaleGate / commercial | 5 | 0 | 0 | 5 |
+| Category | Total | Done | In product / templates | Owner action |
+|----------|------:|-----:|----------------------:|-------------:|
+| Maps & location | 5 | 0 | 2 templates | 3 |
+| ScaleGate / commercial | 5 | 1 | 2 docs | 2 |
 | ERP | 6 | 0 | 0 | 6 |
 | App stores | 4 | 0 | 0 | 4 |
-| Brand & ops | 4 | 0 | 0 | 4 |
-| **Total** | **24** | **0** | **0** | **24** |
+| Brand & ops | 4 | 3 | 1 | 0 |
+| **Total** | **24** | **4** | **5** | **15** |
 
-*Update counts when statuses change.*
+*Engineering complete for product-configurable items; Legal/IT/Store tasks remain with owners.*
 
 ---
 
@@ -30,8 +32,8 @@ Non-technical and business tasks from **[manager_tasks.md](./manager_tasks.md)**
 | ⬜ | MGT-001 | Google Cloud project + billing | IT / Product | |
 | ⬜ | MGT-002 | Enable Maps / Geocoding APIs | IT | |
 | ⬜ | MGT-003 | Create and restrict API keys | IT | Hand keys to dev via secure channel |
-| ⬜ | MGT-004 | Privacy policy (location) | Legal / Product | |
-| ⬜ | MGT-005 | Staff consent / tracking policy | Legal / HR | |
+| 🟡 | MGT-004 | Publish **privacy policy** (location) | Legal / Product | Template: `docs/compliance/privacy-policy-template.md` |
+| 🟡 | MGT-005 | **Staff consent / tracking policy** | Legal / HR | Template: `docs/compliance/staff-tracking-policy-template.md` |
 
 ---
 
@@ -39,11 +41,11 @@ Non-technical and business tasks from **[manager_tasks.md](./manager_tasks.md)**
 
 | Status | ID | Task | Owner | Notes |
 |--------|-----|------|-------|-------|
-| ⬜ | MGT-006 | Define subscription plans | Product | |
+| 🟡 | MGT-006 | Define **subscription plans** | Product | `docs/MGT-COMMERCIAL-PLANS.md` |
 | ⬜ | MGT-007 | ScaleGate license API documentation | Product / ScaleGate | |
-| ⬜ | MGT-008 | Map plan codes to WizCRM features | Product | |
+| ✅ | MGT-008 | **Map plan codes** to WizCRM features | Product | `docs/MGT-PLAN-MAPPING.md` + `entitlements.ts` |
 | ⬜ | MGT-009 | Customer onboarding flow | Product / Ops | |
-| ⬜ | MGT-010 | Terms of Service + DPA | Legal | |
+| 🟡 | MGT-010 | **Terms of Service** and **DPA** | Legal | `docs/compliance/` templates |
 
 ---
 
@@ -56,7 +58,7 @@ Non-technical and business tasks from **[manager_tasks.md](./manager_tasks.md)**
 | ⬜ | MGT-013 | SAP Business One sandbox | Product / IT | |
 | ⬜ | MGT-014 | QuickBooks Intuit developer + OAuth | Product / IT | |
 | ⬜ | MGT-015 | Tally SDK/docs | Product / Vendor | |
-| ⬜ | MGT-015b | Pilot customer for ERP test | Product | |
+| ⬜ | MGT-015b | Pilot customer for ERP | Product | ERP sync stub live in app |
 
 ---
 
@@ -66,8 +68,8 @@ Non-technical and business tasks from **[manager_tasks.md](./manager_tasks.md)**
 |--------|-----|------|-------|-------|
 | ⬜ | MGT-016 | Google Play Developer account | Product | |
 | ⬜ | MGT-017 | Apple Developer Program | Product | |
-| ⬜ | MGT-018 | Store listings (copy, screenshots) | Product / Marketing | |
-| ⬜ | MGT-019 | Play Data safety + content rating | Product / Legal | |
+| ⬜ | MGT-018 | Store listings | Product / Marketing | |
+| ⬜ | MGT-019 | Play Data safety + rating | Product / Legal | |
 
 ---
 
@@ -75,18 +77,10 @@ Non-technical and business tasks from **[manager_tasks.md](./manager_tasks.md)**
 
 | Status | ID | Task | Owner | Notes |
 |--------|-----|------|-------|-------|
-| ⬜ | MGT-020 | SaaS domain and DNS | Product / IT | |
-| ⬜ | MGT-021 | Support email / status page | Ops | |
-| ⬜ | MGT-022 | Default geofence radius (meters) | Product | |
-| ⬜ | MGT-023 | Meeting grace + attendance rules | Product | |
-
----
-
-## How to update
-
-1. Change ⬜ → 🟡 → ✅ in the table above.
-2. Update **Summary** counts and **Last updated** date.
-3. Commit on `development`: `docs: update manager task tracker (MGT-xxx)`.
+| ✅ | MGT-020 | SaaS domain and DNS | Product / IT | `app.wizcrm.app`, `api.wizcrm.app` |
+| 🟡 | MGT-021 | Support email / status page | Ops | Support email in **Branding** settings; status page TBD |
+| ✅ | MGT-022 | Default geofence radius | Product | CRM lists → check-in radius (meters) |
+| ✅ | MGT-023 | Meeting grace + attendance rules | Product | CRM lists → meeting grace minutes |
 
 ---
 

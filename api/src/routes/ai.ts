@@ -2,7 +2,9 @@ import type { FastifyPluginAsync } from 'fastify';
 import {
   cardParseSchema,
   nextActionFeedbackSchema,
+  nextActionTaskSchema,
   postCallSchema,
+  suggestLeadCaptureSchema,
   transcribeAudioSchema,
   voiceNoteSchema,
 } from '@wizcrm/shared';
@@ -17,7 +19,9 @@ import {
   parseBusinessCard,
   processPostCall,
   suggestStage,
+  suggestLeadCapture,
 } from '../services/ai/orchestrator.js';
+import { buildQuotationDeskItems } from '../services/quote-desk.service.js';
 import { config } from '../config.js';
 import { buildExtendedDesk, mergeDueTasksIntoDesk } from '../services/desk-rules.service.js';
 import { resolveDeskUseAi } from '../services/org-settings.service.js';
@@ -64,7 +68,11 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
         : [];
     const leads = [...overdueLeads, ...baseLeads] as typeof baseLeads;
     const staleLeadDays = await resolveStaleLeadDays(organizationId);
-    const rulesItems = buildExtendedDesk(leads, staleLeadDays);
+    let rulesItems = buildExtendedDesk(leads, staleLeadDays);
+    const quoteItems = await buildQuotationDeskItems(organizationId, userId);
+    if (quoteItems.length > 0) {
+      rulesItems = [...quoteItems, ...rulesItems].slice(0, 8);
+    }
     const deskUseAi = await resolveDeskUseAi(organizationId);
     if (!deskUseAi || !config.aiEnabled) {
       return { items: rulesItems, source: 'rules' as const };
@@ -174,6 +182,60 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       },
     });
     return { ok: true };
+  });
+
+  app.post('/leads/:leadId/next-action/create-task', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.leadInsights) {
+      return reply.status(403).send({ error: 'Pro plan required' });
+    }
+    const { leadId } = request.params as { leadId: string };
+    const parsed = nextActionTaskSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    const dueAt = parsed.data.dueAt
+      ? new Date(parsed.data.dueAt)
+      : (() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 1);
+          d.setHours(17, 0, 0, 0);
+          return d;
+        })();
+    const task = await prisma.task.create({
+      data: {
+        organizationId,
+        userId,
+        leadId,
+        title: parsed.data.action.slice(0, 300),
+        dueAt,
+      },
+    });
+    await prisma.aiSuggestion.create({
+      data: {
+        leadId,
+        kind: 'NEXT_ACTION',
+        payload: parsed.data,
+        status: 'COMPLETED',
+      },
+    });
+    return { task };
+  });
+
+  app.post('/leads/suggest-capture', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const ent = await getOrganizationEntitlements(organizationId);
+    if (!ent.features.leadInsights) {
+      return reply.status(403).send({ error: 'Pro plan required for smart capture' });
+    }
+    const parsed = suggestLeadCaptureSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    return suggestLeadCapture(organizationId, userId, parsed.data);
   });
 
   app.get('/leads/:leadId/stage-suggestion', async (request, reply) => {

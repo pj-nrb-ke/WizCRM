@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import type { CreateQuotationInput, QuotationLine, UpdateQuotationInput } from '@wizcrm/shared';
 import { computeQuotationTotals } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
+import { getOrgSettings } from './org-settings.service.js';
 
 export async function listQuotationsForLead(leadId: string, organizationId: string) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
@@ -47,6 +48,7 @@ export async function createQuotation(
       lines: input.lines as unknown as Prisma.InputJsonValue,
       notes: input.notes?.trim() || null,
       validUntil: input.validUntil ? new Date(input.validUntil) : null,
+      followUpAt: input.followUpAt ? new Date(input.followUpAt) : null,
     },
     include: { owner: { select: { id: true, name: true } } },
   });
@@ -66,9 +68,7 @@ export async function updateQuotation(
   const taxRatePct = input.taxRatePct ?? existing.taxRatePct;
   const totals = computeQuotationTotals(lines, taxRatePct);
 
-  return prisma.quotation.update({
-    where: { id },
-    data: {
+  const data: Prisma.QuotationUpdateInput = {
       status: input.status,
       taxRatePct: input.taxRatePct,
       notes: input.notes === undefined ? undefined : input.notes?.trim() || null,
@@ -78,11 +78,29 @@ export async function updateQuotation(
           : input.validUntil
             ? new Date(input.validUntil)
             : null,
+      followUpAt:
+        input.followUpAt === undefined
+          ? undefined
+          : input.followUpAt
+            ? new Date(input.followUpAt)
+            : null,
       lines: input.lines ? (input.lines as unknown as Prisma.InputJsonValue) : undefined,
       subtotal: totals.subtotal,
       taxAmount: totals.tax,
       total: totals.total,
-    },
+    };
+
+  if (input.status === 'SENT' && input.followUpAt === undefined && !existing.followUpAt) {
+    const settings = await getOrgSettings(organizationId);
+    const days = settings.quoteFollowUpDays ?? 7;
+    const followUp = new Date();
+    followUp.setDate(followUp.getDate() + days);
+    data.followUpAt = followUp;
+  }
+
+  return prisma.quotation.update({
+    where: { id },
+    data,
     include: { owner: { select: { id: true, name: true } } },
   });
 }

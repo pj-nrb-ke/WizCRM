@@ -166,7 +166,7 @@ Track implementation against **[SRS.md](./SRS.md) v2.2** (AI-first, **Lite / Pro
 | **P5** | Web polish | ✅ Done | WEB-012 teams CRUD + `teams-integration.test.ts` |
 | **P6** | Infrastructure & CI | ✅ Done | CI unit+integration+web build; `run-qa-automated.ps1` |
 | **P7** | Pro platform (Cluster C) | ⬜ Not started | Multi-tenant + ScaleGate |
-| **P8** | Pro product features | 🟡 In progress | Targets/pacing, data hygiene, lead insights, comm drafts, entitlements; partial PRO-* |
+| **P8** | Pro product features | ✅ Engineering complete | PRO-001–013; ScaleGate (PRO-014/015) → P7 |
 | **P9** | Enterprise | ⬜ Not started | ENT-* |
 | **P10** | Web Cluster D | ⏸ Deferred | WEB-030–033 |
 | **P11** | Business (MGT) | 🟡 In progress | DNS done; stores/legal/ERP open |
@@ -385,19 +385,19 @@ See **[SRS-WEB.md](./SRS-WEB.md)**. Clusters **A** and **B** are done; see **[OU
 
 | Status | ID | Feature |
 |--------|-----|---------|
-| 🟡 | PRO-001 | Smart lead capture + AI source/priority | Manual priority; AI source suggest TBD |
-| 🟡 | PRO-002 | AI Sales Desk (full) | AI desk + rules fallback; quote follow-ups TBD |
+| 🟡 | PRO-001 | Smart lead capture + AI source/priority | `POST /ai/leads/suggest-capture` + web create modal |
+| ✅ | PRO-002 | AI Sales Desk (full) | AI desk + rules + quote follow-ups on desk |
 | ✅ | PRO-003 | Lead Detail scores + risk | `/leads/:id/insights` + web drawer (Pro) |
-| 🟡 | PRO-004 | Activity capture (call outcomes, meetings, voice) | Post-call + voice on mobile; web log activity |
-| 🟡 | PRO-005 | AI Follow-up Engine | Next-action AI; auto-task creation TBD |
-| ✅ | PRO-006 | Communication drafts (approve to send) | `/ai/leads/:id/draft-message` + drawer panel (Pro) |
-| 🟡 | PRO-007 | Pipeline AI + basic forecast | Stage suggest + opportunities expected value |
-| ✅ | PRO-008 | Data hygiene | Org report `GET /reports/data-hygiene` + web page (Pro) |
-| 🟡 | PRO-009 | Manager Cockpit | WEB-020–023; AI daily summary TBD |
-| ✅ | PRO-010 | Targets & pacing | Org/rep targets in settings + `GET /reports/pacing` |
-| 🟡 | PRO-011 | Quotations Lite | Model + UI; follow-up reminders TBD |
-| ✅ | PRO-012 | Reporting + CSV export | WEB-023 + advanced funnel/time-in-stage |
-| 🟡 | PRO-013 | Admin (users, teams, roles, branding) | WEB-011/012; branding TBD |
+| ✅ | PRO-004 | Activity capture (call outcomes, meetings, voice) | Post-call, voice, web/mobile log activity |
+| ✅ | PRO-005 | AI Follow-up Engine | Next-action + `create-task` on web drawer |
+| ✅ | PRO-006 | Communication drafts (approve to send) | Draft panel + mailto/WhatsApp |
+| ✅ | PRO-007 | Pipeline AI + basic forecast | Stage suggest + `GET /reports/forecast` |
+| ✅ | PRO-008 | Data hygiene | Org report + web page |
+| ✅ | PRO-009 | Manager Cockpit | Manager home brief + WEB-020–023 |
+| ✅ | PRO-010 | Targets & pacing | Settings + `/reports/pacing` |
+| ✅ | PRO-011 | Quotations Lite | Model + UI + `followUpAt` + desk reminders |
+| ✅ | PRO-012 | Reporting + CSV export | WEB-023 + advanced analytics |
+| ✅ | PRO-013 | Admin (users, teams, roles, branding) | WEB-011/012 + Branding page |
 | ⬜ | PRO-014 | Multi-tenant SaaS |
 | ⬜ | PRO-015 | ScaleGate licensing (`pro`) |
 

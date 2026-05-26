@@ -16,5 +16,13 @@ export async function getCrmConfig(organizationId: string) {
     leadTags: settings.leadTags ?? [],
     checkInRadiusMeters: settings.checkInRadiusMeters ?? DEFAULT_CHECK_IN_RADIUS_METERS,
     staleLeadDays: await resolveStaleLeadDays(organizationId),
+    meetingGraceMinutes: settings.meetingGraceMinutes ?? 15,
+    quoteFollowUpDays: settings.quoteFollowUpDays ?? 7,
+    branding: {
+      displayName: settings.brandDisplayName ?? null,
+      logoUrl: settings.logoUrl ?? null,
+      primaryColorHex: settings.primaryColorHex ?? null,
+      supportEmail: settings.supportEmail ?? null,
+    },
   };
 }
