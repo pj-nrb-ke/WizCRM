@@ -1,0 +1,1300 @@
+{
+  "cycle": "003",
+  "ranAt": "2026-05-27T12:33:18.052Z",
+  "baseUrl": "https://app.wizcrm.app",
+  "apiUrl": "https://api.wizcrm.app",
+  "instructions": "WizCRM-Enterprise-QA-Enforcement-Instructions.md",
+  "duplicatePrevention": [
+    {
+      "id": "DP-001",
+      "test": "DP-01 parallel double POST same phone → ≤1 row",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "phone rows=1"
+    },
+    {
+      "id": "DP-002",
+      "test": "DP-02 sequential duplicate phone → 409",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "409 on second create"
+    },
+    {
+      "id": "DP-003",
+      "test": "DP-03 triple burst same phone → ≤1 row",
+      "status": "FAIL",
+      "notes": "rows=2",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-004",
+      "test": "DP-04 parallel duplicate email → ≤1 row",
+      "status": "FAIL",
+      "notes": "email dup rows=2",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-005",
+      "test": "DP-05 two reps same phone concurrently → ≤1 row org-wide",
+      "status": "FAIL",
+      "notes": "org rows=2",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-006",
+      "test": "DP-06 burst-1 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=3 created=3 dup=1",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-007",
+      "test": "DP-07 burst-2 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=4 created=4 dup=1",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-008",
+      "test": "DP-08 burst-3 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=2 created=2 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-009",
+      "test": "DP-09 burst-4 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=3 created=3 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-010",
+      "test": "DP-10 burst-0 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=4 created=4 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-011",
+      "test": "DP-11 burst-1 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=5 created=5 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-012",
+      "test": "DP-12 burst-2 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=2 created=2 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-013",
+      "test": "DP-13 burst-3 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=3 created=3 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-014",
+      "test": "DP-14 burst-4 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=4 created=4 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-015",
+      "test": "DP-15 burst-0 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=5 created=5 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-016",
+      "test": "DP-16 burst-1 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=2 created=2 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-017",
+      "test": "DP-17 burst-2 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=3 created=3 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-018",
+      "test": "DP-18 burst-3 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=2 created=2 dup=2",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-019",
+      "test": "DP-19 burst-4 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=5 created=5 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-020",
+      "test": "DP-20 burst-0 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=2 created=2 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-021",
+      "test": "DP-21 burst-1 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=3 created=3 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-022",
+      "test": "DP-22 burst-2 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=4 created=4 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-023",
+      "test": "DP-23 burst-3 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=4 created=4 dup=1",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-024",
+      "test": "DP-24 burst-4 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=2 created=2 dup=0",
+      "assertions": "failed"
+    },
+    {
+      "id": "DP-025",
+      "test": "DP-25 burst-0 concurrent creates same phone",
+      "status": "FAIL",
+      "notes": "rows=3 created=3 dup=0",
+      "assertions": "failed"
+    }
+  ],
+  "raceCondition": [
+    {
+      "id": "RC-001",
+      "test": "RC-01 parallel GET /leads x10 → same count",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "stable count=131"
+    },
+    {
+      "id": "RC-002",
+      "test": "RC-02 GET leads + GET pipeline concurrently → no 500",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "leads=200 pipeline=200"
+    },
+    {
+      "id": "RC-003",
+      "test": "RC-03 parallel tag filter queries → consistent totals",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "all 200"
+    },
+    {
+      "id": "RC-004",
+      "test": "RC-04 PATCH while parallel GETs → final GET matches",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "name synced"
+    },
+    {
+      "id": "RC-005",
+      "test": "RC-05 concurrent read/write mix 5",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=132 after=132"
+    },
+    {
+      "id": "RC-006",
+      "test": "RC-06 concurrent read/write mix 6",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=132 after=133"
+    },
+    {
+      "id": "RC-007",
+      "test": "RC-07 concurrent read/write mix 7",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=133 after=133"
+    },
+    {
+      "id": "RC-008",
+      "test": "RC-08 concurrent read/write mix 8",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=133 after=133"
+    },
+    {
+      "id": "RC-009",
+      "test": "RC-09 concurrent read/write mix 9",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=133 after=134"
+    },
+    {
+      "id": "RC-010",
+      "test": "RC-10 concurrent read/write mix 10",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=134 after=134"
+    },
+    {
+      "id": "RC-011",
+      "test": "RC-11 concurrent read/write mix 11",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=134 after=134"
+    },
+    {
+      "id": "RC-012",
+      "test": "RC-12 concurrent read/write mix 12",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=134 after=135"
+    },
+    {
+      "id": "RC-013",
+      "test": "RC-13 concurrent read/write mix 13",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=135 after=135"
+    },
+    {
+      "id": "RC-014",
+      "test": "RC-14 concurrent read/write mix 14",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=135 after=135"
+    },
+    {
+      "id": "RC-015",
+      "test": "RC-15 concurrent read/write mix 15",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=135 after=136"
+    },
+    {
+      "id": "RC-016",
+      "test": "RC-16 concurrent read/write mix 16",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=136 after=136"
+    },
+    {
+      "id": "RC-017",
+      "test": "RC-17 concurrent read/write mix 17",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=136 after=136"
+    },
+    {
+      "id": "RC-018",
+      "test": "RC-18 concurrent read/write mix 18",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=136 after=137"
+    },
+    {
+      "id": "RC-019",
+      "test": "RC-19 concurrent read/write mix 19",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=137 after=137"
+    },
+    {
+      "id": "RC-020",
+      "test": "RC-20 concurrent read/write mix 20",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=137 after=137"
+    }
+  ],
+  "sessionRecovery": [
+    {
+      "id": "SR-001",
+      "test": "SR-01 no token → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "401"
+    },
+    {
+      "id": "SR-002",
+      "test": "SR-02 tampered JWT → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "401"
+    },
+    {
+      "id": "SR-003",
+      "test": "SR-03 bad password → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "401"
+    },
+    {
+      "id": "SR-004",
+      "test": "SR-04 valid login → token + /auth/me",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "user=manager@wizag.local"
+    },
+    {
+      "id": "SR-005",
+      "test": "SR-05 re-login cycle 5",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-006",
+      "test": "SR-06 re-login cycle 6",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-007",
+      "test": "SR-07 re-login cycle 7",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-008",
+      "test": "SR-08 re-login cycle 8",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-009",
+      "test": "SR-09 re-login cycle 9",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-010",
+      "test": "SR-10 re-login cycle 10",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-011",
+      "test": "SR-11 re-login cycle 11",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-012",
+      "test": "SR-12 re-login cycle 12",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-013",
+      "test": "SR-13 re-login cycle 13",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-014",
+      "test": "SR-14 re-login cycle 14",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-015",
+      "test": "SR-15 re-login cycle 15",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-016",
+      "test": "SR-16 re-login cycle 16",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-017",
+      "test": "SR-17 re-login cycle 17",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-018",
+      "test": "SR-18 re-login cycle 18",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-019",
+      "test": "SR-19 re-login cycle 19",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-020",
+      "test": "SR-20 re-login cycle 20",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    }
+  ],
+  "multiTab": [
+    {
+      "id": "MT-001",
+      "test": "MT-01 two tabs same leads list count",
+      "status": "PASS",
+      "durationMs": 14569,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-002",
+      "test": "MT-02 edit API tab1 refresh tab2 sees name",
+      "status": "PASS",
+      "durationMs": 11026,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-003",
+      "test": "MT-03 logout tab1 blocks tab2 leads",
+      "status": "PASS",
+      "durationMs": 5641,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-004",
+      "test": "MT-04 tab2 reload after tab1 navigation",
+      "status": "PASS",
+      "durationMs": 6206,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-005",
+      "test": "MT-05 parallel overview both tabs",
+      "status": "PASS",
+      "durationMs": 4640,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-006",
+      "test": "MT-06 tab1 leads tab2 pipeline no crash",
+      "status": "PASS",
+      "durationMs": 6080,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-007",
+      "test": "MT-07 tab1 open drawer tab2 refresh list",
+      "status": "PASS",
+      "durationMs": 5708,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-008",
+      "test": "MT-08 three tabs shared session",
+      "status": "PASS",
+      "durationMs": 4722,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-009",
+      "test": "MT-09 tab2 deep link leads while tab1 home",
+      "status": "PASS",
+      "durationMs": 5740,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-010",
+      "test": "MT-10 tab1 search tab2 clear search",
+      "status": "PASS",
+      "durationMs": 5914,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-011",
+      "test": "MT-11 tab1 calendar tab2 leads",
+      "status": "PASS",
+      "durationMs": 5132,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-012",
+      "test": "MT-12 tab1 reports tab2 overview",
+      "status": "PASS",
+      "durationMs": 5489,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-013",
+      "test": "MT-13 close tab2 tab1 still works",
+      "status": "PASS",
+      "durationMs": 5814,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-014",
+      "test": "MT-14 tab2 login fresh after tab1 session",
+      "status": "PASS",
+      "durationMs": 4631,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-015",
+      "test": "MT-15 rapid tab open close x5",
+      "status": "PASS",
+      "durationMs": 6164,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    }
+  ],
+  "longDuration": [
+    {
+      "id": "LD-001",
+      "test": "LD-01 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 28025,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-002",
+      "test": "LD-02 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 38191,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-003",
+      "test": "LD-03 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 36612,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-004",
+      "test": "LD-04 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 35297,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-005",
+      "test": "LD-05 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 57332,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-006",
+      "test": "LD-06 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 23020,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-007",
+      "test": "LD-07 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 40771,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-008",
+      "test": "LD-08 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 24356,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-009",
+      "test": "LD-09 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 23620,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-010",
+      "test": "LD-10 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 35782,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    }
+  ],
+  "frontendSync": [
+    {
+      "id": "FS-001",
+      "test": "FS-01 create API → UI count",
+      "status": "PASS",
+      "durationMs": 8217,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-002",
+      "test": "FS-02 PATCH API → drawer name",
+      "status": "PASS",
+      "durationMs": 7404,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-003",
+      "test": "FS-03 owner KPI vs API",
+      "status": "PASS",
+      "durationMs": 5465,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-004",
+      "test": "FS-04 delete calendar phantom check",
+      "status": "PASS",
+      "durationMs": 1174,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-005",
+      "test": "FS-05 pipeline card in bucket",
+      "status": "PASS",
+      "durationMs": 1920,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-006",
+      "test": "FS-06 consecutive GET stable",
+      "status": "PASS",
+      "durationMs": 1784,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-007",
+      "test": "FS-07 filter stage sync",
+      "status": "PASS",
+      "durationMs": 9901,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-008",
+      "test": "FS-08 activity note in history",
+      "status": "PASS",
+      "durationMs": 7064,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    }
+  ],
+  "uxFindings": [
+    {
+      "id": "UX-005",
+      "severity": "Low",
+      "finding": "New lead modal does not dismiss on Escape (prior cycles)."
+    },
+    {
+      "id": "UX-006",
+      "severity": "Info",
+      "finding": "Cycle 003: 500 total navigations across 10 long-duration tests."
+    },
+    {
+      "id": "UX-007",
+      "severity": "Critical",
+      "finding": "Concurrent duplicate lead creates can produce multiple rows for same phone/email — race in duplicate check (23/25 DP tests failed)."
+    }
+  ],
+  "visualFindings": [
+    {
+      "id": "VF-001",
+      "test": "DP-03 triple burst same phone → ≤1 row",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-002",
+      "test": "DP-04 parallel duplicate email → ≤1 row",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-003",
+      "test": "DP-05 two reps same phone concurrently → ≤1 row org-wide",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-004",
+      "test": "DP-06 burst-1 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-005",
+      "test": "DP-07 burst-2 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-006",
+      "test": "DP-08 burst-3 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-007",
+      "test": "DP-09 burst-4 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-008",
+      "test": "DP-10 burst-0 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-009",
+      "test": "DP-11 burst-1 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-010",
+      "test": "DP-12 burst-2 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-011",
+      "test": "DP-13 burst-3 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-012",
+      "test": "DP-14 burst-4 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-013",
+      "test": "DP-15 burst-0 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-014",
+      "test": "DP-16 burst-1 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-015",
+      "test": "DP-17 burst-2 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-016",
+      "test": "DP-18 burst-3 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-017",
+      "test": "DP-19 burst-4 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-018",
+      "test": "DP-20 burst-0 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-019",
+      "test": "DP-21 burst-1 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-020",
+      "test": "DP-22 burst-2 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-021",
+      "test": "DP-23 burst-3 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-022",
+      "test": "DP-24 burst-4 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    },
+    {
+      "id": "VF-023",
+      "test": "DP-25 burst-0 concurrent creates same phone",
+      "artifact": "API concurrent test — see qa-cycle-003.json",
+      "notes": "screenshot/trace required per enforcement rules"
+    }
+  ],
+  "criticalIssues": [
+    {
+      "id": "CI-001",
+      "severity": "Critical",
+      "test": "DP-03 triple burst same phone → ≤1 row",
+      "notes": "rows=2",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-002",
+      "severity": "Critical",
+      "test": "DP-04 parallel duplicate email → ≤1 row",
+      "notes": "email dup rows=2",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-003",
+      "severity": "Critical",
+      "test": "DP-05 two reps same phone concurrently → ≤1 row org-wide",
+      "notes": "org rows=2",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-004",
+      "severity": "Critical",
+      "test": "DP-06 burst-1 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=1",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-005",
+      "severity": "Critical",
+      "test": "DP-07 burst-2 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=1",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-006",
+      "severity": "Critical",
+      "test": "DP-08 burst-3 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-007",
+      "severity": "Critical",
+      "test": "DP-09 burst-4 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-008",
+      "severity": "Critical",
+      "test": "DP-10 burst-0 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-009",
+      "severity": "Critical",
+      "test": "DP-11 burst-1 concurrent creates same phone",
+      "notes": "rows=5 created=5 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-010",
+      "severity": "Critical",
+      "test": "DP-12 burst-2 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-011",
+      "severity": "Critical",
+      "test": "DP-13 burst-3 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-012",
+      "severity": "Critical",
+      "test": "DP-14 burst-4 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-013",
+      "severity": "Critical",
+      "test": "DP-15 burst-0 concurrent creates same phone",
+      "notes": "rows=5 created=5 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-014",
+      "severity": "Critical",
+      "test": "DP-16 burst-1 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-015",
+      "severity": "Critical",
+      "test": "DP-17 burst-2 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-016",
+      "severity": "Critical",
+      "test": "DP-18 burst-3 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=2",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-017",
+      "severity": "Critical",
+      "test": "DP-19 burst-4 concurrent creates same phone",
+      "notes": "rows=5 created=5 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-018",
+      "severity": "Critical",
+      "test": "DP-20 burst-0 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-019",
+      "severity": "Critical",
+      "test": "DP-21 burst-1 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-020",
+      "severity": "Critical",
+      "test": "DP-22 burst-2 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-021",
+      "severity": "Critical",
+      "test": "DP-23 burst-3 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=1",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-022",
+      "severity": "Critical",
+      "test": "DP-24 burst-4 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    },
+    {
+      "id": "CI-023",
+      "severity": "Critical",
+      "test": "DP-25 burst-0 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0",
+      "evidence": "API concurrent test — see qa-cycle-003.json"
+    }
+  ],
+  "recommendedFixes": [
+    {
+      "id": "RF-001",
+      "priority": "Critical",
+      "action": "Fix: DP-03 triple burst same phone → ≤1 row",
+      "notes": "rows=2"
+    },
+    {
+      "id": "RF-002",
+      "priority": "Critical",
+      "action": "Fix: DP-04 parallel duplicate email → ≤1 row",
+      "notes": "email dup rows=2"
+    },
+    {
+      "id": "RF-003",
+      "priority": "Critical",
+      "action": "Fix: DP-05 two reps same phone concurrently → ≤1 row org-wide",
+      "notes": "org rows=2"
+    },
+    {
+      "id": "RF-004",
+      "priority": "Critical",
+      "action": "Fix: DP-06 burst-1 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=1"
+    },
+    {
+      "id": "RF-005",
+      "priority": "Critical",
+      "action": "Fix: DP-07 burst-2 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=1"
+    },
+    {
+      "id": "RF-006",
+      "priority": "Critical",
+      "action": "Fix: DP-08 burst-3 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0"
+    },
+    {
+      "id": "RF-007",
+      "priority": "Critical",
+      "action": "Fix: DP-09 burst-4 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0"
+    },
+    {
+      "id": "RF-008",
+      "priority": "Critical",
+      "action": "Fix: DP-10 burst-0 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=0"
+    },
+    {
+      "id": "RF-009",
+      "priority": "Critical",
+      "action": "Fix: DP-11 burst-1 concurrent creates same phone",
+      "notes": "rows=5 created=5 dup=0"
+    },
+    {
+      "id": "RF-010",
+      "priority": "Critical",
+      "action": "Fix: DP-12 burst-2 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0"
+    },
+    {
+      "id": "RF-011",
+      "priority": "Critical",
+      "action": "Fix: DP-13 burst-3 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0"
+    },
+    {
+      "id": "RF-012",
+      "priority": "Critical",
+      "action": "Fix: DP-14 burst-4 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=0"
+    },
+    {
+      "id": "RF-013",
+      "priority": "Critical",
+      "action": "Fix: DP-15 burst-0 concurrent creates same phone",
+      "notes": "rows=5 created=5 dup=0"
+    },
+    {
+      "id": "RF-014",
+      "priority": "Critical",
+      "action": "Fix: DP-16 burst-1 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0"
+    },
+    {
+      "id": "RF-015",
+      "priority": "Critical",
+      "action": "Fix: DP-17 burst-2 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0"
+    },
+    {
+      "id": "RF-016",
+      "priority": "Critical",
+      "action": "Fix: DP-18 burst-3 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=2"
+    },
+    {
+      "id": "RF-017",
+      "priority": "Critical",
+      "action": "Fix: DP-19 burst-4 concurrent creates same phone",
+      "notes": "rows=5 created=5 dup=0"
+    },
+    {
+      "id": "RF-018",
+      "priority": "Critical",
+      "action": "Fix: DP-20 burst-0 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0"
+    },
+    {
+      "id": "RF-019",
+      "priority": "Critical",
+      "action": "Fix: DP-21 burst-1 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0"
+    },
+    {
+      "id": "RF-020",
+      "priority": "Critical",
+      "action": "Fix: DP-22 burst-2 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=0"
+    },
+    {
+      "id": "RF-021",
+      "priority": "Critical",
+      "action": "Fix: DP-23 burst-3 concurrent creates same phone",
+      "notes": "rows=4 created=4 dup=1"
+    },
+    {
+      "id": "RF-022",
+      "priority": "Critical",
+      "action": "Fix: DP-24 burst-4 concurrent creates same phone",
+      "notes": "rows=2 created=2 dup=0"
+    },
+    {
+      "id": "RF-023",
+      "priority": "Critical",
+      "action": "Fix: DP-25 burst-0 concurrent creates same phone",
+      "notes": "rows=3 created=3 dup=0"
+    }
+  ],
+  "evidence": [
+    {
+      "artifact": "Cycle JSON",
+      "path": "docs/QA/results/qa-cycle-003.json"
+    },
+    {
+      "artifact": "Playwright JSON",
+      "path": "web/e2e-report/results.json"
+    },
+    {
+      "artifact": "Playwright HTML",
+      "path": "web/e2e-report/html/index.html"
+    },
+    {
+      "artifact": "Traces/screenshots",
+      "path": "web/e2e-report/test-results/"
+    },
+    {
+      "artifact": "Excel",
+      "path": "docs/QA/WizCRM-QA-Test-003.xlsx"
+    }
+  ],
+  "summary": {
+    "overall": "FAIL",
+    "total": 98,
+    "passed": 75,
+    "failed": 23,
+    "skipped": 0,
+    "duplicateCount": 25,
+    "raceCount": 20,
+    "sessionCount": 20,
+    "multiTabCount": 15,
+    "longDurationCount": 10,
+    "frontendSyncCount": 8,
+    "totalNavActions": 500
+  }
+}

@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@wizcrm/shared": "*",
@@ -22,6 +24,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "~5.9.2",
     "vite": "^6.4.2",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "@playwright/test": "^1.52.0"
   }
 }

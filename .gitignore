@@ -45,5 +45,6 @@ WizCRM-lite.apk
 WizCRM-lite-debug.apk
 WizCRM-production.apk
 web/dist/
+web/e2e-report/
 apk-build/
 build-apk.log

@@ -13,12 +13,13 @@ import {
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
 import {
-  createLead,
+  createLeadGuarded,
   updateLead,
   bulkUpdateLeads,
   reorderPipelineLeads,
   findDuplicateLeads,
   loadLeadContext,
+  DuplicateLeadError,
 } from '../services/lead.service.js';
 import { getCrmConfig } from '../services/crm-config.service.js';
 import { bulkImportLeads } from '../services/lead-import.service.js';
@@ -254,20 +255,16 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const duplicates = await findDuplicateLeads(
-      organizationId,
-      parsed.data.email,
-      parsed.data.phone,
-    );
     const force = (request.body as { force?: boolean }).force;
-    if (duplicates.length > 0 && !force) {
-      return reply.status(409).send({
-        error: 'DUPLICATE',
-        duplicates,
-      });
+    try {
+      const lead = await createLeadGuarded(organizationId, userId, parsed.data, Boolean(force));
+      return reply.status(201).send({ lead });
+    } catch (e) {
+      if (e instanceof DuplicateLeadError) {
+        return reply.status(409).send({ error: 'DUPLICATE', duplicates: e.duplicates });
+      }
+      throw e;
     }
-    const lead = await createLead(organizationId, userId, parsed.data);
-    return reply.status(201).send({ lead });
   });
 
   app.patch('/:id', async (request, reply) => {

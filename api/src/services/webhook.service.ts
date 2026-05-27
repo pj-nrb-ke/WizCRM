@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { WebhookLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from './org-settings.service.js';
-import { createLead } from './lead.service.js';
+import { createLeadGuarded } from './lead.service.js';
 
 export function generateWebhookSecret() {
   return randomBytes(24).toString('hex');
@@ -51,7 +51,7 @@ export async function ingestWebhookLead(organizationId: string, input: WebhookLe
     ownerId = fallback.id;
   }
 
-  const lead = await createLead(organizationId, ownerId, {
+  const lead = await createLeadGuarded(organizationId, ownerId, {
     name: input.name,
     company: input.company,
     email: input.email,

@@ -78,6 +78,25 @@ describe.runIf(runIntegration)('UT-INF-004 API integration', () => {
     expect(res.json().error).toBe('DUPLICATE');
   });
 
+  it('concurrent duplicate phone creates at most one row', async () => {
+    const phone = `+2784${Date.now().toString().slice(-7)}`;
+    const headers = { authorization: `Bearer ${token}` };
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        app.inject({
+          method: 'POST',
+          url: '/leads',
+          headers,
+          payload: { name: `Race ${i}`, phone },
+        }),
+      ),
+    );
+    const created = results.filter((r) => r.statusCode === 201).length;
+    const dup = results.filter((r) => r.statusCode === 409).length;
+    expect(created).toBe(1);
+    expect(dup).toBe(4);
+  });
+
   it('E2E-LITE-TIMELINE note saved and listed newest first', async () => {
     const create = await app.inject({
       method: 'POST',

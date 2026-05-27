@@ -1,0 +1,112 @@
+{
+  "playwright": [
+    {
+      "category": "Security",
+      "test": "timeline renders stored markup without executing script",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Performance",
+      "test": "leads page loads within 15s",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Performance",
+      "test": "rapid navigation — no error banner (browser lag)",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Performance",
+      "test": "long session — 20 navigations under 2 minutes",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Performance",
+      "test": "JS heap growth bounded after repeated navigations",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Mobile",
+      "test": "mobile viewport login and overview",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Mobile",
+      "test": "mobile viewport leads table visible",
+      "status": "PASS",
+      "notes": ""
+    }
+  ],
+  "mobile": [],
+  "ranAt": "2026-05-27T11:05:21.363Z",
+  "apiUrl": "https://api.wizcrm.app",
+  "apiSecurity": [
+    {
+      "category": "Security",
+      "test": "SQLi in lead name (' OR '1'='1…)",
+      "status": "PASS",
+      "notes": "HTTP 201"
+    },
+    {
+      "category": "Security",
+      "test": "SQLi in lead name (1; DROP TABLE leads;--…)",
+      "status": "PASS",
+      "notes": "HTTP 201"
+    },
+    {
+      "category": "Security",
+      "test": "SQLi in lead name (1' UNION SELECT null--…)",
+      "status": "PASS",
+      "notes": "HTTP 201"
+    },
+    {
+      "category": "Security",
+      "test": "SQLi in GET /leads?tag=",
+      "status": "PASS",
+      "notes": "HTTP 200"
+    },
+    {
+      "category": "Security",
+      "test": "SQLi in login email → 401, no SQL leak",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Security",
+      "test": "XSS payload stored and retrievable",
+      "status": "PASS",
+      "notes": "stored verbatim; UI must escape (see Playwright)"
+    },
+    {
+      "category": "Security",
+      "test": "Tampered JWT → 401",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Security",
+      "test": "Webhook without key → 401",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "category": "Security",
+      "test": "Invalid lead id — no 500/SQL leak",
+      "status": "PASS",
+      "notes": "HTTP 404"
+    }
+  ],
+  "mobileUnit": {
+    "category": "Mobile",
+    "test": "npm test --prefix mobile (unit)",
+    "status": "PASS",
+    "notes": ""
+  },
+  "playwrightRanAt": "2026-05-27T11:05:59.347Z"
+}

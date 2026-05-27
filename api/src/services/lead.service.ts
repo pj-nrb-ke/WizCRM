@@ -8,7 +8,7 @@ import {
 import type { BulkUpdateLeadsInput, CreateLeadInput, UpdateLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getCrmConfig } from './crm-config.service.js';
-import { findDuplicateLeads, normalizeEmail } from './duplicate.service.js';
+import { findDuplicateLeads, normalizeEmail, runWithDuplicateGuard, DuplicateLeadError } from './duplicate.service.js';
 import { normalizeLeadTags, normalizePhone, sanitizeStringList } from '@wizcrm/shared';
 
 function isManagerRole(role: string) {
@@ -37,15 +37,20 @@ export async function loadLeadContext(leadId: string, organizationId: string) {
   });
 }
 
-async function nextPipelineRank(organizationId: string, stage: LeadStage, atTop: boolean) {
+async function nextPipelineRank(
+  organizationId: string,
+  stage: LeadStage,
+  atTop: boolean,
+  db: typeof prisma | Prisma.TransactionClient = prisma,
+) {
   if (atTop) {
-    const min = await prisma.lead.aggregate({
+    const min = await db.lead.aggregate({
       where: { organizationId, stage },
       _min: { pipelineRank: true },
     });
     return (min._min.pipelineRank ?? 0) - 1;
   }
-  const max = await prisma.lead.aggregate({
+  const max = await db.lead.aggregate({
     where: { organizationId, stage },
     _max: { pipelineRank: true },
   });
@@ -86,11 +91,12 @@ export async function createLead(
   organizationId: string,
   ownerId: string,
   input: CreateLeadInput,
+  db: typeof prisma | Prisma.TransactionClient = prisma,
 ) {
   const extraPhones = sanitizeStringList(input.extraPhones);
   const extraEmails = sanitizeStringList(input.extraEmails);
-  const pipelineRank = await nextPipelineRank(organizationId, 'NEW', false);
-  return prisma.lead.create({
+  const pipelineRank = await nextPipelineRank(organizationId, 'NEW', false, db);
+  return db.lead.create({
     data: {
       organizationId,
       ownerId,
@@ -321,4 +327,15 @@ export async function bulkUpdateLeads(
   return { updated, failed: failed.length, results };
 }
 
-export { findDuplicateLeads };
+export { findDuplicateLeads, runWithDuplicateGuard, DuplicateLeadError };
+
+export async function createLeadGuarded(
+  organizationId: string,
+  ownerId: string,
+  input: CreateLeadInput,
+  force = false,
+) {
+  return runWithDuplicateGuard(organizationId, input.email, input.phone, force, (tx) =>
+    createLead(organizationId, ownerId, input, tx),
+  );
+}

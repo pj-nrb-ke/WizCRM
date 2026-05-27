@@ -1,6 +1,6 @@
 import type { CreateLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
-import { createLead } from './lead.service.js';
+import { createLeadGuarded } from './lead.service.js';
 
 export async function bulkImportLeads(
   organizationId: string,
@@ -23,7 +23,7 @@ export async function bulkImportLeads(
 
   for (let i = 0; i < rows.length; i++) {
     try {
-      const lead = await createLead(organizationId, owner, rows[i]!);
+      const lead = await createLeadGuarded(organizationId, owner, rows[i]!);
       created.push({ id: lead.id, name: lead.name });
     } catch (e) {
       errors.push({
