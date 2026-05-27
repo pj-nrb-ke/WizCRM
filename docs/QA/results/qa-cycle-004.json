@@ -1,0 +1,928 @@
+{
+  "cycle": "004",
+  "ranAt": "2026-05-27T12:43:39.121Z",
+  "baseUrl": "https://app.wizcrm.app",
+  "apiUrl": "https://api.wizcrm.app",
+  "instructions": "Cycle 004 verification: duplicate fix + remaining automated gates (Enterprise Enforcement follow-up)",
+  "duplicatePrevention": [
+    {
+      "id": "DP-001",
+      "test": "DP-01 parallel double POST same phone → ≤1 row",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "phone rows=1"
+    },
+    {
+      "id": "DP-002",
+      "test": "DP-02 sequential duplicate phone → 409",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "409 on second create"
+    },
+    {
+      "id": "DP-003",
+      "test": "DP-03 triple burst same phone → ≤1 row",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1"
+    },
+    {
+      "id": "DP-004",
+      "test": "DP-04 parallel duplicate email → ≤1 row",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "email rows=1"
+    },
+    {
+      "id": "DP-005",
+      "test": "DP-05 two reps same phone concurrently → ≤1 row org-wide",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "org rows=1"
+    },
+    {
+      "id": "DP-006",
+      "test": "DP-06 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-007",
+      "test": "DP-07 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-008",
+      "test": "DP-08 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-009",
+      "test": "DP-09 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-010",
+      "test": "DP-10 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-011",
+      "test": "DP-11 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-012",
+      "test": "DP-12 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-013",
+      "test": "DP-13 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-014",
+      "test": "DP-14 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-015",
+      "test": "DP-15 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-016",
+      "test": "DP-16 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-017",
+      "test": "DP-17 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-018",
+      "test": "DP-18 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-019",
+      "test": "DP-19 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-020",
+      "test": "DP-20 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-021",
+      "test": "DP-21 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-022",
+      "test": "DP-22 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-023",
+      "test": "DP-23 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-024",
+      "test": "DP-24 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-025",
+      "test": "DP-25 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    }
+  ],
+  "raceCondition": [
+    {
+      "id": "RC-001",
+      "test": "RC-01 parallel GET /leads x10 → same count",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "stable count=131"
+    },
+    {
+      "id": "RC-002",
+      "test": "RC-02 GET leads + GET pipeline concurrently → no 500",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "leads=200 pipeline=200"
+    },
+    {
+      "id": "RC-003",
+      "test": "RC-03 parallel tag filter queries → consistent totals",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "all 200"
+    },
+    {
+      "id": "RC-004",
+      "test": "RC-04 PATCH while parallel GETs → final GET matches",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "name synced"
+    },
+    {
+      "id": "RC-005",
+      "test": "RC-05 concurrent read/write mix 5",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=132 after=132"
+    },
+    {
+      "id": "RC-006",
+      "test": "RC-06 concurrent read/write mix 6",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=132 after=133"
+    },
+    {
+      "id": "RC-007",
+      "test": "RC-07 concurrent read/write mix 7",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=133 after=133"
+    },
+    {
+      "id": "RC-008",
+      "test": "RC-08 concurrent read/write mix 8",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=133 after=133"
+    },
+    {
+      "id": "RC-009",
+      "test": "RC-09 concurrent read/write mix 9",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=133 after=134"
+    },
+    {
+      "id": "RC-010",
+      "test": "RC-10 concurrent read/write mix 10",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=134 after=134"
+    },
+    {
+      "id": "RC-011",
+      "test": "RC-11 concurrent read/write mix 11",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=134 after=134"
+    },
+    {
+      "id": "RC-012",
+      "test": "RC-12 concurrent read/write mix 12",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=134 after=135"
+    },
+    {
+      "id": "RC-013",
+      "test": "RC-13 concurrent read/write mix 13",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=135 after=135"
+    },
+    {
+      "id": "RC-014",
+      "test": "RC-14 concurrent read/write mix 14",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=135 after=135"
+    },
+    {
+      "id": "RC-015",
+      "test": "RC-15 concurrent read/write mix 15",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=135 after=136"
+    },
+    {
+      "id": "RC-016",
+      "test": "RC-16 concurrent read/write mix 16",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=136 after=136"
+    },
+    {
+      "id": "RC-017",
+      "test": "RC-17 concurrent read/write mix 17",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=136 after=136"
+    },
+    {
+      "id": "RC-018",
+      "test": "RC-18 concurrent read/write mix 18",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=136 after=137"
+    },
+    {
+      "id": "RC-019",
+      "test": "RC-19 concurrent read/write mix 19",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=137 after=137"
+    },
+    {
+      "id": "RC-020",
+      "test": "RC-20 concurrent read/write mix 20",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "before=137 after=137"
+    }
+  ],
+  "sessionRecovery": [
+    {
+      "id": "SR-001",
+      "test": "SR-01 no token → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "401"
+    },
+    {
+      "id": "SR-002",
+      "test": "SR-02 tampered JWT → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "401"
+    },
+    {
+      "id": "SR-003",
+      "test": "SR-03 bad password → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "401"
+    },
+    {
+      "id": "SR-004",
+      "test": "SR-04 valid login → token + /auth/me",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "user=manager@wizag.local"
+    },
+    {
+      "id": "SR-005",
+      "test": "SR-05 re-login cycle 5",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-006",
+      "test": "SR-06 re-login cycle 6",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-007",
+      "test": "SR-07 re-login cycle 7",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-008",
+      "test": "SR-08 re-login cycle 8",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-009",
+      "test": "SR-09 re-login cycle 9",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-010",
+      "test": "SR-10 re-login cycle 10",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-011",
+      "test": "SR-11 re-login cycle 11",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-012",
+      "test": "SR-12 re-login cycle 12",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-013",
+      "test": "SR-13 re-login cycle 13",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-014",
+      "test": "SR-14 re-login cycle 14",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-015",
+      "test": "SR-15 re-login cycle 15",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-016",
+      "test": "SR-16 re-login cycle 16",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-017",
+      "test": "SR-17 re-login cycle 17",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-018",
+      "test": "SR-18 re-login cycle 18",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-019",
+      "test": "SR-19 re-login cycle 19",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    },
+    {
+      "id": "SR-020",
+      "test": "SR-20 re-login cycle 20",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "session ok"
+    }
+  ],
+  "multiTab": [
+    {
+      "id": "MT-001",
+      "test": "MT-01 two tabs same leads list count",
+      "status": "PASS",
+      "durationMs": 14569,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-002",
+      "test": "MT-02 edit API tab1 refresh tab2 sees name",
+      "status": "PASS",
+      "durationMs": 11026,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-003",
+      "test": "MT-03 logout tab1 blocks tab2 leads",
+      "status": "PASS",
+      "durationMs": 5641,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-004",
+      "test": "MT-04 tab2 reload after tab1 navigation",
+      "status": "PASS",
+      "durationMs": 6206,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-005",
+      "test": "MT-05 parallel overview both tabs",
+      "status": "PASS",
+      "durationMs": 4640,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-006",
+      "test": "MT-06 tab1 leads tab2 pipeline no crash",
+      "status": "PASS",
+      "durationMs": 6080,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-007",
+      "test": "MT-07 tab1 open drawer tab2 refresh list",
+      "status": "PASS",
+      "durationMs": 5708,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-008",
+      "test": "MT-08 three tabs shared session",
+      "status": "PASS",
+      "durationMs": 4722,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-009",
+      "test": "MT-09 tab2 deep link leads while tab1 home",
+      "status": "PASS",
+      "durationMs": 5740,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-010",
+      "test": "MT-10 tab1 search tab2 clear search",
+      "status": "PASS",
+      "durationMs": 5914,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-011",
+      "test": "MT-11 tab1 calendar tab2 leads",
+      "status": "PASS",
+      "durationMs": 5132,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-012",
+      "test": "MT-12 tab1 reports tab2 overview",
+      "status": "PASS",
+      "durationMs": 5489,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-013",
+      "test": "MT-13 close tab2 tab1 still works",
+      "status": "PASS",
+      "durationMs": 5814,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-014",
+      "test": "MT-14 tab2 login fresh after tab1 session",
+      "status": "PASS",
+      "durationMs": 4631,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "MT-015",
+      "test": "MT-15 rapid tab open close x5",
+      "status": "PASS",
+      "durationMs": 6164,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    }
+  ],
+  "longDuration": [
+    {
+      "id": "LD-001",
+      "test": "LD-01 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 28025,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-002",
+      "test": "LD-02 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 38191,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-003",
+      "test": "LD-03 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 36612,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-004",
+      "test": "LD-04 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 35297,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-005",
+      "test": "LD-05 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 57332,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-006",
+      "test": "LD-06 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 23020,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-007",
+      "test": "LD-07 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 40771,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-008",
+      "test": "LD-08 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 24356,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-009",
+      "test": "LD-09 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 23620,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "LD-010",
+      "test": "LD-10 50 navigations — stable API/UI",
+      "status": "PASS",
+      "durationMs": 35782,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    }
+  ],
+  "frontendSync": [
+    {
+      "id": "FS-001",
+      "test": "FS-01 create API → UI count",
+      "status": "PASS",
+      "durationMs": 8217,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-002",
+      "test": "FS-02 PATCH API → drawer name",
+      "status": "PASS",
+      "durationMs": 7404,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-003",
+      "test": "FS-03 owner KPI vs API",
+      "status": "PASS",
+      "durationMs": 5465,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-004",
+      "test": "FS-04 delete calendar phantom check",
+      "status": "PASS",
+      "durationMs": 1174,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-005",
+      "test": "FS-05 pipeline card in bucket",
+      "status": "PASS",
+      "durationMs": 1920,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-006",
+      "test": "FS-06 consecutive GET stable",
+      "status": "PASS",
+      "durationMs": 1784,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-007",
+      "test": "FS-07 filter stage sync",
+      "status": "PASS",
+      "durationMs": 9901,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    },
+    {
+      "id": "FS-008",
+      "test": "FS-08 activity note in history",
+      "status": "PASS",
+      "durationMs": 7064,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "reproduction": ""
+    }
+  ],
+  "securityApi": [
+    {
+      "id": "SEC-001",
+      "test": "SQLi in lead name (' OR '1'='1…)",
+      "status": "PASS",
+      "notes": "HTTP 201",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-002",
+      "test": "SQLi in lead name (1; DROP TABLE leads;--…)",
+      "status": "PASS",
+      "notes": "HTTP 201",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-003",
+      "test": "SQLi in lead name (1' UNION SELECT null--…)",
+      "status": "PASS",
+      "notes": "HTTP 201",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-004",
+      "test": "SQLi in GET /leads?tag=",
+      "status": "PASS",
+      "notes": "HTTP 200",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-005",
+      "test": "SQLi in login email → 401, no SQL leak",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-006",
+      "test": "XSS payload stored and retrievable",
+      "status": "PASS",
+      "notes": "stored verbatim; UI must escape (see Playwright)",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-007",
+      "test": "Tampered JWT → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-008",
+      "test": "Webhook without key → 401",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "verified"
+    },
+    {
+      "id": "SEC-009",
+      "test": "Invalid lead id — no 500/SQL leak",
+      "status": "PASS",
+      "notes": "HTTP 404",
+      "assertions": "verified"
+    }
+  ],
+  "manualRemaining": [
+    {
+      "id": "MAN-001",
+      "test": "MOBILE-PILOT.md — physical Android APK pilot",
+      "status": "MANUAL",
+      "notes": "User device sign-off required; see docs/MOBILE-PILOT.md"
+    }
+  ],
+  "uxFindings": [
+    {
+      "id": "UX-005",
+      "severity": "Low",
+      "finding": "New lead modal does not dismiss on Escape (prior cycles)."
+    },
+    {
+      "id": "UX-006",
+      "severity": "Info",
+      "finding": "Cycle 003: 500 total navigations across 10 long-duration tests."
+    },
+    {
+      "id": "UX-007",
+      "severity": "Critical",
+      "finding": "Concurrent duplicate lead creates can produce multiple rows for same phone/email — race in duplicate check (23/25 DP tests failed)."
+    },
+    {
+      "id": "UX-008",
+      "severity": "Info",
+      "finding": "Cycle 004: duplicate create race fixed via advisory lock + transactional guard."
+    }
+  ],
+  "evidence": [
+    {
+      "artifact": "Cycle JSON",
+      "path": "docs/QA/results/qa-cycle-004.json"
+    },
+    {
+      "artifact": "Duplicate re-test",
+      "path": "docs/QA/results/qa-cycle-003-dup-rerun.json"
+    },
+    {
+      "artifact": "Excel",
+      "path": "docs/QA/WizCRM-QA-Test-004.xlsx"
+    },
+    {
+      "artifact": "Prior cycle 003",
+      "path": "docs/QA/WizCRM-QA-Test-003.xlsx"
+    }
+  ],
+  "summary": {
+    "overall": "PASS",
+    "total": 107,
+    "passed": 107,
+    "failed": 0,
+    "duplicateCount": 25,
+    "duplicatePassed": 25,
+    "manualRemaining": 1
+  },
+  "criticalIssues": [],
+  "recommendedFixes": []
+}
