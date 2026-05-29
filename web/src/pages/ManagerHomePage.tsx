@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Circle,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  TrendingUp,
+  BarChart2,
+  Calendar,
+  Users,
+} from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { filterSearchParams } from '../lib/manager-query';
@@ -8,6 +18,7 @@ import type { TeamsResponse } from '../lib/types';
 import { PageHeader } from '../components/PageHeader';
 import { TeamActivityFeed } from '../components/TeamActivityFeed';
 import { KpiCard } from '../components/KpiCard';
+import { HeroMetricCard } from '../components/HeroMetricCard';
 import {
   MetricDrilldown,
   type DrilldownLead,
@@ -145,56 +156,73 @@ export function ManagerHomePage() {
           <div className="manager-hero-text">
             <h2>Organization snapshot</h2>
             <p className="muted">
-              Real-time counts across Field Sales and Inside Sales. Select a card to drill into
-              records.
+              Real-time counts across all teams. Select a card to drill into records.
             </p>
           </div>
-          <div className="kpi-grid">
-            <KpiCard
-              label="Open leads"
-              value={orgStats.open}
-              icon="◎"
-              variant="default"
-              active={drilldown?.metric === 'open' && !drilldown.teamId}
-              onClick={() => openOrgMetric('open')}
+
+          <div className="hero-metric-section">
+            <HeroMetricCard
+              eyebrow="Win rate"
+              value={
+                orgStats.won + orgStats.open > 0
+                  ? `${Math.round((orgStats.won / Math.max(orgStats.won + orgStats.open, 1)) * 100)}%`
+                  : '—'
+              }
+              label="Closed-won vs. active pipeline"
+              sub={`${orgStats.won.toLocaleString()} won · ${orgStats.open.toLocaleString()} open`}
             />
-            <KpiCard
-              label="Overdue tasks"
-              value={orgStats.overdue}
-              icon="⏱"
-              variant="warn"
-              active={drilldown?.metric === 'overdue' && !drilldown.teamId}
-              onClick={() => openOrgMetric('overdue')}
-            />
-            <KpiCard
-              label="Stale leads"
-              value={orgStats.stale}
-              hint="7+ days idle"
-              icon="⚠"
-              variant="warn"
-              active={drilldown?.metric === 'stale' && !drilldown.teamId}
-              onClick={() => openOrgMetric('stale')}
-            />
-            <KpiCard
-              label="Won"
-              value={orgStats.won}
-              icon="✓"
-              variant="success"
-              active={drilldown?.metric === 'won' && !drilldown.teamId}
-              onClick={() => openOrgMetric('won')}
-            />
+            <div className="kpi-grid">
+              <KpiCard
+                label="Open leads"
+                value={orgStats.open}
+                lucideIcon={Circle}
+                variant="default"
+                active={drilldown?.metric === 'open' && !drilldown.teamId}
+                onClick={() => openOrgMetric('open')}
+              />
+              <KpiCard
+                label="Overdue tasks"
+                value={orgStats.overdue}
+                lucideIcon={Clock}
+                variant="warn"
+                active={drilldown?.metric === 'overdue' && !drilldown.teamId}
+                onClick={() => openOrgMetric('overdue')}
+              />
+              <KpiCard
+                label="Stale leads"
+                value={orgStats.stale}
+                hint="7+ days idle"
+                lucideIcon={AlertTriangle}
+                variant="warn"
+                active={drilldown?.metric === 'stale' && !drilldown.teamId}
+                onClick={() => openOrgMetric('stale')}
+              />
+              <KpiCard
+                label="Won"
+                value={orgStats.won}
+                lucideIcon={CheckCircle2}
+                variant="success"
+                active={drilldown?.metric === 'won' && !drilldown.teamId}
+                onClick={() => openOrgMetric('won')}
+              />
+            </div>
           </div>
+
           <div className="manager-quick-links">
             <Link to="/pipeline" className="quick-chip">
+              <BarChart2 size={14} />
               Pipeline
             </Link>
             <Link to="/leads" className="quick-chip">
+              <Users size={14} />
               All leads
             </Link>
             <Link to="/calendar" className="quick-chip">
+              <Calendar size={14} />
               My calendar
             </Link>
             <Link to="/reports" className="quick-chip">
+              <TrendingUp size={14} />
               Reports
             </Link>
           </div>
@@ -231,23 +259,27 @@ export function ManagerHomePage() {
               <KpiCard
                 label="Open"
                 value={team.stats.openLeads}
+                lucideIcon={Circle}
                 onClick={() => openTeamMetric('open', team.id, team.name)}
               />
               <KpiCard
                 label="Overdue"
                 value={team.stats.overdueTasks}
+                lucideIcon={Clock}
                 variant="warn"
                 onClick={() => openTeamMetric('overdue', team.id, team.name)}
               />
               <KpiCard
                 label="Stale"
                 value={team.stats.staleLeads}
+                lucideIcon={AlertTriangle}
                 variant="warn"
                 onClick={() => openTeamMetric('stale', team.id, team.name)}
               />
               <KpiCard
                 label="Won"
                 value={team.stats.wonLeads}
+                lucideIcon={CheckCircle2}
                 variant="success"
                 onClick={() => openTeamMetric('won', team.id, team.name)}
               />

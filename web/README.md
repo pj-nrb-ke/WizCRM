@@ -13,7 +13,7 @@ copy web\.env.example web\.env.local
 npm run web:dev
 ```
 
-Open http://localhost:5173 — sign in as `admin@wizag.local` (full settings), `manager@wizag.local` (org/teams), or `rep@wizag.local`.
+Open http://localhost:5180 — sign in as `admin@wizag.local` (full settings), `manager@wizag.local` (org/teams), or `rep@wizag.local`.
 
 **Note:** After `npm run db:seed`, passwords are in `api/prisma/seed.ts` (e.g. `wizcrm123` for admin).
 

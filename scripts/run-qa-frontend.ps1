@@ -11,7 +11,7 @@ $Root = Split-Path $PSScriptRoot -Parent
 Set-Location $Root
 
 if ($Local) {
-  $BaseUrl = 'http://127.0.0.1:5173'
+  $BaseUrl = 'http://127.0.0.1:5180'
   $ApiUrl = 'http://127.0.0.1:3000'
 }
 

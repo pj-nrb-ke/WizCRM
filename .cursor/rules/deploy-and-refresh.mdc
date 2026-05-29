@@ -25,4 +25,4 @@ After web/API edits, run `.\scripts\refresh-local.ps1` (or the same build steps)
 
 ## User role
 
-User checks whether https://api.wizcrm.app, https://app.wizcrm.app (when DNS exists), and local http://localhost:5173 work — no manual script execution.
+User checks whether https://api.wizcrm.app, https://app.wizcrm.app (when DNS exists), and local http://localhost:5180 work — no manual script execution.

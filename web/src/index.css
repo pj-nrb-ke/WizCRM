@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -30,10 +32,13 @@
   --error-soft: #fef2f2;
   --info: #0284c7;
   --info-soft: #f0f9ff;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --radius: 12px;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.13), 0 4px 12px rgba(15, 23, 42, 0.07);
+  --shadow-indigo: 0 4px 20px rgba(79, 70, 229, 0.22);
+  --radius: 14px;
   --radius-sm: 8px;
+  --radius-lg: 18px;
 }
 
 * {
@@ -163,25 +168,24 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  border-radius: 10px;
   color: var(--sidebar-text);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   transition: background 0.15s, color 0.15s;
 }
 
 .nav-item:hover {
-  background: var(--sidebar-hover);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--sidebar-text-active);
   text-decoration: none;
 }
 
 .nav-item.active {
-  background: var(--sidebar-active);
+  background: rgba(99, 102, 241, 0.15);
   color: #c7d2fe;
-  box-shadow: inset 3px 0 0 var(--brand-accent);
 }
 
 .nav-icon {
@@ -1665,20 +1669,144 @@ tbody tr:last-child td {
 }
 
 .manager-hero {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 60%, #f0fdf4 100%);
+  border: 1px solid rgba(99, 102, 241, 0.18);
   padding: 28px 28px 24px;
   margin-bottom: 24px;
+  box-shadow: var(--shadow-md);
 }
 
 .manager-hero-text h2 {
   margin: 0 0 6px;
-  font-size: 1.15rem;
-  letter-spacing: -0.02em;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
 }
 
 .manager-hero-text p {
   margin: 0 0 20px;
+}
+
+/* —— Hero metric card (win rate / revenue featured KPI) —— */
+.hero-metric-section {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .hero-metric-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hero-metric-card {
+  background: linear-gradient(145deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  box-shadow: var(--shadow-indigo);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-metric-card::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+}
+
+.hero-metric-card::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: -20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+
+.hero-metric-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.hero-metric-value {
+  font-size: 3.2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 4px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-metric-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.hero-metric-sub {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  margin-top: 4px;
+}
+
+/* —— Stage funnel chart section —— */
+.stage-funnel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stage-funnel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stage-funnel-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.stage-funnel-body {
+  height: 200px;
+}
+
+/* —— Dashboard page grid spacing —— */
+.page-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .kpi-grid {
@@ -1703,13 +1831,33 @@ tbody tr:last-child td {
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  padding: 18px 18px 16px;
+  padding: 20px 20px 18px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   text-align: left;
   transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  overflow: hidden;
+}
+
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--kpi-accent, var(--primary));
+  border-radius: 0 2px 2px 0;
+}
+
+.kpi-card-warn::after {
+  background: var(--warn);
+}
+
+.kpi-card-success::after {
+  background: var(--success);
 }
 
 .kpi-card-clickable {
@@ -1746,9 +1894,26 @@ tbody tr:last-child td {
 }
 
 .kpi-card-icon {
-  font-size: 1.1rem;
-  opacity: 0.7;
-  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--kpi-icon-bg, var(--primary-soft));
+  color: var(--kpi-icon-color, var(--primary));
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.kpi-card-warn .kpi-card-icon {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.kpi-card-success .kpi-card-icon {
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .kpi-card-value {
@@ -2167,6 +2332,7 @@ tbody tr:last-child td {
 .quick-chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 6px 14px;
   border-radius: 999px;
   background: var(--primary-soft);
@@ -2702,3 +2868,286 @@ tbody tr:last-child td {
   background: #eef2ff;
   color: #3730a3;
 }
+
+/* ══════════════════════════════════════
+   Dashboard hero banner
+   ══════════════════════════════════════ */
+.dash-hero {
+  background: linear-gradient(140deg, #1e1b4b 0%, #312e81 28%, #1e40af 62%, #083344 100%);
+  border-radius: var(--radius-lg);
+  padding: 36px 40px 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 40px rgba(30, 27, 75, 0.40), 0 2px 8px rgba(15, 23, 42, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* subtle decorative circles */
+.dash-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+.dash-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  left: 30%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.12);
+  pointer-events: none;
+}
+
+.dash-hero-greeting {
+  margin: 0;
+  font-size: 2.15rem;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  position: relative;
+  z-index: 1;
+}
+
+.dash-hero-date {
+  margin: 8px 0 0;
+  color: rgba(248, 250, 252, 0.72);
+  font-size: 0.95rem;
+  position: relative;
+  z-index: 1;
+}
+
+.dash-hero-role {
+  color: rgba(248, 250, 252, 0.45);
+}
+
+.dash-hero-loading {
+  color: rgba(248, 250, 252, 0.5);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.dash-hero-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 840px) {
+  .dash-hero {
+    padding: 28px 24px 24px;
+  }
+
+  .dash-hero-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dash-hero-greeting {
+    font-size: 1.65rem;
+  }
+}
+
+/* Dark glass KPI cards inside hero */
+.dash-hero .kpi-card {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.dash-hero .kpi-card:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.dash-hero .kpi-card::after {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.dash-hero .kpi-card-value {
+  color: #f1f5f9;
+}
+
+.dash-hero .kpi-card-label {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.dash-hero .kpi-card-icon {
+  background: rgba(255, 255, 255, 0.13);
+  color: #c7d2fe;
+}
+
+.dash-hero .kpi-card-warn {
+  background: rgba(120, 53, 15, 0.3);
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+.dash-hero .kpi-card-warn::after {
+  background: #f59e0b;
+}
+
+.dash-hero .kpi-card-warn .kpi-card-value {
+  color: #fde68a;
+}
+
+.dash-hero .kpi-card-warn .kpi-card-label {
+  color: rgba(253, 230, 138, 0.7);
+}
+
+.dash-hero .kpi-card-warn .kpi-card-icon {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+}
+
+/* ══════════════════════════════════════
+   Admin system status bar (compact)
+   ══════════════════════════════════════ */
+.dash-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 11px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+  font-size: 0.82rem;
+}
+
+.dash-status-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dash-status-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.dash-status-bar .badge {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+}
+
+.dash-status-sep {
+  color: var(--border-strong);
+}
+
+.dash-status-links {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.dash-status-links .sep {
+  margin: 0 4px;
+  color: var(--border-strong);
+}
+
+/* ══════════════════════════════════════
+   Quick access chip row
+   ══════════════════════════════════════ */
+.dash-quick-section {
+  margin-bottom: 20px;
+}
+
+.dash-quick-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.dash-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Color variants for quick chips */
+.dash-chip-indigo {
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+.dash-chip-indigo:hover {
+  background: #e0e7ff;
+  color: #3730a3;
+  text-decoration: none;
+}
+
+.dash-chip-sky {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+.dash-chip-sky:hover {
+  background: #e0f2fe;
+  color: #075985;
+  text-decoration: none;
+}
+
+.dash-chip-emerald {
+  background: #f0fdf4;
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.dash-chip-emerald:hover {
+  background: #dcfce7;
+  color: #065f46;
+  text-decoration: none;
+}
+
+.dash-chip-amber {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.dash-chip-amber:hover {
+  background: #fef3c7;
+  color: #92400e;
+  text-decoration: none;
+}
+
+/* Tip card with icon */
+.dash-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.dash-tip-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: #eef2ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
