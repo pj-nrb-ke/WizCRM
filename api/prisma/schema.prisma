@@ -40,6 +40,8 @@ model User {
   passwordHash   String
   name           String
   role           UserRole     @default(SALES)
+  failedLoginCount Int        @default(0)
+  lockoutUntil   DateTime?
   createdAt      DateTime     @default(now())
   ownedLeads     Lead[]       @relation("LeadOwner")
   activities     Activity[]

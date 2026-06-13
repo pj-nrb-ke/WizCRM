@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import bcrypt from 'bcryptjs';
+import zxcvbn from 'zxcvbn';
 import {
   createAdminUserSchema,
   orgSettingsSchema,
@@ -139,6 +140,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const parsed = createAdminUserSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    // NIST 800-63B style strength check: reject weak/common/context-derived
+    // passwords (dictionary words, the user's own name/email, keyboard walks).
+    const strength = zxcvbn(parsed.data.password, [parsed.data.email, parsed.data.name, 'wizcrm']);
+    if (strength.score < 3) {
+      return reply.status(400).send({
+        error:
+          strength.feedback.warning ||
+          'Password is too weak or common. Use a longer, less predictable passphrase.',
+        suggestions: strength.feedback.suggestions,
+      });
     }
     const email = parsed.data.email.toLowerCase().trim();
     const existing = await prisma.user.findUnique({ where: { email } });
