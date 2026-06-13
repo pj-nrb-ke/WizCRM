@@ -818,6 +818,40 @@ tbody tr:last-child td {
   color: var(--text-muted);
 }
 
+.kanban-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.kanban-card-tag {
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.th-sortable:hover {
+  color: #4f46e5;
+}
+
+.calendar-day-empty {
+  font-size: 0.75rem;
+  padding: 6px 2px;
+  opacity: 0.6;
+  list-style: none;
+}
+
 .kanban-card .block {
   display: block;
   font-size: 0.8rem;

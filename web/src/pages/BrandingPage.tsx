@@ -20,6 +20,7 @@ export function BrandingPage() {
   const [supportEmail, setSupportEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     api<{ settings: SettingsPayload }>('/admin/settings')
@@ -29,7 +30,8 @@ export function BrandingPage() {
         setPrimaryColorHex(d.settings.primaryColorHex ?? '#4f46e5');
         setSupportEmail(d.settings.supportEmail ?? '');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoaded(true));
   }, []);
 
   async function onSave(e: React.FormEvent) {
@@ -86,10 +88,53 @@ export function BrandingPage() {
             disabled={!canEdit}
           />
         </label>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: 12,
+            borderRadius: 10,
+            background: '#0f172a',
+            marginTop: 4,
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              flexShrink: 0,
+              background: primaryColorHex,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              fontWeight: 700,
+              overflow: 'hidden',
+            }}
+          >
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              (displayName || 'W').slice(0, 1).toUpperCase()
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 14 }}>
+              {displayName || 'WizCRM'}
+            </span>
+            <span style={{ color: '#64748b', fontSize: 11 }}>Sidebar preview</span>
+          </div>
+        </div>
         {error ? <p className="error">{error}</p> : null}
         {message ? <p className="success">{message}</p> : null}
         {canEdit ? (
-          <button type="submit" className="btn-primary">
+          <button type="submit" className="btn-primary" disabled={!loaded}>
             Save branding
           </button>
         ) : null}

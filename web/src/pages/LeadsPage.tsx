@@ -72,6 +72,9 @@ export function LeadsPage() {
     setBulkMessage('');
   }, [search.toString(), stageFilter, tagFilter, q]);
 
+  const [sortBy, setSortBy] = useState<'name' | 'stage' | 'updated' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return leads;
@@ -91,6 +94,37 @@ export function LeadsPage() {
       return hay.includes(term);
     });
   }, [leads, q]);
+
+  const sorted = useMemo(() => {
+    if (!sortBy) return filtered;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      let av: string | number;
+      let bv: string | number;
+      if (sortBy === 'updated') {
+        av = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        bv = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      } else {
+        av = (a[sortBy] ?? '').toString().toLowerCase();
+        bv = (b[sortBy] ?? '').toString().toLowerCase();
+      }
+      if (av < bv) return -dir;
+      if (av > bv) return dir;
+      return 0;
+    });
+  }, [filtered, sortBy, sortDir]);
+
+  function toggleSort(col: 'name' | 'stage' | 'updated') {
+    if (sortBy === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(col);
+      setSortDir('asc');
+    }
+  }
+
+  const sortArrow = (col: 'name' | 'stage' | 'updated') =>
+    sortBy === col ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
 
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((l) => selectedIds.has(l.id));
@@ -274,15 +308,33 @@ export function LeadsPage() {
                   />
                 </th>
               ) : null}
-              <th>Name</th>
-              <th>Stage</th>
+              <th
+                className="th-sortable"
+                onClick={() => toggleSort('name')}
+                title="Sort by name"
+              >
+                Name{sortArrow('name')}
+              </th>
+              <th
+                className="th-sortable"
+                onClick={() => toggleSort('stage')}
+                title="Sort by stage"
+              >
+                Stage{sortArrow('stage')}
+              </th>
               <th>Owner</th>
               <th>Source</th>
-              <th>Updated</th>
+              <th
+                className="th-sortable"
+                onClick={() => toggleSort('updated')}
+                title="Sort by last updated"
+              >
+                Updated{sortArrow('updated')}
+              </th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((l) => (
+            {sorted.map((l) => (
               <tr key={l.id} className="row-clickable">
                 {manager ? (
                   <td onClick={(e) => e.stopPropagation()}>
@@ -321,9 +373,18 @@ export function LeadsPage() {
           </tbody>
         </table>
         {!loading && filtered.length === 0 ? (
-          <p className="muted" style={{ padding: 16 }}>
-            No leads found.
-          </p>
+          <div className="empty-state" style={{ padding: 32, textAlign: 'center' }}>
+            <p className="muted" style={{ marginBottom: 12 }}>
+              {q.trim() || stageFilter || tagFilter
+                ? 'No leads match these filters.'
+                : 'No leads yet. Add your first lead to get started.'}
+            </p>
+            {!q.trim() && !stageFilter && !tagFilter ? (
+              <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
+                New lead
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

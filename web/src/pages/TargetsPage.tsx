@@ -38,12 +38,15 @@ export function TargetsPage() {
   const [pacing, setPacing] = useState<PacingReport | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const loadPacing = useCallback(() => {
     if (!pro) return;
+    setLoading(true);
     api<PacingReport>('/reports/pacing')
       .then(setPacing)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load pacing'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load pacing'))
+      .finally(() => setLoading(false));
   }, [pro]);
 
   useEffect(() => {
@@ -129,6 +132,9 @@ export function TargetsPage() {
         subtitle="Monthly revenue targets vs closed-won value. Pacing compares achievement to the calendar month."
       />
 
+      {error ? <div className="alert alert-error">{error}</div> : null}
+      {loading && !pacing ? <p className="muted">Loading pacing…</p> : null}
+
       {pacing ? (
         <div className="card targets-pacing-summary">
           <h2 className="section-title">{pacing.period}</h2>
@@ -160,6 +166,13 @@ export function TargetsPage() {
                   <td>{r.pacingLabel}</td>
                 </tr>
               ))}
+              {pacing.reps.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="muted" style={{ padding: 16, textAlign: 'center' }}>
+                    No reps with targets yet. Set per-rep targets below.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

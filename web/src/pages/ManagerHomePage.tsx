@@ -62,6 +62,7 @@ export function ManagerHomePage() {
   );
   const [leads, setLeads] = useState<LeadSummary[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null);
   const [drillLeads, setDrillLeads] = useState<DrilldownLead[]>([]);
   const [drillTasks, setDrillTasks] = useState<DrilldownTask[]>([]);
@@ -71,7 +72,8 @@ export function ManagerHomePage() {
   useEffect(() => {
     api<TeamsResponse>('/teams')
       .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
     api<{ leads: LeadSummary[] }>('/leads')
       .then((d) => setLeads(d.leads ?? []))
       .catch(() => setLeads([]));
@@ -138,6 +140,7 @@ export function ManagerHomePage() {
         subtitle="Click a metric to see underlying leads and tasks. Track team performance at a glance."
       />
       {error ? <div className="alert alert-error">{error}</div> : null}
+      {loading && !data ? <p className="muted">Loading team performance…</p> : null}
 
       {brief && brief.bullets.length > 0 ? (
         <section className="card manager-brief">
@@ -228,6 +231,18 @@ export function ManagerHomePage() {
           </div>
         </section>
       )}
+
+      {!loading && data && data.teams.length === 0 ? (
+        <section className="card" style={{ textAlign: 'center', padding: 32 }}>
+          <h2>No teams yet</h2>
+          <p className="muted" style={{ marginBottom: 12 }}>
+            Create a team and assign reps to see org-wide performance here.
+          </p>
+          <Link to="/teams" className="btn-primary">
+            Create a team
+          </Link>
+        </section>
+      ) : null}
 
       <div className="manager-teams-grid">
         {(data?.teams ?? []).map((team) => (

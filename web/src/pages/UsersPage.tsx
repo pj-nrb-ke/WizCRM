@@ -14,6 +14,7 @@ type TeamOption = { id: string; name: string };
 export function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
@@ -32,7 +33,9 @@ export function UsersPage() {
   }
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+    load()
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
   }, []);
 
   async function onCreate(e: FormEvent) {
@@ -131,6 +134,20 @@ export function UsersPage() {
                 <td>{u.team?.name ?? '—'}</td>
               </tr>
             ))}
+            {!loading && users.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="muted" style={{ padding: 16, textAlign: 'center' }}>
+                  No users yet — add your first teammate above.
+                </td>
+              </tr>
+            ) : null}
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="muted" style={{ padding: 16, textAlign: 'center' }}>
+                  Loading…
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

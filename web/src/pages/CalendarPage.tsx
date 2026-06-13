@@ -130,6 +130,11 @@ export function CalendarPage() {
     setSaving(true);
     setError('');
     const isoRange = buildEventIsoRange(startAt, endAt, allDay);
+    if (!allDay && isoRange.endAt && new Date(isoRange.endAt) <= new Date(isoRange.startAt)) {
+      setError('End time must be after the start time.');
+      setSaving(false);
+      return;
+    }
     const lat = meetingLat.trim() ? Number(meetingLat) : undefined;
     const lng = meetingLng.trim() ? Number(meetingLng) : undefined;
     const body = {
@@ -323,6 +328,9 @@ export function CalendarPage() {
               <span className="calendar-day-add-hint">+</span>
             </div>
             <ul className="calendar-day-events">
+              {eventsOnDay(day).length === 0 && view !== 'month' ? (
+                <li className="calendar-day-empty muted">No events — tap to add</li>
+              ) : null}
               {eventsOnDay(day).map((ev) => (
                 <li key={ev.id}>
                   <button

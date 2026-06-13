@@ -134,12 +134,20 @@ export async function loadReportSummary(
   };
 }
 
-export async function loadLeadsForExport(organizationId: string, teamId?: string) {
+export async function loadLeadsForExport(
+  organizationId: string,
+  teamId?: string,
+  range?: { dateFrom: Date; dateTo: Date },
+) {
   const ownerFilter = await resolveOwnerFilter(organizationId, teamId);
   if (ownerFilter === null) return null;
 
   return prisma.lead.findMany({
-    where: { organizationId, ...ownerFilter },
+    where: {
+      organizationId,
+      ...ownerFilter,
+      ...(range ? { createdAt: { gte: range.dateFrom, lte: range.dateTo } } : {}),
+    },
     include: {
       owner: { select: { name: true, email: true, team: { select: { name: true } } } },
     },
