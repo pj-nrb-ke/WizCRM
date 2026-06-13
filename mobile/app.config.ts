@@ -27,7 +27,7 @@ const config: ExpoConfig = {
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#0f172a',
+      backgroundColor: '#6366f1',
     },
     package: 'com.wizag.wizcrm',
     versionCode: 3,

@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
 import { NavIcon } from './NavIcon';
+import { BoltGlyph } from './BrandMark';
 import { LicenseBanner } from './LicenseBanner';
 
 function NavItem({ to, end, icon, children }: {
@@ -126,8 +127,6 @@ export function Layout() {
       .catch(() => {});
   }, [user?.id]);
 
-  const initials = brandName.slice(0, 2).toUpperCase();
-
   return (
     <div className="app-shell">
       {/* ── Premium dark sidebar ── */}
@@ -154,7 +153,7 @@ export function Layout() {
             {logoUrl ? (
               <img src={logoUrl} alt={brandName} className="w-full h-full object-cover" />
             ) : (
-              initials
+              <BoltGlyph size={20} />
             )}
             <div
               className="absolute inset-0 rounded-xl pointer-events-none"

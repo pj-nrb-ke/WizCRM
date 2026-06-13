@@ -29,6 +29,7 @@
     "qa:003": "powershell -ExecutionPolicy Bypass -File scripts/run-qa-cycle-003.ps1"
   },
   "devDependencies": {
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "sharp": "^0.35.1"
   }
 }
