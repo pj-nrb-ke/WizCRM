@@ -1,12 +1,17 @@
 import type { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
+import { config } from '../config.js';
 import { loginSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { requestGdprExport } from '../services/erp-sync.service.js';
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/login', async (request, reply) => {
+  app.post('/login', {
+    // Throttle credential brute-forcing: 10 attempts/min/IP in production.
+    // Relaxed outside production so integration tests / local dev aren't throttled.
+    config: { rateLimit: { max: config.isProduction ? 10 : 1000, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid credentials payload' });
