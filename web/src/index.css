@@ -3256,9 +3256,12 @@ tbody tr:last-child td {
   }
 }
 
-/* Nav: hide desktop nav on mobile */
+/* Nav: hide desktop nav + inline CTAs on mobile (both live in the hamburger menu) */
 @media (max-width: 768px) {
   .landing-nav-desktop {
+    display: none !important;
+  }
+  .landing-nav-cta {
     display: none !important;
   }
   .landing-nav-mobile-toggle {

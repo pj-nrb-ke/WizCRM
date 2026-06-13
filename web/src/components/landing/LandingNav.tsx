@@ -122,6 +122,7 @@ export function LandingNav() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Link
             to="/login"
+            className="landing-nav-cta"
             style={{
               fontSize: '0.9rem',
               fontWeight: 600,
@@ -138,6 +139,7 @@ export function LandingNav() {
           </Link>
           <Link
             to="/login"
+            className="landing-nav-cta"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -192,8 +194,9 @@ export function LandingNav() {
             exit={{ opacity: 0, height: 0 }}
             style={{
               overflow: 'hidden',
-              background: 'rgba(255,255,255,0.97)',
+              background: '#ffffff',
               borderTop: '1px solid #e2e8f0',
+              boxShadow: '0 12px 24px rgba(15,23,42,0.12)',
             }}
           >
             <div style={{ padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
