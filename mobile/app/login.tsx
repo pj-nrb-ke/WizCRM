@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -103,6 +104,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        <Image source={require('../assets/icon.png')} style={styles.logo} />
         <Text style={styles.title}>WizCRM</Text>
         <Text style={styles.subtitle}>AI sales OS — Lite</Text>
         <TextInput
@@ -189,6 +191,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
   scroll: { padding: 24, paddingBottom: 40, flexGrow: 1, justifyContent: 'center' },
+  logo: { width: 72, height: 72, borderRadius: 18, marginBottom: 16 },
   title: { fontSize: 32, fontWeight: '700', color: '#f8fafc', marginBottom: 4 },
   subtitle: { fontSize: 16, color: '#94a3b8', marginBottom: 24 },
   sectionLabel: { color: '#94a3b8', fontSize: 13, marginTop: 20, marginBottom: 8 },

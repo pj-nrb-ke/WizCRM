@@ -3151,3 +3151,126 @@ tbody tr:last-child td {
   margin-top: 2px;
 }
 
+/* ==========================================
+   LANDING PAGE RESPONSIVE STYLES
+   ========================================== */
+
+/* Hero grid: stack on mobile */
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hero-grid > div:last-child {
+    display: none;
+  }
+}
+
+/* Showcase grid */
+@media (max-width: 1024px) {
+  .showcase-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* KPI strip */
+@media (max-width: 768px) {
+  .kpi-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Benefits grid */
+@media (max-width: 1024px) {
+  .benefits-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .benefits-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* AI grid */
+@media (max-width: 960px) {
+  .ai-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Team grid */
+@media (max-width: 960px) {
+  .team-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Analytics */
+@media (max-width: 1024px) {
+  .analytics-top {
+    grid-template-columns: 1fr !important;
+  }
+  .analytics-bottom {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Testimonials */
+@media (max-width: 1024px) {
+  .testimonials-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .testimonials-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Pricing */
+@media (max-width: 960px) {
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+}
+
+/* Stats grid */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Footer */
+@media (max-width: 1024px) {
+  .footer-top {
+    grid-template-columns: 1fr !important;
+  }
+  .footer-links {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Nav: hide desktop nav + inline CTAs on mobile (both live in the hamburger menu) */
+@media (max-width: 768px) {
+  .landing-nav-desktop {
+    display: none !important;
+  }
+  .landing-nav-cta {
+    display: none !important;
+  }
+  .landing-nav-mobile-toggle {
+    display: flex !important;
+  }
+}
+
+/* Plus Jakarta Sans font for headings */
+.font-jakarta {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
