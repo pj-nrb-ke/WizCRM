@@ -1,8 +1,25 @@
 import type { FastifyPluginAsync } from 'fastify';
+import sanitizeHtml from 'sanitize-html';
 import { sendLeadEmailSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getBrevoStatus } from '../services/brevo-config.js';
 import { EmailUnavailableError, sendTransactionalEmail } from '../services/brevo-mail.js';
+
+// Allow only safe formatting/link tags in user-composed outbound email — strips
+// <script>, event handlers, javascript: URLs, etc., so a rep can't send arbitrary
+// HTML/phishing from the company's verified sending domain.
+function cleanEmailHtml(html: string | undefined): string | undefined {
+  if (!html) return undefined;
+  return sanitizeHtml(html, {
+    allowedTags: [
+      'p', 'br', 'b', 'i', 'em', 'strong', 'u', 'a', 'ul', 'ol', 'li',
+      'h1', 'h2', 'h3', 'h4', 'blockquote', 'span', 'div', 'hr', 'table',
+      'thead', 'tbody', 'tr', 'td', 'th',
+    ],
+    allowedAttributes: { a: ['href', 'title'], span: ['style'], div: ['style'] },
+    allowedSchemes: ['http', 'https', 'mailto'],
+  });
+}
 
 export const emailRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -31,7 +48,7 @@ export const emailRoutes: FastifyPluginAsync = async (app) => {
         toName: lead.name,
         subject: parsed.data.subject,
         text: parsed.data.body,
-        html: parsed.data.html,
+        html: cleanEmailHtml(parsed.data.html),
       });
 
       await prisma.activity.create({

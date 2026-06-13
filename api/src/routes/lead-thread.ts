@@ -67,8 +67,14 @@ export const leadThreadRoutes: FastifyPluginAsync = async (app) => {
     const { leadId, attachmentId } = request.params as { leadId: string; attachmentId: string };
     const row = await getLeadAttachmentFile(organizationId, leadId, attachmentId);
     if (!row) return reply.status(404).send({ error: 'Not found' });
+    // Force download (never render inline) and stop MIME-sniffing so an uploaded
+    // HTML/SVG attachment can't execute as stored XSS when fetched same-origin.
     reply.header('Content-Type', row.mimeType);
-    reply.header('Content-Disposition', `inline; filename="${row.fileName}"`);
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header(
+      'Content-Disposition',
+      `attachment; filename="${row.fileName.replace(/["\r\n]/g, '')}"`,
+    );
     return reply.send(createReadStream(row.storagePath));
   });
 };

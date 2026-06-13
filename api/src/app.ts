@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
+import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { authRoutes } from './routes/auth.js';
 import { leadRoutes } from './routes/leads.js';
@@ -28,12 +29,28 @@ export async function buildApp() {
   });
 
   await app.register(cors, {
-    origin: true,
+    // Restrict browser origins to the known web app + local dev. Requests with
+    // no Origin header (native mobile app, curl, server-to-server) are allowed —
+    // CORS only governs browsers, and the mobile client sends no Origin.
+    origin(origin, cb) {
+      if (!origin || config.corsOrigins.includes(origin)) return cb(null, true);
+      cb(null, false);
+    },
     // Default is GET,HEAD,POST only — browser blocks PATCH (pipeline drag-drop, settings).
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-WizCRM-Webhook-Key'],
   });
-  await app.register(jwt, { secret: config.jwtSecret });
+
+  // Global safety net (200/min/IP); auth routes set a much tighter per-route limit.
+  await app.register(rateLimit, { global: false, max: 200, timeWindow: '1 minute' });
+
+  await app.register(jwt, {
+    secret: config.jwtSecret,
+    // Bound the lifetime of a leaked/stolen token, and pin the algorithm so a
+    // forged header can't downgrade verification (e.g. alg:none).
+    sign: { expiresIn: '7d', algorithm: 'HS256' },
+    verify: { algorithms: ['HS256'] },
+  });
 
   app.decorate('authenticate', async (request, reply) => {
     try {
@@ -76,8 +93,10 @@ export async function buildApp() {
     }
     const status = err.statusCode ?? 500;
     app.log.error(error);
+    // Don't leak internal error details on 5xx; 4xx messages are intentional and
+    // client-facing (validation, not-found, conflict, etc.).
     return reply.status(status).send({
-      error: err.message ?? 'Internal Server Error',
+      error: status >= 500 ? 'Internal Server Error' : err.message ?? 'Error',
     });
   });
 
