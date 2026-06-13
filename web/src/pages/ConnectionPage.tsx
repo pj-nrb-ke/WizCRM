@@ -17,9 +17,26 @@ export function ConnectionPage() {
   }, []);
 
   async function copyUrl() {
-    await navigator.clipboard.writeText(apiUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      // navigator.clipboard is unavailable on insecure (HTTP/LAN) origins —
+      // exactly the dev scenario this page targets — so fall back to execCommand.
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(apiUrl);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = apiUrl;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked — leave the URL visible for manual copy.
+    }
   }
 
   return (

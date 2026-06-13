@@ -29,6 +29,7 @@ export function CrmSettingsPage() {
   const [quoteFollowUpDays, setQuoteFollowUpDays] = useState(7);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     api<{
@@ -59,7 +60,8 @@ export function CrmSettingsPage() {
           typeof d.settings.quoteFollowUpDays === 'number' ? d.settings.quoteFollowUpDays : 7,
         );
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoaded(true));
   }, []);
 
   function addLossReason() {
@@ -239,8 +241,8 @@ export function CrmSettingsPage() {
         {error ? <p className="error">{error}</p> : null}
         {message ? <p className="success">{message}</p> : null}
         {canEdit ? (
-          <button type="submit" className="btn-primary">
-            Save CRM settings
+          <button type="submit" className="btn-primary" disabled={!loaded}>
+            {loaded ? 'Save CRM settings' : 'Loading…'}
           </button>
         ) : null}
       </form>

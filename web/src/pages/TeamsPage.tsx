@@ -19,6 +19,7 @@ export function TeamsPage() {
   const [formName, setFormName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   function load() {
     return Promise.all([
@@ -30,7 +31,9 @@ export function TeamsPage() {
   }
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+    load()
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
   }, []);
 
   function startCreate() {
@@ -208,7 +211,10 @@ export function TeamsPage() {
           )}
         </div>
       ))}
-      {teams.length === 0 && !showForm ? <p className="muted">No teams yet. Create one above.</p> : null}
+      {loading ? <p className="muted">Loading…</p> : null}
+      {!loading && teams.length === 0 && !showForm ? (
+        <p className="muted">No teams yet. Create one above.</p>
+      ) : null}
     </>
   );
 }

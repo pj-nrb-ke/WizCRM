@@ -79,6 +79,17 @@ export function PlatformPage() {
             <option value="enterprise">Enterprise</option>
           </select>
         </label>
+        <button
+          type="button"
+          className="btn-primary"
+          style={{ marginTop: 12 }}
+          onClick={() => void onSave()}
+          disabled={!data}
+        >
+          Save plan
+        </button>
+        {message ? <p className="success">{message}</p> : null}
+        {error ? <p className="error">{error}</p> : null}
       </div>
 
       <div className="card">
@@ -106,7 +117,7 @@ export function PlatformPage() {
           className="btn-primary"
           style={{ marginTop: 12 }}
           onClick={() => void onSave()}
-          disabled={!data?.aiEnabled}
+          disabled={!data}
         >
           Save desk mode
         </button>

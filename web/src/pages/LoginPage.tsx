@@ -6,8 +6,8 @@ import { getApiBaseUrl } from '../lib/api';
 export function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@wizag.local');
-  const [password, setPassword] = useState('wizcrm123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 

@@ -106,8 +106,11 @@ export function ReportsPage() {
     setExporting(true);
     setError('');
     try {
-      const qs = filter.teamId ? `?teamId=${encodeURIComponent(filter.teamId)}` : '';
-      await downloadAuthenticated(`/reports/export.csv${qs}`, 'wizcrm-leads.csv');
+      const params = new URLSearchParams();
+      if (filter.teamId) params.set('teamId', filter.teamId);
+      params.set('dateFrom', new Date(dateFrom + 'T00:00:00').toISOString());
+      params.set('dateTo', new Date(dateTo + 'T23:59:59').toISOString());
+      await downloadAuthenticated(`/reports/export.csv?${params.toString()}`, 'wizcrm-leads.csv');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
     } finally {
@@ -123,6 +126,8 @@ export function ReportsPage() {
       })),
     [summary],
   );
+
+  const hasStageData = useMemo(() => stageData.some((s) => s.value > 0), [stageData]);
 
   const funnelData = useMemo(
     () =>
@@ -326,16 +331,24 @@ export function ReportsPage() {
               subtitle="Lead count by stage to identify flow drop-offs."
               className="analytics-span-2"
             >
-              <BarChart data={funnelData} ariaLabel="Funnel progression by stage" />
+              {hasStageData ? (
+                <BarChart data={funnelData} ariaLabel="Funnel progression by stage" />
+              ) : (
+                <p className="muted">No leads in this period yet.</p>
+              )}
             </ChartCard>
 
             <ChartCard title="Stage mix" subtitle="Distribution of leads across current lifecycle stages.">
-              <DonutChart
-                ariaLabel="Lead distribution by stage"
-                data={stageDonutData}
-                centerLabel="Total"
-                centerValue={summary.totalLeads.toLocaleString()}
-              />
+              {hasStageData ? (
+                <DonutChart
+                  ariaLabel="Lead distribution by stage"
+                  data={stageDonutData}
+                  centerLabel="Total"
+                  centerValue={summary.totalLeads.toLocaleString()}
+                />
+              ) : (
+                <p className="muted">No leads in this period yet.</p>
+              )}
             </ChartCard>
 
             <ChartCard title="Source performance" subtitle="Top channels feeding the pipeline.">
