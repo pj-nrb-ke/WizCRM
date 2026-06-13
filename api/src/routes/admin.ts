@@ -151,7 +151,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       });
       if (!team) return reply.status(400).send({ error: 'Invalid team' });
     }
-    const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+    const passwordHash = await bcrypt.hash(parsed.data.password, 12);
     const user = await prisma.user.create({
       data: {
         organizationId: request.user.organizationId,

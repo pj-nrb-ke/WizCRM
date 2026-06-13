@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { WebhookLeadInput } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from './org-settings.service.js';
@@ -8,11 +8,19 @@ export function generateWebhookSecret() {
   return randomBytes(24).toString('hex');
 }
 
+/** Constant-time secret comparison to avoid leaking the secret via timing. */
+function secretsMatch(a: string, b: string) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export async function resolveOrgByWebhookSecret(secret: string) {
   const orgs = await prisma.organization.findMany({ select: { id: true, settings: true } });
   for (const org of orgs) {
     const settings = await getOrgSettings(org.id);
-    if (settings.webhookEnabled && settings.webhookSecret === secret) {
+    if (settings.webhookEnabled && settings.webhookSecret && secretsMatch(settings.webhookSecret, secret)) {
       return org.id;
     }
   }

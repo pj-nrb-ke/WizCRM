@@ -15,7 +15,7 @@ async function main() {
     },
   });
 
-  const passwordHash = await bcrypt.hash('wizcrm123', 10);
+  const passwordHash = await bcrypt.hash('wizcrm123', 12);
 
   const fieldTeam = await prisma.team.upsert({
     where: {

@@ -44,7 +44,13 @@ export async function buildApp() {
   // Global safety net (200/min/IP); auth routes set a much tighter per-route limit.
   await app.register(rateLimit, { global: false, max: 200, timeWindow: '1 minute' });
 
-  await app.register(jwt, { secret: config.jwtSecret });
+  await app.register(jwt, {
+    secret: config.jwtSecret,
+    // Bound the lifetime of a leaked/stolen token, and pin the algorithm so a
+    // forged header can't downgrade verification (e.g. alg:none).
+    sign: { expiresIn: '7d', algorithm: 'HS256' },
+    verify: { algorithms: ['HS256'] },
+  });
 
   app.decorate('authenticate', async (request, reply) => {
     try {

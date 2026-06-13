@@ -9,6 +9,7 @@ import {
   updateLeadSchema,
   bulkImportLeadsSchema,
   bulkUpdateLeadsSchema,
+  isLeadStage,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
@@ -115,10 +116,13 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       ownerFilter = { ownerId: { in: memberIds } };
     }
     const tag = q.tag?.trim();
+    // Only apply the stage filter if it's a real enum value — a garbage value
+    // passed straight to Prisma's enum column throws (500); ignore it instead.
+    const stageFilter = q.stage && isLeadStage(q.stage) ? { stage: q.stage as never } : {};
     const leads = await prisma.lead.findMany({
       where: {
         organizationId,
-        ...(q.stage ? { stage: q.stage as never } : {}),
+        ...stageFilter,
         ...(tag ? { tags: { has: tag } } : {}),
         ...ownerFilter,
       },
