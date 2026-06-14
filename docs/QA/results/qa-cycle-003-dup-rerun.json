@@ -1,0 +1,182 @@
+{
+  "cycle": "004-dup-rerun",
+  "ranAt": "2026-05-27T12:42:12.795Z",
+  "apiUrl": "https://api.wizcrm.app",
+  "duplicatePrevention": [
+    {
+      "id": "DP-001",
+      "test": "DP-01 parallel double POST same phone → ≤1 row",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "phone rows=1"
+    },
+    {
+      "id": "DP-002",
+      "test": "DP-02 sequential duplicate phone → 409",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "409 on second create"
+    },
+    {
+      "id": "DP-003",
+      "test": "DP-03 triple burst same phone → ≤1 row",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1"
+    },
+    {
+      "id": "DP-004",
+      "test": "DP-04 parallel duplicate email → ≤1 row",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "email rows=1"
+    },
+    {
+      "id": "DP-005",
+      "test": "DP-05 two reps same phone concurrently → ≤1 row org-wide",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "org rows=1"
+    },
+    {
+      "id": "DP-006",
+      "test": "DP-06 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-007",
+      "test": "DP-07 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-008",
+      "test": "DP-08 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-009",
+      "test": "DP-09 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-010",
+      "test": "DP-10 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-011",
+      "test": "DP-11 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-012",
+      "test": "DP-12 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-013",
+      "test": "DP-13 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-014",
+      "test": "DP-14 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-015",
+      "test": "DP-15 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-016",
+      "test": "DP-16 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-017",
+      "test": "DP-17 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-018",
+      "test": "DP-18 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-019",
+      "test": "DP-19 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-020",
+      "test": "DP-20 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-021",
+      "test": "DP-21 burst-1 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    },
+    {
+      "id": "DP-022",
+      "test": "DP-22 burst-2 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=3"
+    },
+    {
+      "id": "DP-023",
+      "test": "DP-23 burst-3 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=4"
+    },
+    {
+      "id": "DP-024",
+      "test": "DP-24 burst-4 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=1"
+    },
+    {
+      "id": "DP-025",
+      "test": "DP-25 burst-0 concurrent creates same phone",
+      "status": "PASS",
+      "notes": "",
+      "assertions": "rows=1 201=1 409=2"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "ranAt": "2026-05-27T10:57:21.542Z",
+  "apiUrl": "https://api.wizcrm.app",
+  "docs": [
+    "03-Backend-API-Database-QA",
+    "04-Enterprise-State-Validation-QA"
+  ],
+  "results": [
+    {
+      "area": "Backend",
+      "test": "GET /health → 200 ok",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "GET /leads without token → 401",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "GET /admin/users as sales rep → 403",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "POST /auth/login bad password → 401",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "POST /auth/register → 404 (no public signup)",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "POST /leads duplicate phone → 409",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "PATCH stage WON without wonValue → 400",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "Calendar DELETE rollback — event removed from GET",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Enterprise State",
+      "test": "PATCH lead name then GET — no stale state",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Enterprise State",
+      "test": "New lead visible in GET /leads (list sync)",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Enterprise State",
+      "test": "Duplicate create blocked — no second row",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Enterprise State",
+      "test": "openLeads: /leads count matches /reports/summary",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Enterprise State",
+      "test": "Pipeline bucket contains lead for current stage",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "Consecutive GET /leads — stable list length",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "GET /teams → 200",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "GET /reports/analytics → 200",
+      "status": "PASS",
+      "notes": ""
+    },
+    {
+      "area": "Backend",
+      "test": "GET /teams/activity-feed → 200",
+      "status": "PASS",
+      "notes": ""
+    }
+  ]
+}

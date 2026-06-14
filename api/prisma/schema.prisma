@@ -1,0 +1,427 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  users     User[]
+  leads     Lead[]
+  teams     Team[]
+}
+
+model Team {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  members        User[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  teamId         String?
+  team           Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           UserRole     @default(SALES)
+  failedLoginCount Int        @default(0)
+  lockoutUntil   DateTime?
+  createdAt      DateTime     @default(now())
+  ownedLeads     Lead[]       @relation("LeadOwner")
+  activities     Activity[]
+  tasks          Task[]
+  calendarEvents CalendarEvent[]
+  userReminders  UserReminder[]
+  salesOpportunities SalesOpportunity[] @relation("OpportunityOwner")
+  quotations         Quotation[]
+  aiAuditLogs    AiAuditLog[]
+  stageChanges   StageChange[]
+  leadMessages   LeadMessage[]
+  leadAttachments LeadAttachment[]
+
+  @@index([organizationId])
+  @@index([teamId])
+}
+
+enum UserRole {
+  SALES
+  MANAGER
+  ADMIN
+}
+
+model Lead {
+  id               String     @id @default(uuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  ownerId          String
+  owner            User       @relation("LeadOwner", fields: [ownerId], references: [id])
+  name             String
+  company          String?
+  email            String?
+  emailNormalized  String?
+  phone            String?
+  phoneNormalized  String?
+  extraPhones      Json     @default("[]")
+  extraEmails      Json     @default("[]")
+  address          String?
+  googleMapsUrl    String?
+  source           String?
+  tags             String[]   @default([])
+  priority         LeadPriority?
+  stage            LeadStage  @default(NEW)
+  wonValue         Decimal?   @db.Decimal(14, 2)
+  wonStartAt       DateTime?
+  wonProducts      String?
+  lossReason       String?
+  /** Sort order within a pipeline column (lower = higher on the board). */
+  pipelineRank     Int        @default(0)
+  lastActivityAt   DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  activities       Activity[]
+  tasks            Task[]
+  stageChanges     StageChange[]
+  salesOpportunities SalesOpportunity[]
+  quotations       Quotation[]
+  calendarEvents   CalendarEvent[]
+  aiSuggestions    AiSuggestion[]
+  messages         LeadMessage[]
+  attachments      LeadAttachment[]
+  userReminders    UserReminder[]
+
+  @@index([organizationId, stage])
+  @@index([organizationId, stage, pipelineRank])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, emailNormalized])
+  @@index([organizationId, phoneNormalized])
+}
+
+enum LeadPriority {
+  HOT
+  WARM
+  COLD
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+model StageChange {
+  id           String    @id @default(uuid())
+  leadId       String
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStage    LeadStage
+  toStage      LeadStage
+  note         String?
+  suggestedByAi Boolean  @default(false)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  createdAt    DateTime  @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+  STAGE_CHANGE
+  SALES_OPPORTUNITY
+  CALENDAR_EVENT
+}
+
+enum SalesOppStage {
+  NEW_OPPORTUNITY
+  QUALIFICATION
+  PROPOSAL
+  NEGOTIATION
+  CLOSED
+}
+
+enum SalesOppStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  PENDING
+  WON
+  LOST
+  CANCELLED
+}
+
+enum OpportunitySourceType {
+  OTHER
+  REFERRAL
+  CAMPAIGN
+  EXISTING_CUSTOMER
+  WEBSITE
+  AGENT
+}
+
+enum CalendarRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+model Activity {
+  id        String       @id @default(uuid())
+  leadId    String
+  lead      Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  type      ActivityType
+  subject   String?
+  body      String
+  metadata  Json?
+  createdAt DateTime     @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
+}
+
+/// Internal team thread per lead (FR-NTH-011) — not customer SMS.
+model LeadMessage {
+  id               String   @id @default(uuid())
+  leadId           String
+  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  body             String
+  mentionedUserIds String[] @default([])
+  createdAt        DateTime @default(now())
+  attachments      LeadAttachment[]
+
+  @@index([leadId, createdAt(sort: Desc)])
+}
+
+model LeadAttachment {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messageId   String?
+  message     LeadMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String
+  createdAt   DateTime @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
+}
+
+model SalesOpportunity {
+  id               String              @id @default(uuid())
+  organizationId   String
+  leadId           String
+  lead             Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  ownerId          String
+  owner            User                @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  referenceNumber  String
+  description      String
+  contactPerson    String?
+  isPublic         Boolean             @default(true)
+  oppStage         SalesOppStage       @default(NEW_OPPORTUNITY)
+  oppStatus        SalesOppStatus        @default(NOT_STARTED)
+  probabilityPct   Float               @default(10)
+  sourceType       OpportunitySourceType @default(OTHER)
+  sourceDetail     String?
+  startDate        DateTime            @default(now())
+  closeBy          DateTime?
+  actualClose      DateTime?
+  budgeted         Float?
+  forecastedExcl   Float?
+  isClosed         Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId, leadId])
+  @@index([organizationId, ownerId])
+}
+
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  NO_SHOW
+  PARTIAL
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum ErpSyncStatus {
+  NONE
+  PENDING
+  SYNCED
+  FAILED
+}
+
+model Quotation {
+  id               String          @id @default(uuid())
+  organizationId   String
+  leadId           String
+  lead             Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  ownerId          String
+  owner            User            @relation(fields: [ownerId], references: [id])
+  referenceNumber  String
+  status           QuotationStatus @default(DRAFT)
+  taxRatePct       Float           @default(0)
+  subtotal         Decimal         @db.Decimal(14, 2)
+  taxAmount        Decimal         @db.Decimal(14, 2)
+  total            Decimal         @db.Decimal(14, 2)
+  lines            Json
+  notes            String?
+  validUntil       DateTime?
+  /** When to follow up on a SENT quote (PRO-011). */
+  followUpAt       DateTime?
+  erpSyncStatus    ErpSyncStatus   @default(NONE)
+  erpReference     String?
+  erpSyncedAt      DateTime?
+  erpLastError     String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  erpSyncLogs      ErpSyncLog[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId, leadId])
+}
+
+model ErpSyncLog {
+  id             String        @id @default(uuid())
+  organizationId String
+  quotationId    String?
+  quotation      Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  action         String
+  status         ErpSyncStatus
+  message        String?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([quotationId])
+}
+
+model CalendarEvent {
+  id                    String             @id @default(uuid())
+  organizationId        String
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id])
+  leadId                String?
+  lead                  Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  title                 String
+  notes                 String?
+  startAt               DateTime
+  endAt                 DateTime
+  allDay                Boolean            @default(false)
+  recurrence            CalendarRecurrence @default(NONE)
+  recurrenceIntervalDays Int?
+  recurrenceUntil       DateTime?
+  reminderMinutes       Int?
+  /** Project / campaign tags (shared with leads via org tag list). */
+  tags                  String[]           @default([])
+  meetingAddress        String?
+  meetingLat            Float?
+  meetingLng            Float?
+  checkInAt             DateTime?
+  checkInLat            Float?
+  checkInLng            Float?
+  geofenceOverride      Boolean            @default(false)
+  checkOutAt            DateTime?
+  attendanceStatus      AttendanceStatus?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([organizationId, userId, startAt])
+  @@index([organizationId, leadId])
+}
+
+model UserReminder {
+  id              String    @id @default(uuid())
+  organizationId  String
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  notes           String?
+  remindAt        DateTime
+  tags            String[]  @default([])
+  leadId          String?
+  lead            Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  calendarEventId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([organizationId, userId, remindAt])
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  organizationId String
+  tags        String[]  @default([])
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  title       String
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, dueAt])
+  @@index([organizationId])
+}
+
+model AiSuggestion {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  kind      String
+  payload   Json
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model AiAuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id])
+  feature        String
+  model          String?
+  promptVersion  String   @default("v1")
+  inputSummary   String?
+  outputSummary  String?
+  approved       Boolean?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt(sort: Desc)])
+}

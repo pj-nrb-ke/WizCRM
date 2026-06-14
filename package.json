@@ -1,0 +1,35 @@
+{
+  "name": "wizcrm",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present && npm test --prefix mobile",
+    "test:deep": "powershell -ExecutionPolicy Bypass -File scripts/test-deep.ps1",
+    "test:deep:local": "powershell -ExecutionPolicy Bypass -File scripts/test-deep.ps1 -SkipProduction",
+    "test:production": "powershell -ExecutionPolicy Bypass -File scripts/test-production-smoke.ps1",
+    "test:lite": "powershell -ExecutionPolicy Bypass -File scripts/test-lite.ps1",
+    "test:lite:integration": "powershell -ExecutionPolicy Bypass -File scripts/test-lite.ps1 -Integration",
+    "test:qa": "powershell -ExecutionPolicy Bypass -File scripts/run-qa-automated.ps1",
+    "test:qa:frontend": "powershell -ExecutionPolicy Bypass -File scripts/run-qa-frontend.ps1 -SkipAutomatedGate",
+    "api:dev": "npm run dev -w api",
+    "api:test": "npm run test -w api",
+    "shared:test": "npm run test -w shared",
+    "web:dev": "npm run dev -w web",
+    "web:build": "npm run build -w web",
+    "db:up": "docker compose -f docker/docker-compose.yml up -d",
+    "db:down": "docker compose -f docker/docker-compose.yml down",
+    "qa:report": "node scripts/generate-qa-report.mjs",
+    "qa:03-04": "powershell -ExecutionPolicy Bypass -File scripts/run-qa-03-04.ps1",
+    "qa:05": "powershell -ExecutionPolicy Bypass -File scripts/run-qa-05.ps1",
+    "qa:002": "powershell -ExecutionPolicy Bypass -File scripts/run-qa-cycle-002.ps1",
+    "qa:003": "powershell -ExecutionPolicy Bypass -File scripts/run-qa-cycle-003.ps1"
+  },
+  "devDependencies": {
+    "exceljs": "^4.4.0",
+    "sharp": "^0.35.1"
+  }
+}

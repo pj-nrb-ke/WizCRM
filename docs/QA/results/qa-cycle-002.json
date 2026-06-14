@@ -1,0 +1,197 @@
+{
+  "cycle": "002",
+  "ranAt": "2026-05-27T11:30:56.864Z",
+  "baseUrl": "https://app.wizcrm.app",
+  "apiUrl": "https://api.wizcrm.app",
+  "instructions": "WizCRM-QA-Agent-Feedback-and-Instructions.md (enterprise destructive QA)",
+  "summary": {
+    "overall": "PASS",
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0
+  },
+  "frontendSync": [
+    {
+      "id": "FS-001",
+      "suite": "enterprise-cycle-002.spec.ts › Frontend Sync Tests",
+      "test": "create via API → UI row count matches backend after refresh",
+      "status": "PASS",
+      "durationMs": 8554,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-002",
+      "suite": "enterprise-cycle-002.spec.ts › Frontend Sync Tests",
+      "test": "PATCH via API → drawer shows updated name",
+      "status": "PASS",
+      "durationMs": 5956,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-003",
+      "suite": "enterprise-cycle-002.spec.ts › Frontend Sync Tests",
+      "test": "dashboard openLeads matches owner-scoped API count",
+      "status": "PASS",
+      "durationMs": 4214,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-004",
+      "suite": "enterprise-cycle-002.spec.ts › Duplicate Prevention Tests",
+      "test": "double-click Create lead does not create duplicate rows",
+      "status": "PASS",
+      "durationMs": 10818,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-005",
+      "suite": "enterprise-cycle-002.spec.ts › Duplicate Prevention Tests",
+      "test": "duplicate phone via API returns 409 only one row",
+      "status": "PASS",
+      "durationMs": 1712,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-006",
+      "suite": "enterprise-cycle-002.spec.ts › Race Condition Tests",
+      "test": "rapid filter + search ends consistent with API",
+      "status": "PASS",
+      "durationMs": 6577,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-007",
+      "suite": "enterprise-cycle-002.spec.ts › Race Condition Tests",
+      "test": "rapid modal open/close leaves single backdrop",
+      "status": "PASS",
+      "durationMs": 6304,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-008",
+      "suite": "enterprise-cycle-002.spec.ts › Session Recovery Tests",
+      "test": "reload during leads load recovers with matching API count",
+      "status": "PASS",
+      "durationMs": 5240,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-009",
+      "suite": "enterprise-cycle-002.spec.ts › Session Recovery Tests",
+      "test": "reload on overview keeps session and dashboard",
+      "status": "PASS",
+      "durationMs": 5724,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-010",
+      "suite": "enterprise-cycle-002.spec.ts › Multi-Tab Tests",
+      "test": "edit in API visible after refresh in second tab",
+      "status": "PASS",
+      "durationMs": 8520,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-011",
+      "suite": "enterprise-cycle-002.spec.ts › Multi-Tab Tests",
+      "test": "logout in tab A forces re-auth on protected navigation in tab B",
+      "status": "PASS",
+      "durationMs": 5014,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-012",
+      "suite": "enterprise-cycle-002.spec.ts › Long-Duration Stability",
+      "test": "60 navigation cycles — stable counts, bounded heap, no severe console",
+      "status": "PASS",
+      "durationMs": 19222,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    },
+    {
+      "id": "FS-013",
+      "suite": "enterprise-cycle-002.spec.ts › Human Frustration Observations",
+      "test": "new lead modal requires explicit Cancel (Escape ineffective)",
+      "status": "PASS",
+      "durationMs": 4237,
+      "notes": "",
+      "assertions": "state verified",
+      "evidence": "",
+      "annotations": ""
+    }
+  ],
+  "duplicatePrevention": [],
+  "raceCondition": [],
+  "sessionRecovery": [],
+  "multiTab": [],
+  "longDuration": [],
+  "humanFrustration": [],
+  "uxFindings": [
+    {
+      "id": "UX-005",
+      "severity": "Low",
+      "finding": "New lead modal does not dismiss on Escape (confirmed cycle 002)."
+    }
+  ],
+  "visualFindings": [],
+  "criticalIssues": [],
+  "recommendedFixes": [],
+  "evidence": [
+    {
+      "artifact": "Playwright JSON",
+      "path": "web/e2e-report/results.json"
+    },
+    {
+      "artifact": "Playwright HTML",
+      "path": "web/e2e-report/html/index.html"
+    },
+    {
+      "artifact": "Screenshots / traces",
+      "path": "web/e2e-report/test-results/"
+    },
+    {
+      "artifact": "Cycle JSON",
+      "path": "docs/QA/results/qa-cycle-002.json"
+    },
+    {
+      "artifact": "Excel report",
+      "path": "docs/QA/WizCRM-QA-Test-002.xlsx"
+    }
+  ]
+}

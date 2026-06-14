@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Expo / React Native
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/android/
+mobile/.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Env
+.env
+.env.local
+.env.*.local
+api/.env
+api/.github-token.local
+docs/brevo.local.txt
+docs/hosting.local.txt
+config/secrets/brevo.local.txt
+config/secrets/hosting.local.txt
+secrets/brevo.local.txt
+secrets/hosting.local.txt
+
+# Uploads (lead attachments)
+uploads/
+api/uploads/
+
+# Build
+shared/dist/
+api/dist/
+WizCRM-lite.apk
+WizCRM-lite-debug.apk
+WizCRM-production.apk
+web/dist/
+web/e2e-report/
+apk-build/
+build-apk.log

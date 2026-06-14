@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'vitest';
+import { isAllowedStageTransition, LEAD_STAGES } from './stages.js';
+
+describe('UT-LITE-004 stage transitions', () => {
+  it('defines all 7 lifecycle stages', () => {
+    expect(LEAD_STAGES).toHaveLength(7);
+    expect(LEAD_STAGES).toEqual([
+      'NEW',
+      'CONTACTED',
+      'QUALIFIED',
+      'PROPOSAL',
+      'NEGOTIATION',
+      'WON',
+      'LOST',
+    ]);
+  });
+  it('allows forward progression', () => {
+    expect(isAllowedStageTransition('NEW', 'CONTACTED')).toBe(true);
+    expect(isAllowedStageTransition('CONTACTED', 'QUALIFIED')).toBe(true);
+  });
+
+  it('allows lost from any non-won stage', () => {
+    expect(isAllowedStageTransition('PROPOSAL', 'LOST')).toBe(true);
+  });
+
+  it('allows reopen from won to an open stage', () => {
+    expect(isAllowedStageTransition('WON', 'QUALIFIED')).toBe(true);
+    expect(isAllowedStageTransition('WON', 'WON')).toBe(true);
+  });
+
+  it('allows reopen from lost', () => {
+    expect(isAllowedStageTransition('LOST', 'CONTACTED')).toBe(true);
+  });
+});
