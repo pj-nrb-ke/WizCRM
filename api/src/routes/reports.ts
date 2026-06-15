@@ -147,6 +147,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     return reply
       .header('Content-Type', 'text/csv; charset=utf-8')
       .header('Content-Disposition', 'attachment; filename="wizcrm-leads.csv"')
+      .header('X-Content-Type-Options', 'nosniff')
       .send(csv);
   });
 };

@@ -135,7 +135,7 @@ export function BrandingPage() {
         {message ? <p className="success">{message}</p> : null}
         {canEdit ? (
           <button type="submit" className="btn-primary" disabled={!loaded}>
-            Save branding
+            {loaded ? 'Save branding' : 'Loading…'}
           </button>
         ) : null}
       </form>

@@ -71,7 +71,10 @@ describe.runIf(run)('QA-LITE automated (API)', () => {
 
   it('QA-LITE-004 stage transition rules enforced', () => {
     expect(isAllowedStageTransition('NEW', 'CONTACTED')).toBe(true);
-    expect(isAllowedStageTransition('WON', 'NEGOTIATION')).toBe(false);
+    // WON can reopen back to any active stage (business rule: reopen closed-won deals)
+    // WON → LOST is the only forbidden transition; see stages.ts isAllowedStageTransition
+    expect(isAllowedStageTransition('WON', 'NEGOTIATION')).toBe(true);
+    expect(isAllowedStageTransition('WON', 'LOST')).toBe(false);
   });
 
   it('QA-LITE-004 PATCH stage with confirm', async () => {

@@ -9,9 +9,16 @@ describe.runIf(run)('Lite mobile API journeys (P1/P2)', () => {
   let app: FastifyInstance;
   let token: string;
 
+  const TEST_ORG_ID = '00000000-0000-4000-8000-000000000001';
+
   beforeAll(async () => {
     app = await buildApp();
     await app.ready();
+    // Upgrade test org to Pro so Pro-gated endpoints (insights, communication drafts) can be tested
+    await prisma.organization.update({
+      where: { id: TEST_ORG_ID },
+      data: { settings: { plan: 'pro' } },
+    });
     const login = await app.inject({
       method: 'POST',
       url: '/auth/login',
@@ -22,6 +29,10 @@ describe.runIf(run)('Lite mobile API journeys (P1/P2)', () => {
   });
 
   afterAll(async () => {
+    await prisma.organization.update({
+      where: { id: TEST_ORG_ID },
+      data: { settings: {} },
+    });
     await app.close();
     await prisma.$disconnect();
   });

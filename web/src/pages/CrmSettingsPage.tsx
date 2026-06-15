@@ -75,6 +75,7 @@ export function CrmSettingsPage() {
   }
 
   function removeLossReason(index: number) {
+    if (!window.confirm('Remove this loss reason? Existing leads using this code are unaffected.')) return;
     setLossReasons((rows) => rows.filter((_, i) => i !== index));
   }
 

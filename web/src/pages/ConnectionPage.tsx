@@ -9,11 +9,15 @@ type AdminHealth = {
 
 export function ConnectionPage() {
   const [health, setHealth] = useState<AdminHealth | null>(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const apiUrl = health?.apiPublicUrl ?? getApiBaseUrl();
 
   useEffect(() => {
-    api<AdminHealth>('/admin/health').then(setHealth).catch(() => {});
+    api<AdminHealth>('/admin/health')
+      .then(setHealth)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   async function copyUrl() {
@@ -37,6 +41,15 @@ export function ConnectionPage() {
     } catch {
       // Clipboard blocked — leave the URL visible for manual copy.
     }
+  }
+
+  if (loading) {
+    return (
+      <>
+        <h1>Mobile connection</h1>
+        <p className="muted">Loading…</p>
+      </>
+    );
   }
 
   return (
