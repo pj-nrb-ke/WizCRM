@@ -22,6 +22,8 @@ import { LeadsPage } from './pages/LeadsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { BulkImportPage } from './pages/BulkImportPage';
+import { LeadGeneratorPage } from './pages/LeadGeneratorPage';
+import { CampaignDetailPage } from './pages/CampaignDetailPage';
 import { CrmSettingsPage } from './pages/CrmSettingsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { TargetsPage } from './pages/TargetsPage';
@@ -142,6 +144,22 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <BulkImportPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/lead-generator"
+              element={
+                <ManagerOnly>
+                  <LeadGeneratorPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/lead-generator/:campaignId"
+              element={
+                <ManagerOnly>
+                  <CampaignDetailPage />
                 </ManagerOnly>
               }
             />

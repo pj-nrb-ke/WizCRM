@@ -210,6 +210,9 @@ export function Layout() {
               <NavItem to="/leads/import" icon="leads">
                 Bulk import
               </NavItem>
+              <NavItem to="/lead-generator" icon="ai">
+                Lead Generator
+              </NavItem>
               <NavItem to="/calendar" icon="calendar">
                 Calendar
               </NavItem>

@@ -19,6 +19,7 @@ import { integrationRoutes } from './routes/integrations.js';
 import { quotationRoutes } from './routes/quotations.js';
 import { leadThreadRoutes } from './routes/lead-thread.js';
 import { reminderRoutes } from './routes/reminders.js';
+import { leadEngineRoutes, handleUnsubscribe } from './routes/lead-engine.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
 export async function buildApp() {
@@ -76,6 +77,19 @@ export async function buildApp() {
   await app.register(reminderRoutes, { prefix: '/reminders' });
   await app.register(integrationRoutes, { prefix: '/integrations' });
   await app.register(quotationRoutes, { prefix: '/quotations' });
+  await app.register(leadEngineRoutes, { prefix: '/leadengine' });
+
+  // Public unsubscribe — no auth required, verified by HMAC token
+  app.get('/unsubscribe', async (request, reply) => {
+    const { p, t } = request.query as { p?: string; t?: string };
+    if (!p || !t) return reply.status(400).send('Missing parameters.');
+    const result = await handleUnsubscribe(p, t);
+    const style = 'font-family:sans-serif;max-width:400px;margin:80px auto;text-align:center;';
+    const icon = result.ok ? '✅' : '❌';
+    return reply.type('text/html').send(
+      `<div style="${style}"><p style="font-size:2rem">${icon}</p><p>${result.message}</p></div>`,
+    );
+  });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error as Error & { statusCode?: number };

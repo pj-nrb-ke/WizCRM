@@ -46,4 +46,8 @@ export const config = {
    * LLM desk can take 10–30s on each tab open.
    */
   deskUseAi: process.env.WIZCRM_DESK_USE_AI === '1',
+
+  // Lead Generator
+  googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? '',
+  leadEngineEnabled: Boolean(process.env.GOOGLE_PLACES_API_KEY),
 };
