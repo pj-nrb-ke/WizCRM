@@ -2,12 +2,13 @@ import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { getApiBaseUrl } from '../lib/api';
+import { BrandMark } from '../components/BrandMark';
 
 export function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@wizag.local');
-  const [password, setPassword] = useState('wizcrm123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +34,7 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-panel">
         <div className="login-brand">
-          <div className="brand-mark brand-mark-lg">W</div>
+          <BrandMark size={60} />
           <h1>WizCRM</h1>
           <p>Manager & admin console</p>
         </div>

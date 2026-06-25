@@ -1,8 +1,14 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './lib/auth';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
+// Landing page is public/marketing-only and pulls in heavy deps (framer-motion).
+// Lazy-load it so those bytes never ship in the authenticated app bundle.
+const LandingPage = lazy(() =>
+  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })),
+);
 import { HomePage } from './pages/HomePage';
 import { OrganizationPage } from './pages/OrganizationPage';
 import { UsersPage } from './pages/UsersPage';
@@ -16,6 +22,8 @@ import { LeadsPage } from './pages/LeadsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { BulkImportPage } from './pages/BulkImportPage';
+import { LeadGeneratorPage } from './pages/LeadGeneratorPage';
+import { CampaignDetailPage } from './pages/CampaignDetailPage';
 import { CrmSettingsPage } from './pages/CrmSettingsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { TargetsPage } from './pages/TargetsPage';
@@ -42,6 +50,14 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route
+            path="/landing"
+            element={
+              <Suspense fallback={<div style={{ minHeight: '100vh', background: '#ffffff' }} />}>
+                <LandingPage />
+              </Suspense>
+            }
+          />
           <Route path="/login" element={<LoginPage />} />
           <Route
             element={
@@ -132,6 +148,22 @@ export default function App() {
               }
             />
             <Route
+              path="/lead-generator"
+              element={
+                <ManagerOnly>
+                  <LeadGeneratorPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/lead-generator/:campaignId"
+              element={
+                <ManagerOnly>
+                  <CampaignDetailPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
               path="/settings/crm"
               element={
                 <ManagerOnly>
@@ -196,7 +228,7 @@ export default function App() {
               }
             />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/landing" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

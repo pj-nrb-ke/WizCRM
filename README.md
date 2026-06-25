@@ -1,8 +1,8 @@
 # WizCRM
 
-**WizCRM** is an **AI-driven sales operating system** built for [Wise & Agile Solutions Ltd](https://github.com/pj-nrb-ke) (WIZAG). Reps sell; AI captures activity, updates the CRM, recommends next actions, and supports managers—with human approval where it matters.
+**WizCRM** is an **AI-driven sales operating system** built for [Wise & Agile Solutions Ltd](https://github.com/pj-nrb-ke) (WIZAG). Reps sell; AI captures activity, updates the CRM, recommends next actions, and supports managers — with human approval where it matters.
 
-**Plans:** **Lite** (internal pilot, ~1 week) · **Pro** (mainstream, ~1 month) · **Enterprise** (full platform: field geofence, ERP, advanced integrations).
+**Plans:** **Lite** (internal pilot) · **Pro** (mainstream) · **Enterprise** (full platform: field geofence, ERP, advanced integrations).
 
 ## Repository
 
@@ -10,19 +10,39 @@
 |------|--------|
 | Local path | `c:\Users\pj\WizCRM` |
 | Remote | [github.com/pj-nrb-ke/WizCRM](https://github.com/pj-nrb-ke/WizCRM) |
-| Active branch | `development` (day-to-day work; push here) |
-| Stable branch | `main` (releases / merges from `development`) |
+| Stable branch | `main` (releases) |
+| Working branches | `development`, `PJ`, `AK` (day-to-day work; open PRs into these) |
 
-WizCRM is a **standalone Git repository**. It is not part of the WIZAG public website repo (`WIZAG`); that parent project ignores this folder via `.gitignore`.
+WizCRM is a **standalone Git repository**, not part of the WIZAG public website repo.
+
+## Status at a glance
+
+This is a **working, deployed three-tier product** — API, web console, and mobile app — not a scaffold.
+
+| Tier | Stack | State |
+|------|-------|-------|
+| **API** | Fastify · Prisma · PostgreSQL · JWT · OpenAI · Brevo | Live at `api.wizcrm.app` |
+| **Web** | React 19 · Vite · TypeScript | Live at `app.wizcrm.app` |
+| **Mobile** | React Native (Expo) · Android-first | Production APK built & field-tested |
+| **Shared** | TypeScript domain logic · Zod | Used by all tiers |
+
+**Where the programme is:**
+
+- **Product Phase 1 (core CRM)** — ✅ engineering complete across web, mobile, and API. Remaining gate: mobile **device pilot** sign-off.
+- **Pro features** (AI capture, desk, forecasting, quotations, branding) — ✅ built.
+- **Pro platform (multi-tenancy / `tenant_id`)** — ⬜ not started; the main gap between internal pilot and external SaaS.
+- **Enterprise** (field geofence, real ERP connectors, SSO) — ⬜ stubs only.
+
+Authoritative status lives in the trackers below — **start with [PHASE-STATUS.md](./PHASE-STATUS.md)**.
 
 ## What WizCRM does
 
-- **AI Lead Capture** — Quick add, business card scan, duplicate checks.
-- **AI Sales Desk** — Daily priorities: who to call, follow-ups, stale leads.
-- **AI Activity Capture** — Post-call logging, voice/quick notes turned into structured timeline entries.
-- **AI Follow-up & communication** — Tasks and draft messages (Pro+); you approve before sending.
-- **AI Pipeline & manager insight** — Stage suggestions, forecasts, team summaries (Pro+).
-- **Field & ERP** — Geofence visit proof and accounting sync (**Enterprise**).
+- **AI Lead Capture** — quick add, business-card scan, duplicate checks.
+- **AI Sales Desk** — daily priorities: who to call, follow-ups, stale leads.
+- **AI Activity Capture** — post-call logging; voice/quick notes turned into structured timeline entries.
+- **AI Follow-up & communication** — tasks and draft messages (Pro+); you approve before sending.
+- **AI Pipeline & manager insight** — stage suggestions, forecasts, team summaries (Pro+).
+- **Field & ERP** — geofence visit proof and accounting sync (**Enterprise**).
 
 Lead stages and domain rules: **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)** (AI suggests stage changes; user confirms).
 
@@ -30,90 +50,74 @@ Lead stages and domain rules: **[LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md)** (AI s
 
 | Document | Purpose |
 |----------|---------|
-| **[PHASE-STATUS.md](./PHASE-STATUS.md)** | **Phase-level status (P0–P11)** |
+| **[PHASE-STATUS.md](./PHASE-STATUS.md)** | **Phase-level status (P0–P11) — read this first** |
 | [OUTSTANDING-TASKS.md](./OUTSTANDING-TASKS.md) | Single table of all open tasks |
-| [SRS.md](./SRS.md) | Software requirements v2.0 (Lite / Pro / Enterprise) |
+| [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) | Progress by Task ID: `LITE-*`, `PRO-*`, `WEB-*`, `QA-*` |
+| [docs/WEB-MOBILE-GAP-ANALYSIS.md](./docs/WEB-MOBILE-GAP-ANALYSIS.md) | Web ↔ mobile feature parity (`MOB-GAP-*`) |
+| [SRS.md](./SRS.md) | Software requirements v2.x (Lite / Pro / Enterprise) |
 | [SRS-WEB.md](./SRS-WEB.md) | Web app layer — admin settings, manager desk, phased `WEB-*` |
 | [WizCRM Features.md](./WizCRM%20Features.md) | Brochure feature lists by plan |
-| [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) | Progress by Task ID: `LITE-*`, `UT-*`, `QA-*`, `E2E-*` |
-| [manager_tasks.md](./manager_tasks.md) | Non-technical tasks (Google Cloud, ScaleGate, ERP, stores) |
-| [manager_task_tracker.md](./manager_task_tracker.md) | Manager checklist (`MGT-*`) |
-| [MOBILE_DEV.md](./MOBILE_DEV.md) | Android emulator and Expo |
+| [MOBILE_DEV.md](./MOBILE_DEV.md) | Android emulator and Expo toolchain |
 | [docs/MOBILE-PILOT.md](./docs/MOBILE-PILOT.md) | Production pilot checklist (5 min) |
-
-## Project status
-
-**Lite** development is next (~1 week internal pilot). Mobile has an Expo welcome screen; backend and AI services are not implemented yet. Track work in **PROGRESS_TRACKER.md**.
+| [docs/QA-AUTOMATED-SIGNOFF.md](./docs/QA-AUTOMATED-SIGNOFF.md) | Engineering QA gate |
 
 ## Repository layout
 
 ```
 WizCRM/
-├── README.md
-├── SRS.md                 # Software requirements v2.0 (AI-first, Lite/Pro/Enterprise)
-├── WizCRM Features.md     # Brochure features by plan
-├── PROGRESS_TRACKER.md    # Engineering progress by tier
-├── manager_tasks.md       # Non-technical prerequisites
-├── manager_task_tracker.md
-├── LEAD_LIFECYCLE.md
-├── MOBILE_DEV.md
-├── mobile/                # React Native (Expo)
-├── web/                   # Browser app (placeholder)
-├── shared/                # Shared types / logic
-├── scripts/
-└── docker/                # Containers (when stack is chosen)
+├── api/        # Fastify + Prisma backend (PostgreSQL, JWT, OpenAI, Brevo)
+│   ├── src/    # routes/ + services/
+│   └── prisma/ # schema.prisma (db push workflow — no migrations dir)
+├── web/        # React + Vite manager/admin console + public landing page
+├── mobile/     # React Native (Expo) app — Android-first
+├── shared/     # Shared TypeScript types + domain logic (Zod schemas)
+├── docker/     # docker-compose.yml (dev) + docker-compose.prod.yml
+├── scripts/    # QA, build-apk, and test automation (PowerShell)
+└── docs/       # QA, compliance, hosting, gap analysis
 ```
+
+## Getting started (local dev)
+
+Prerequisites: Node.js, a PostgreSQL database (or `docker compose -f docker/docker-compose.yml up -d`), and an `api/.env` (copy from `.env.example`).
+
+```bash
+npm install                 # install workspaces (shared, api, web)
+
+# API
+npm run db:up               # start Postgres via docker (optional)
+npm run api:dev             # tsx watch on the Fastify server
+
+# Web
+npm run web:dev             # Vite dev server (http://localhost:5180)
+
+# Mobile — see MOBILE_DEV.md
+```
+
+`api/.env` must set at least `DATABASE_URL` and `JWT_SECRET` (required; no safe default). `OPENAI_API_KEY` and Brevo keys are optional — AI/email features degrade gracefully without them.
+
+## Tests & CI
+
+```bash
+npm test                    # shared + api + mobile unit/integration
+npm run web:build           # type-check + production build of the web app
+npm run test:qa             # automated engineering QA gate (PowerShell)
+```
+
+CI runs on push/PR via **[.github/workflows/test.yml](./.github/workflows/test.yml)** (unit + integration jobs).
+
+## Deployment
+
+The API and web app run on a VPS behind `api.wizcrm.app` and `app.wizcrm.app`. Production container assets live in [`docker/docker-compose.prod.yml`](./docker/docker-compose.prod.yml); hosting notes are in [docs/HOSTING-WEB-SERVER.md](./docs/HOSTING-WEB-SERVER.md). The mobile production APK is built with `.\scripts\build-apk.ps1 -Production` (see [MOBILE_DEV.md](./MOBILE_DEV.md)).
 
 ## Development workflow
 
-Work on the **`development`** branch and push to GitHub:
-
 ```bash
-cd c:\Users\pj\WizCRM
-git checkout development
-git status
-git add .
+git checkout -b feat/my-change      # branch from a working branch
 git commit -m "Describe your change"
-git push
+git push -u origin feat/my-change   # open a PR into development / PJ
 ```
 
-Merge to `main` when a release is ready:
-
-```bash
-git checkout main
-git merge development
-git push origin main
-```
-
-Clone elsewhere:
-
-```bash
-git clone https://github.com/pj-nrb-ke/WizCRM.git
-cd WizCRM
-```
-
-## Docker
-
-There is **no Docker configuration** in this repository yet (`Dockerfile`, `docker-compose.yml`, or similar). There is also **no runnable application** to containerize.
-
-When an application stack and services (app, database, cache, etc.) are added, Docker assets should live under `docker/` or the repo root and be documented in this section with:
-
-- Prerequisites (Docker Desktop or Engine)
-- `docker compose up` (or equivalent) for local development
-- Environment variables (`.env.example`)
-
-Until then, **no Docker changes are required or possible** beyond placeholder planning.
-
-## Mobile app
-
-WizCRM includes a **mobile app** (Android first, iOS later) alongside the web CRM. The mobile client uses **React Native with Expo** under `mobile/`. Tooling, emulator setup, and run commands are in **[MOBILE_DEV.md](./MOBILE_DEV.md)**.
-
-## Related documentation
-
-- [SRS.md](./SRS.md) — Product and software requirements
-- [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) — Implementation progress by requirement ID
-- [LEAD_LIFECYCLE.md](./LEAD_LIFECYCLE.md) — Lead stages, transitions, and fields to track
-- [MOBILE_DEV.md](./MOBILE_DEV.md) — Android Studio, emulator, and mobile development
+Merge to `main` when a release is ready.
 
 ## License and ownership
 

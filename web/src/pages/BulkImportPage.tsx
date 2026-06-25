@@ -13,6 +13,39 @@ type ImportRow = {
 
 type AssignableUser = { id: string; name: string; email: string };
 
+// Quote-aware CSV line split: keeps commas inside "quoted fields" intact and
+// unescapes doubled quotes ("" -> "). A naive split(',') corrupts any field
+// like "Acme, Inc" and shifts every column after it.
+export function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      out.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map((c) => c.trim());
+}
+
 function parseCsv(text: string): ImportRow[] {
   const lines = text
     .split(/\r?\n/)
@@ -23,13 +56,13 @@ function parseCsv(text: string): ImportRow[] {
   const hasHeader = header.includes('name');
   const start = hasHeader ? 1 : 0;
   const cols = hasHeader
-    ? lines[0]!.split(',').map((c) => c.trim().toLowerCase())
+    ? parseCsvLine(lines[0]!).map((c) => c.toLowerCase())
     : ['name', 'company', 'email', 'phone', 'source'];
 
   const idx = (key: string) => cols.indexOf(key);
 
   return lines.slice(start).map((line) => {
-    const parts = line.split(',').map((p) => p.trim().replace(/^"|"$/g, ''));
+    const parts = parseCsvLine(line);
     const pick = (key: string) => {
       const i = idx(key);
       return i >= 0 ? parts[i]?.trim() : undefined;

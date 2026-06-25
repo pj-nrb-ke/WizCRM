@@ -115,10 +115,21 @@ function buildPersonalMetrics(
   return { openLeads, tasksDue, staleLeads, upcomingEvents };
 }
 
+// Deterministic pseudo-noise so illustrative sparklines/trends stay stable
+// across renders (no Math.random — that regenerated fake numbers every paint).
+function seededNoise(seed: number) {
+  let s = (seed * 9301 + 49297) % 233280;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
 function buildSparkData(count: number, seed = 1) {
+  const rnd = seededNoise(seed + count);
   let v = Math.max(1, Math.round(count * 0.4));
   return Array.from({ length: 7 }, () => {
-    v = Math.max(0, v + Math.round((Math.random() - 0.4 + seed * 0.05) * (count / 4 + 1)));
+    v = Math.max(0, v + Math.round((rnd() - 0.4 + seed * 0.05) * (count / 4 + 1)));
     return { v };
   });
 }
@@ -632,7 +643,7 @@ function buildInsights({
         title: 'Manager Brief',
         body: b,
         priority: i === 0 ? 'high' : 'medium',
-        confidence: 80 + Math.floor(Math.random() * 15),
+        confidence: 82 + ((i * 5) % 15),
         actions: ['Review Pipeline', 'Schedule Sync'],
       });
     });
@@ -720,10 +731,11 @@ function buildTrendData(summary: ReportSummary | null) {
 
   const base = Math.max(1, Math.round(summary.activitiesLast30Days / 8));
   const wonBase = Math.max(0, Math.round(summary.wonCount / 8));
+  const rnd = seededNoise(base * 31 + wonBase * 7 + 1);
   return Array.from({ length: 8 }, (_, i) => ({
     label: `W${i + 1}`,
-    activities: Math.max(0, base + Math.round((Math.random() - 0.4) * base * 0.8)),
-    won: Math.max(0, wonBase + Math.round((Math.random() - 0.3) * wonBase * 0.9)),
+    activities: Math.max(0, base + Math.round((rnd() - 0.4) * base * 0.8)),
+    won: Math.max(0, wonBase + Math.round((rnd() - 0.3) * wonBase * 0.9)),
   }));
 }
 

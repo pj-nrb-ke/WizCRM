@@ -8,13 +8,16 @@ datasource db {
 }
 
 model Organization {
-  id        String   @id @default(uuid())
-  name      String
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now())
-  users     User[]
-  leads     Lead[]
-  teams     Team[]
+  id              String           @id @default(uuid())
+  name            String
+  settings        Json             @default("{}")
+  createdAt       DateTime         @default(now())
+  users           User[]
+  leads           Lead[]
+  teams           Team[]
+  campaigns       Campaign[]
+  emailTemplates  EmailTemplate[]
+  suppressionList SuppressionList[]
 }
 
 model Team {
@@ -40,18 +43,23 @@ model User {
   passwordHash   String
   name           String
   role           UserRole     @default(SALES)
+  failedLoginCount Int        @default(0)
+  lockoutUntil   DateTime?
   createdAt      DateTime     @default(now())
-  ownedLeads     Lead[]       @relation("LeadOwner")
-  activities     Activity[]
-  tasks          Task[]
-  calendarEvents CalendarEvent[]
-  userReminders  UserReminder[]
-  salesOpportunities SalesOpportunity[] @relation("OpportunityOwner")
-  quotations         Quotation[]
-  aiAuditLogs    AiAuditLog[]
-  stageChanges   StageChange[]
-  leadMessages   LeadMessage[]
-  leadAttachments LeadAttachment[]
+  ownedLeads          Lead[]            @relation("LeadOwner")
+  activities          Activity[]
+  tasks               Task[]
+  calendarEvents      CalendarEvent[]
+  userReminders       UserReminder[]
+  salesOpportunities  SalesOpportunity[] @relation("OpportunityOwner")
+  quotations          Quotation[]
+  aiAuditLogs         AiAuditLog[]
+  stageChanges        StageChange[]
+  leadMessages        LeadMessage[]
+  leadAttachments     LeadAttachment[]
+  ownedCampaigns      Campaign[]        @relation("CampaignOwner")
+  emailTemplates      EmailTemplate[]   @relation("EmailTemplateCreator")
+  suppressionEntries  SuppressionList[] @relation("SuppressionAddedBy")
 
   @@index([organizationId])
   @@index([teamId])
@@ -96,12 +104,13 @@ model Lead {
   tasks            Task[]
   stageChanges     StageChange[]
   salesOpportunities SalesOpportunity[]
-  quotations       Quotation[]
-  calendarEvents   CalendarEvent[]
-  aiSuggestions    AiSuggestion[]
-  messages         LeadMessage[]
-  attachments      LeadAttachment[]
-  userReminders    UserReminder[]
+  quotations         Quotation[]
+  calendarEvents     CalendarEvent[]
+  aiSuggestions      AiSuggestion[]
+  messages           LeadMessage[]
+  attachments        LeadAttachment[]
+  userReminders      UserReminder[]
+  importedProspects  Prospect[]
 
   @@index([organizationId, stage])
   @@index([organizationId, stage, pipelineRank])
@@ -422,4 +431,212 @@ model AiAuditLog {
   createdAt      DateTime @default(now())
 
   @@index([organizationId, createdAt(sort: Desc)])
+}
+
+// ─── Lead Generator ────────────────────────────────────────────────────────
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum DiscoveryRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ProspectStatus {
+  NEW
+  QUALIFIED
+  ENRICHED
+  EMAILED
+  REPLIED
+  IMPORTED
+  REJECTED
+  SUPPRESSED
+}
+
+enum EmailSendStatus {
+  PENDING
+  SENT
+  FAILED
+  BOUNCED
+  UNSUBSCRIBED
+}
+
+model Campaign {
+  id               String         @id @default(uuid())
+  organizationId   String
+  organization     Organization   @relation(fields: [organizationId], references: [id])
+  ownerId          String
+  owner            User           @relation("CampaignOwner", fields: [ownerId], references: [id])
+  name             String
+  goal             String?
+  industryKeywords Json           @default("[]")
+  locations        Json           @default("[]")
+  sizeMin          Int?
+  sizeMax          Int?
+  scoringRules     Json           @default("{}")
+  status           CampaignStatus @default(DRAFT)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  prospects        Prospect[]
+  emailTemplates   EmailTemplate[]
+  sequences        EmailSequence[]
+  runs             DiscoveryRun[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+model DiscoveryRun {
+  id           String             @id @default(uuid())
+  campaignId   String
+  campaign     Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  status       DiscoveryRunStatus @default(RUNNING)
+  params       Json               @default("{}")
+  resultsCount Int                @default(0)
+  error        String?
+  startedAt    DateTime           @default(now())
+  finishedAt   DateTime?
+  prospects    Prospect[]
+
+  @@index([campaignId])
+}
+
+model Prospect {
+  id             String              @id @default(uuid())
+  organizationId String
+  campaignId     String
+  campaign       Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  discoveryRunId String?
+  discoveryRun   DiscoveryRun?       @relation(fields: [discoveryRunId], references: [id], onDelete: SetNull)
+  companyName    String
+  normalizedName String
+  industry       String?
+  sectorTags     Json                @default("[]")
+  address        String?
+  lat            Float?
+  lng            Float?
+  phone          String?
+  website        String?
+  source         String              @default("manual")
+  sourceRef      String?
+  score          Int                 @default(0)
+  scoreBreakdown Json                @default("[]")
+  tier           String?
+  status         ProspectStatus      @default(NEW)
+  dedupHash      String
+  importedLeadId String?
+  importedLead   Lead?               @relation(fields: [importedLeadId], references: [id], onDelete: SetNull)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  contacts       ProspectContact[]
+  enrichment     ProspectEnrichment?
+  emailSends     EmailSend[]
+
+  @@unique([campaignId, dedupHash])
+  @@index([campaignId])
+  @@index([organizationId, status])
+  @@index([campaignId, tier])
+}
+
+model ProspectContact {
+  id          String   @id @default(uuid())
+  prospectId  String
+  prospect    Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  fullName    String?
+  role        String?
+  email       String?
+  emailStatus String   @default("unverified")
+  phone       String?
+  source      String?
+  confidence  Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([prospectId])
+}
+
+model ProspectEnrichment {
+  id                  String   @id @default(uuid())
+  prospectId          String   @unique
+  prospect            Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  websiteSummary      String?
+  techStackDetected   Json     @default("[]")
+  employeeEstimate    Int?
+  existingErpDetected Boolean  @default(false)
+  signals             Json     @default("{}")
+  raw                 Json     @default("{}")
+  enrichedAt          DateTime @default(now())
+}
+
+model EmailTemplate {
+  id             String          @id @default(uuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  campaignId     String?
+  campaign       Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdById    String
+  createdBy      User            @relation("EmailTemplateCreator", fields: [createdById], references: [id])
+  name           String
+  subject        String
+  bodyHtml       String
+  mergeFields    Json            @default("[]")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  sequences      EmailSequence[]
+
+  @@index([organizationId])
+}
+
+model EmailSequence {
+  id         String        @id @default(uuid())
+  campaignId String
+  campaign   Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  templateId String
+  template   EmailTemplate @relation(fields: [templateId], references: [id])
+  stepNumber Int
+  delayDays  Int           @default(0)
+  createdAt  DateTime      @default(now())
+
+  @@unique([campaignId, stepNumber])
+  @@index([campaignId])
+}
+
+model EmailSend {
+  id             String          @id @default(uuid())
+  prospectId     String
+  prospect       Prospect        @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  sequenceStep   Int
+  brevoMessageId String?
+  status         EmailSendStatus @default(PENDING)
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  repliedAt      DateTime?
+  createdAt      DateTime        @default(now())
+
+  @@index([prospectId])
+  @@index([brevoMessageId])
+}
+
+model SuppressionList {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  companyName    String?
+  domain         String?
+  email          String?
+  addedById      String
+  addedBy        User     @relation("SuppressionAddedBy", fields: [addedById], references: [id])
+  reason         String?
+  addedAt        DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, domain])
+  @@index([organizationId, email])
 }

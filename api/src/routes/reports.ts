@@ -136,13 +136,18 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
     }
-    const q = request.query as { teamId?: string };
-    const leads = await loadLeadsForExport(organizationId, q.teamId);
+    const q = request.query as { teamId?: string; dateFrom?: string; dateTo?: string };
+    const parsedRange = parseDateRange(q.dateFrom, q.dateTo);
+    if (!parsedRange.ok) {
+      return reply.status(400).send({ error: parsedRange.error });
+    }
+    const leads = await loadLeadsForExport(organizationId, q.teamId, parsedRange.range);
     if (!leads) return reply.status(404).send({ error: 'Team not found' });
     const csv = leadsToCsv(leads);
     return reply
       .header('Content-Type', 'text/csv; charset=utf-8')
       .header('Content-Disposition', 'attachment; filename="wizcrm-leads.csv"')
+      .header('X-Content-Type-Options', 'nosniff')
       .send(csv);
   });
 };

@@ -287,8 +287,12 @@ export function PipelinePage() {
       {error ? <div className="alert alert-error">{error}</div> : null}
       {loading ? <p className="muted">Loading…</p> : null}
       {moving ? <p className="muted pipeline-moving">Saving order…</p> : null}
-      {!loading && filter.teamId && total === 0 && !error ? (
-        <p className="muted">No open leads for this filter.</p>
+      {!loading && total === 0 && !error ? (
+        <p className="muted">
+          {filter.teamId
+            ? 'No open leads for this team filter.'
+            : 'No open leads yet. Add a lead or import your pipeline to get started.'}
+        </p>
       ) : null}
 
       <div className="kanban">
@@ -360,6 +364,15 @@ export function PipelinePage() {
                         <span className="kanban-card-meta">
                           {lead.owner.name}
                           {lead.owner.team ? ` · ${lead.owner.team.name}` : ''}
+                        </span>
+                      ) : null}
+                      {lead.tags && lead.tags.length > 0 ? (
+                        <span className="kanban-card-tags">
+                          {lead.tags.slice(0, 3).map((t) => (
+                            <span key={t} className="kanban-card-tag">
+                              {t}
+                            </span>
+                          ))}
                         </span>
                       ) : null}
                     </div>

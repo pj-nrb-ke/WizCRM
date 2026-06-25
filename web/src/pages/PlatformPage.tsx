@@ -16,6 +16,7 @@ type SettingsResponse = {
 
 export function PlatformPage() {
   const [data, setData] = useState<SettingsResponse | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
   const [deskUseAi, setDeskUseAi] = useState(false);
   const [plan, setPlan] = useState<PlanCode>('lite');
   const [message, setMessage] = useState('');
@@ -30,7 +31,9 @@ export function PlatformPage() {
   }
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+    load()
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoadingSettings(false));
   }, []);
 
   async function onSave() {
@@ -56,13 +59,15 @@ export function PlatformPage() {
 
       <div className="card">
         <h2>Status</h2>
-        {data && (
+        {loadingSettings ? (
+          <p className="muted">Loading…</p>
+        ) : data ? (
           <ul className="status-list">
             <li>OpenAI key on server: {data.openaiKeyConfigured ? 'Configured' : 'Not set'}</li>
             <li>Model: {data.openaiModel || 'gpt-4o-mini'}</li>
             <li>Env default (LLM desk): {data.deskUseAiEnvDefault ? 'On' : 'Off'}</li>
           </ul>
-        )}
+        ) : null}
       </div>
 
       <div className="card">
@@ -79,6 +84,17 @@ export function PlatformPage() {
             <option value="enterprise">Enterprise</option>
           </select>
         </label>
+        <button
+          type="button"
+          className="btn-primary"
+          style={{ marginTop: 12 }}
+          onClick={() => void onSave()}
+          disabled={!data}
+        >
+          Save plan
+        </button>
+        {message ? <p className="success">{message}</p> : null}
+        {error ? <p className="error">{error}</p> : null}
       </div>
 
       <div className="card">
@@ -106,7 +122,7 @@ export function PlatformPage() {
           className="btn-primary"
           style={{ marginTop: 12 }}
           onClick={() => void onSave()}
-          disabled={!data?.aiEnabled}
+          disabled={!data}
         >
           Save desk mode
         </button>

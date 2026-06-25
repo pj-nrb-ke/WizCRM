@@ -9,6 +9,7 @@ import {
   updateLeadSchema,
   bulkImportLeadsSchema,
   bulkUpdateLeadsSchema,
+  isLeadStage,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
@@ -96,10 +97,13 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/', async (request, reply) => {
-    const { organizationId } = request.user;
+    const { organizationId, sub, role } = request.user;
     const q = request.query as { stage?: string; teamId?: string; ownerId?: string; tag?: string };
     let ownerFilter: { ownerId?: string | { in: string[] } } = {};
-    if (q.ownerId) {
+    if (!isManager(role)) {
+      // Non-managers only ever see their own leads, regardless of query params.
+      ownerFilter = { ownerId: sub };
+    } else if (q.ownerId) {
       ownerFilter = { ownerId: q.ownerId };
     } else if (q.teamId) {
       const memberIds = await getTeamMemberIds(q.teamId, organizationId);
@@ -112,10 +116,13 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       ownerFilter = { ownerId: { in: memberIds } };
     }
     const tag = q.tag?.trim();
+    // Only apply the stage filter if it's a real enum value — a garbage value
+    // passed straight to Prisma's enum column throws (500); ignore it instead.
+    const stageFilter = q.stage && isLeadStage(q.stage) ? { stage: q.stage as never } : {};
     const leads = await prisma.lead.findMany({
       where: {
         organizationId,
-        ...(q.stage ? { stage: q.stage as never } : {}),
+        ...stageFilter,
         ...(tag ? { tags: { has: tag } } : {}),
         ...ownerFilter,
       },
@@ -127,12 +134,15 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/pipeline', async (request, reply) => {
-    const { organizationId } = request.user;
+    const { organizationId, sub, role } = request.user;
     const q = request.query as { teamId?: string; ownerId?: string };
     const stages = mergePipelineStages((await getOrgSettings(organizationId)).pipelineStages);
     const stageIds = pipelineStageIds(stages);
     let ownerFilter: { ownerId?: string | { in: string[] } } = {};
-    if (q.ownerId) {
+    if (!isManager(role)) {
+      // Non-managers only ever see their own pipeline, regardless of query params.
+      ownerFilter = { ownerId: sub };
+    } else if (q.ownerId) {
       ownerFilter = { ownerId: q.ownerId };
     } else if (q.teamId) {
       const memberIds = await getTeamMemberIds(q.teamId, organizationId);

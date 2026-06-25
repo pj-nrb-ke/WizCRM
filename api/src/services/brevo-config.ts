@@ -73,6 +73,7 @@ export function loadBrevoSecrets(reload = false): BrevoSecrets {
 }
 
 function applyEnvFallback(secrets: BrevoSecrets): BrevoSecrets {
+  const apiKey = secrets.BREVO_API_KEY || process.env.BREVO_API_KEY || '';
   return {
     ...secrets,
     SMTP_HOST: secrets.SMTP_HOST || process.env.SMTP_HOST || '',
@@ -81,8 +82,14 @@ function applyEnvFallback(secrets: BrevoSecrets): BrevoSecrets {
     SMTP_PASS: secrets.SMTP_PASS || process.env.SMTP_PASS || '',
     MAIL_FROM: secrets.MAIL_FROM || process.env.MAIL_FROM || '',
     MAIL_FROM_NAME: secrets.MAIL_FROM_NAME || process.env.MAIL_FROM_NAME || 'WizCRM',
-    BREVO_API_KEY: secrets.BREVO_API_KEY || process.env.BREVO_API_KEY || '',
+    BREVO_API_KEY: apiKey,
+    // Campaign API key — defaults to the main API key if not set separately
+    BREVO_CAMPAIGN_API_KEY: secrets.BREVO_CAMPAIGN_API_KEY || process.env.BREVO_CAMPAIGN_API_KEY || apiKey,
   };
+}
+
+export function getBrevoContactsApiKey(): string {
+  return loadBrevoSecrets().BREVO_CAMPAIGN_API_KEY || '';
 }
 
 export type EmailSendMethod = 'api' | 'smtp' | 'none';

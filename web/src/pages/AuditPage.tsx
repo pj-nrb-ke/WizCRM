@@ -15,11 +15,13 @@ type AuditRow = {
 export function AuditPage() {
   const [logs, setLogs] = useState<AuditRow[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api<{ logs: AuditRow[] }>('/admin/audit')
       .then((d) => setLogs(d.logs))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -28,7 +30,9 @@ export function AuditPage() {
       <p className="muted">Last 20 AI operations (read-only).</p>
       {error ? <p className="error">{error}</p> : null}
       <div className="card">
-        {logs.length === 0 ? (
+        {loading ? (
+          <p className="muted">Loading…</p>
+        ) : logs.length === 0 ? (
           <p className="muted">No AI activity yet.</p>
         ) : (
           <table>
@@ -37,6 +41,7 @@ export function AuditPage() {
                 <th>When</th>
                 <th>Feature</th>
                 <th>User</th>
+                <th>Status</th>
                 <th>Summary</th>
               </tr>
             </thead>
@@ -46,6 +51,15 @@ export function AuditPage() {
                   <td>{new Date(l.createdAt).toLocaleString()}</td>
                   <td>{l.feature}</td>
                   <td>{l.user?.name ?? '—'}</td>
+                  <td>
+                    {l.approved == null ? (
+                      <span className="muted">—</span>
+                    ) : l.approved ? (
+                      <span style={{ color: '#16a34a' }}>Approved</span>
+                    ) : (
+                      <span style={{ color: '#dc2626' }}>Rejected</span>
+                    )}
+                  </td>
                   <td className="muted" style={{ maxWidth: 280 }}>
                     {(l.outputSummary ?? l.inputSummary ?? '').slice(0, 120)}
                   </td>
