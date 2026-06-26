@@ -57,4 +57,6 @@ export const config = {
   // Heat Map signal discovery
   googleCustomSearchKey: process.env.GOOGLE_CUSTOM_SEARCH_KEY ?? process.env.GOOGLE_PLACES_API_KEY ?? '',
   googleCustomSearchEngineId: process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID ?? '',
+  tavilyApiKey: process.env.TAVILY_API_KEY ?? '',
+  apolloApiKey: process.env.APOLLO_API_KEY ?? '',
 };
