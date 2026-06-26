@@ -6,15 +6,17 @@ import { DiscussionProvider } from './discussion.provider.js';
 import { TavilyProvider } from './tavily.provider.js';
 import { LinkedInProvider } from './linkedin.provider.js';
 import { NewBusinessProvider } from './new-business.provider.js';
+import { OpenCorporatesProvider } from './opencorporates.provider.js';
 import type { IntentSignalRaw } from './signal-provider.interface.js';
 
 const providers = [
-  new TavilyProvider(),      // primary — AI web search (10 queries, HOT/WARM/MEDIUM)
-  new LinkedInProvider(),    // LinkedIn posts & profiles via Tavily
-  new NewBusinessProvider(), // newly registered/opened companies in target areas
-  new TenderProvider(),      // PPRA Kenya + TendersKenya — government tenders
-  new RedditProvider(),      // r/Kenya, r/nairobi community discussions
-  new DiscussionProvider(),  // Google Custom Search — forums & articles
+  new TavilyProvider(),         // primary — AI web search (10 queries, HOT/WARM/MEDIUM)
+  new LinkedInProvider(),       // LinkedIn posts & profiles via Tavily
+  new OpenCorporatesProvider(), // official company registry — newly incorporated in Kenya
+  new NewBusinessProvider(),    // Tavily search for new business announcements
+  new TenderProvider(),         // PPRA Kenya + TendersKenya — government tenders
+  new RedditProvider(),         // r/Kenya, r/nairobi community discussions
+  new DiscussionProvider(),     // Google Custom Search — forums & articles
 ];
 
 export async function runHeatMapDiscovery(
