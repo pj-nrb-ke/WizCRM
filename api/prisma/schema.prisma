@@ -487,6 +487,7 @@ model Campaign {
   emailTemplates   EmailTemplate[]
   sequences        EmailSequence[]
   runs             DiscoveryRun[]
+  intentSignals    IntentSignal[]
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -639,4 +640,31 @@ model SuppressionList {
   @@index([organizationId])
   @@index([organizationId, domain])
   @@index([organizationId, email])
+}
+
+model IntentSignal {
+  id             String    @id @default(uuid())
+  campaignId     String
+  campaign       Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  source         String
+  platform       String
+  title          String
+  snippet        String?
+  url            String
+  authorName     String?
+  authorCompany  String?
+  location       String?
+  lat            Float?
+  lng            Float?
+  publishedAt    DateTime?
+  intentStrength String
+  engagementScore Int      @default(0)
+  status         String    @default("NEW")
+  dedupHash      String?
+  raw            Json?
+  createdAt      DateTime  @default(now())
+
+  @@index([campaignId])
+  @@index([campaignId, intentStrength])
+  @@unique([campaignId, dedupHash])
 }
