@@ -16,6 +16,9 @@ const CITIES = [
   { name: 'Eldoret',  lat:  0.5143, lng: 35.2698 },
   { name: 'Nyeri',    lat: -0.4167, lng: 36.9500 },
   { name: 'Malindi',  lat: -3.2175, lng: 40.1169 },
+  { name: 'Thika',    lat: -1.0332, lng: 37.0693 },
+  { name: 'Machakos', lat: -1.5177, lng: 37.2634 },
+  { name: 'Kisii',    lat: -0.6817, lng: 34.7667 },
 ];
 
 const KENYA_PATH = 'M 162,18 L 210,10 L 280,30 L 320,60 L 330,110 L 310,150 L 290,195 L 270,250 L 230,295 L 185,308 L 140,300 L 95,270 L 60,230 L 40,190 L 30,150 L 38,110 L 55,75 L 85,45 Z';
@@ -23,11 +26,13 @@ const KENYA_PATH = 'M 162,18 L 210,10 L 280,30 L 320,60 L 330,110 L 310,150 L 29
 // ── Source metadata (plain-English labels for each source) ─────────────────
 
 const SOURCE_META: Record<string, { icon: string; label: string; description: string; color: string; border: string; bg: string }> = {
-  tavily:       { icon: '🔍', label: 'Web Intelligence',    description: 'Found via AI web search across forums, news and B2B sites', color: '#854d0e', border: '#fde047', bg: '#fefce8' },
-  ppra:         { icon: '📋', label: 'Government Tender',   description: 'Official procurement posted on PPRA Kenya portal',          color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
-  tenderskenya: { icon: '📋', label: 'Government Tender',   description: 'Aggregated public tender from TendersKenya.co.ke',          color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
-  reddit:       { icon: '💬', label: 'Community Discussion',description: 'Public post on Reddit — r/Kenya, r/nairobi, r/africa',      color: '#c2410c', border: '#fdba74', bg: '#fff7ed' },
-  google_search:{ icon: '🌐', label: 'Forum / Article',     description: 'Web forum thread or article about sourcing this product',   color: '#166534', border: '#86efac', bg: '#f0fdf4' },
+  tavily:       { icon: '🔍', label: 'Web Intelligence',      description: 'AI web search — forums, news, B2B sites (10 targeted queries)',   color: '#854d0e', border: '#fde047', bg: '#fefce8' },
+  linkedin:     { icon: '💼', label: 'LinkedIn Signal',        description: 'LinkedIn posts & profiles of buyers actively discussing the need', color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
+  new_business: { icon: '🏢', label: 'New Business',           description: 'Newly registered or opened company — prime ERP adoption target',  color: '#7c3aed', border: '#c4b5fd', bg: '#faf5ff' },
+  ppra:         { icon: '📋', label: 'Government Tender',      description: 'Official procurement posted on PPRA Kenya portal',                color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+  tenderskenya: { icon: '📋', label: 'Government Tender',      description: 'Aggregated public tender from TendersKenya.co.ke',                color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+  reddit:       { icon: '💬', label: 'Community Discussion',   description: 'Public post on Reddit — r/Kenya, r/nairobi, r/africa',            color: '#c2410c', border: '#fdba74', bg: '#fff7ed' },
+  google_search:{ icon: '🌐', label: 'Forum / Article',        description: 'Web forum thread or article about sourcing this product',         color: '#166534', border: '#86efac', bg: '#f0fdf4' },
 };
 
 function getSourceMeta(platform: string) {
@@ -254,10 +259,12 @@ function KenyaMap({ signals, selected, onSelect }: {
 
 function SourceLegend() {
   const items = [
-    { platform: 'tavily',        count_label: 'AI Web' },
-    { platform: 'ppra',          count_label: 'Tenders' },
-    { platform: 'reddit',        count_label: 'Social' },
-    { platform: 'google_search', count_label: 'Forums' },
+    { platform: 'tavily'       },
+    { platform: 'linkedin'     },
+    { platform: 'new_business' },
+    { platform: 'ppra'         },
+    { platform: 'reddit'       },
+    { platform: 'google_search'},
   ];
   return (
     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -279,6 +286,32 @@ function SourceLegend() {
       </div>
     </div>
   );
+}
+
+// ── CSV export ─────────────────────────────────────────────────────────────
+
+function exportCSV(signals: IntentSignal[]) {
+  const headers = ['Strength', 'Source', 'Title', 'Location', 'Published', 'URL', 'Snippet'];
+  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const rows = signals.map((s) => [
+    s.intentStrength,
+    getSourceMeta(s.platform).label,
+    esc(s.title),
+    s.location ?? '',
+    s.publishedAt ? new Date(s.publishedAt).toLocaleDateString('en-KE') : '',
+    s.url,
+    esc(s.snippet ?? ''),
+  ].join(','));
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `heat-map-signals-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── Main HeatMapTab ────────────────────────────────────────────────────────
@@ -353,6 +386,12 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
         <button type="button" className="btn-primary" onClick={() => void runScan()} disabled={running} style={{ minWidth: 170 }}>
           {running ? '⏳ Scanning all sources…' : '🔥 Run Heat Map Scan'}
         </button>
+        {signals.length > 0 && (
+          <button type="button" className="btn-secondary" onClick={() => exportCSV(filtered)}
+            style={{ fontSize: '0.82rem' }} title="Download filtered signals as CSV">
+            ⬇ Export CSV
+          </button>
+        )}
         <select className="input" value={filterStrength} onChange={(e) => setFilterStrength(e.target.value as IntentStrength | 'ALL')}
           style={{ fontSize: '0.82rem', padding: '6px 10px', width: 'auto' }}>
           <option value="ALL">All intent levels</option>
@@ -416,9 +455,9 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
         <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-secondary, #888)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🗺️</div>
           <p style={{ fontWeight: 600, marginBottom: 6 }}>No signals yet</p>
-          <p style={{ fontSize: '0.83rem', maxWidth: 420, margin: '0 auto' }}>
-            Click <strong>Run Heat Map Scan</strong> to search across Tavily Web Intelligence,
-            government tender portals, Reddit, and web forums for active buying signals.
+          <p style={{ fontSize: '0.83rem', maxWidth: 460, margin: '0 auto' }}>
+            Click <strong>Run Heat Map Scan</strong> to search across 6 sources: AI Web Intelligence,
+            LinkedIn, new business registrations, government tenders, Reddit, and web forums.
           </p>
           <SourceLegend />
         </div>

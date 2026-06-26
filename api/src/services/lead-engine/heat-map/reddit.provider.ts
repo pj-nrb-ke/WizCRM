@@ -7,6 +7,10 @@ const KENYA_COORDS: Record<string, { lat: number; lng: number }> = {
   nakuru:   { lat: -0.3031, lng: 36.0800 },
   kisumu:   { lat: -0.0917, lng: 34.7680 },
   eldoret:  { lat:  0.5143, lng: 35.2698 },
+  thika:    { lat: -1.0332, lng: 37.0693 },
+  machakos: { lat: -1.5177, lng: 37.2634 },
+  nyeri:    { lat: -0.4167, lng: 36.9500 },
+  kisii:    { lat: -0.6817, lng: 34.7667 },
   kenya:    { lat: -1.2921, lng: 36.8219 },
 };
 
