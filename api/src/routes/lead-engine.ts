@@ -571,6 +571,26 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     await updateSignalStatus(signalId, campaignId, status);
     return reply.status(204).send();
   });
+
+  // ── Apollo on-demand contact lookup (1 credit per call) ────────────────
+  app.post('/signals/:signalId/contacts', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const { signalId } = request.params as { signalId: string };
+    const signal = await prisma.intentSignal.findFirst({
+      where: { id: signalId, campaign: { organizationId: request.user.organizationId } },
+      select: { id: true, title: true, url: true, authorCompany: true },
+    });
+    if (!signal) return reply.status(404).send({ error: 'Signal not found' });
+
+    const { getApolloContact } = await import('../services/lead-engine/heat-map/apollo.service.js');
+    const contact = await getApolloContact(signal.title, signal.url, signal.authorCompany);
+
+    if (!contact) {
+      return reply.status(404).send({ error: 'No contact found for this signal.' });
+    }
+    return reply.send({ contact });
+  });
 };
 
 // Public unsubscribe handler — registered separately in app.ts so it has no auth hook

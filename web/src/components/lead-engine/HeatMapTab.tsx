@@ -2,149 +2,245 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import type { IntentSignal, IntentStrength, SignalSource } from '../../lib/lead-engine-types';
 
-// ── Kenya map helpers ──────────────────────────────────────────────────────
+// ── Kenya map ──────────────────────────────────────────────────────────────
 
-// Bounding box: lat -4.7→4.6, lng 33.9→41.9
-const MAP_W = 360;
-const MAP_H = 320;
-const LAT_MAX = 4.6;
-const LAT_RANGE = 9.3;   // 4.6 + 4.7
-const LNG_MIN = 33.9;
-const LNG_RANGE = 8.0;   // 41.9 - 33.9
+const MAP_W = 380, MAP_H = 340;
+function toX(lng: number) { return ((lng - 33.9) / 8.0) * MAP_W; }
+function toY(lat: number) { return ((4.6  - lat) / 9.3) * MAP_H; }
 
-function toSvgX(lng: number) { return ((lng - LNG_MIN) / LNG_RANGE) * MAP_W; }
-function toSvgY(lat: number) { return ((LAT_MAX - lat) / LAT_RANGE) * MAP_H; }
-
-const CITY_PINS = [
+const CITIES = [
   { name: 'Nairobi',  lat: -1.2921, lng: 36.8219 },
   { name: 'Mombasa',  lat: -4.0435, lng: 39.6682 },
   { name: 'Kisumu',   lat: -0.0917, lng: 34.7680 },
   { name: 'Nakuru',   lat: -0.3031, lng: 36.0800 },
   { name: 'Eldoret',  lat:  0.5143, lng: 35.2698 },
   { name: 'Nyeri',    lat: -0.4167, lng: 36.9500 },
-  { name: 'Thika',    lat: -1.0332, lng: 37.0693 },
   { name: 'Malindi',  lat: -3.2175, lng: 40.1169 },
 ];
 
-// Rough Kenya outline (simplified polygon)
 const KENYA_PATH = 'M 162,18 L 210,10 L 280,30 L 320,60 L 330,110 L 310,150 L 290,195 L 270,250 L 230,295 L 185,308 L 140,300 L 95,270 L 60,230 L 40,190 L 30,150 L 38,110 L 55,75 L 85,45 Z';
 
-// ── Signal styling ─────────────────────────────────────────────────────────
+// ── Source metadata (plain-English labels for each source) ─────────────────
 
-const STRENGTH_COLOR: Record<IntentStrength, string> = {
-  HOT: '#ef4444',
-  WARM: '#f97316',
-  MEDIUM: '#6366f1',
+const SOURCE_META: Record<string, { icon: string; label: string; description: string; color: string; border: string; bg: string }> = {
+  tavily:       { icon: '🔍', label: 'Web Intelligence',    description: 'Found via AI web search across forums, news and B2B sites', color: '#854d0e', border: '#fde047', bg: '#fefce8' },
+  ppra:         { icon: '📋', label: 'Government Tender',   description: 'Official procurement posted on PPRA Kenya portal',          color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+  tenderskenya: { icon: '📋', label: 'Government Tender',   description: 'Aggregated public tender from TendersKenya.co.ke',          color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+  reddit:       { icon: '💬', label: 'Community Discussion',description: 'Public post on Reddit — r/Kenya, r/nairobi, r/africa',      color: '#c2410c', border: '#fdba74', bg: '#fff7ed' },
+  google_search:{ icon: '🌐', label: 'Forum / Article',     description: 'Web forum thread or article about sourcing this product',   color: '#166534', border: '#86efac', bg: '#f0fdf4' },
 };
 
-const STRENGTH_LABEL: Record<IntentStrength, string> = {
-  HOT: 'Hot',
-  WARM: 'Warm',
-  MEDIUM: 'Medium',
-};
+function getSourceMeta(platform: string) {
+  return SOURCE_META[platform] ?? { icon: '📡', label: platform, description: 'Signal from external source', color: '#475569', border: '#94a3b8', bg: '#f8fafc' };
+}
 
-const SOURCE_LABEL: Record<SignalSource, string> = {
-  TENDER: 'Tender',
-  SOCIAL: 'Social',
-  DISCUSSION: 'Discussion',
-};
+// ── Intent strength colours ────────────────────────────────────────────────
 
-const SOURCE_COLOR: Record<SignalSource, string> = {
-  TENDER: '#fef2f2',
-  SOCIAL: '#fff7ed',
-  DISCUSSION: '#eef2ff',
-};
+const STRENGTH_COLOR: Record<IntentStrength, string> = { HOT: '#ef4444', WARM: '#f97316', MEDIUM: '#6366f1' };
+const STRENGTH_LABEL: Record<IntentStrength, string> = { HOT: '🔴 Hot — formal buying intent', WARM: '🟠 Warm — expressed need', MEDIUM: '🔵 Medium — research phase' };
 
-const SOURCE_BORDER: Record<SignalSource, string> = {
-  TENDER: '#fca5a5',
-  SOCIAL: '#fed7aa',
-  DISCUSSION: '#c7d2fe',
-};
+// ── Apollo contact type ────────────────────────────────────────────────────
 
-const SOURCE_TEXT: Record<SignalSource, string> = {
-  TENDER: '#b91c1c',
-  SOCIAL: '#c2410c',
-  DISCUSSION: '#3730a3',
-};
+interface ApolloContact {
+  name: string; title: string; email: string | null;
+  phone: string | null; linkedinUrl: string | null;
+  company: string | null; companySize: string | null; industry: string | null;
+}
 
-function StrengthBadge({ strength }: { strength: IntentStrength }) {
+// ── Sub-components ─────────────────────────────────────────────────────────
+
+function SourceChip({ platform }: { platform: string }) {
+  const m = getSourceMeta(platform);
   return (
-    <span style={{
-      fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10,
-      background: STRENGTH_COLOR[strength] + '22',
-      color: STRENGTH_COLOR[strength],
-      border: `1px solid ${STRENGTH_COLOR[strength]}55`,
+    <span title={m.description} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.65rem',
+      fontWeight: 700, padding: '2px 8px', borderRadius: 10, cursor: 'help',
+      background: m.bg, color: m.color, border: `1px solid ${m.border}`,
     }}>
-      {STRENGTH_LABEL[strength]}
+      {m.icon} {m.label}
     </span>
   );
 }
 
-function SourceBadge({ source }: { source: SignalSource }) {
+function StrengthChip({ strength }: { strength: IntentStrength }) {
   return (
-    <span style={{
-      fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10,
-      background: SOURCE_COLOR[source],
-      color: SOURCE_TEXT[source],
-      border: `1px solid ${SOURCE_BORDER[source]}`,
+    <span title={STRENGTH_LABEL[strength]} style={{
+      fontSize: '0.6rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+      background: STRENGTH_COLOR[strength] + '18', color: STRENGTH_COLOR[strength],
+      border: `1px solid ${STRENGTH_COLOR[strength]}40`, cursor: 'help',
     }}>
-      {SOURCE_LABEL[source]}
+      {strength}
     </span>
   );
 }
 
-// ── Kenya SVG Map ──────────────────────────────────────────────────────────
+function ContactCard({ contact }: { contact: ApolloContact }) {
+  return (
+    <div style={{
+      marginTop: 10, padding: '10px 12px', borderRadius: 8,
+      background: '#fdf4ff', border: '1px solid #d8b4fe',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <span style={{ fontSize: '1rem' }}>👤</span>
+        <div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{contact.name}</div>
+          <div style={{ fontSize: '0.7rem', color: '#6b21a8' }}>{contact.title}</div>
+        </div>
+        {contact.company && (
+          <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: '#7c3aed', fontWeight: 600 }}>
+            {contact.company}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: '0.7rem' }}>
+        {contact.email && (
+          <a href={`mailto:${contact.email}`} style={{ color: '#7c3aed', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+            ✉ {contact.email}
+          </a>
+        )}
+        {contact.phone && <span style={{ color: '#475569' }}>📞 {contact.phone}</span>}
+        {contact.linkedinUrl && (
+          <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer"
+            style={{ color: '#0369a1', textDecoration: 'none' }}>↗ LinkedIn</a>
+        )}
+      </div>
+      {(contact.companySize || contact.industry) && (
+        <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 5 }}>
+          {[contact.industry, contact.companySize ? `${contact.companySize} employees` : null].filter(Boolean).join(' · ')}
+        </div>
+      )}
+    </div>
+  );
+}
 
-function KenyaMap({
-  signals,
-  selected,
-  onSelect,
+function SignalCard({
+  signal, selected, onSelect, onDismiss,
 }: {
-  signals: IntentSignal[];
-  selected: string | null;
-  onSelect: (id: string) => void;
+  signal: IntentSignal; selected: boolean; onSelect: () => void; onDismiss: () => void;
 }) {
-  // Cluster signals at same approx location
-  const mappable = signals.filter((s) => s.lat !== null && s.lng !== null);
+  const [loadingContact, setLoadingContact] = useState(false);
+  const [contact, setContact]               = useState<ApolloContact | null>(null);
+  const [contactError, setContactError]     = useState('');
+
+  const ago = signal.publishedAt
+    ? (() => { const d = Math.floor((Date.now() - new Date(signal.publishedAt).getTime()) / 86400000); return d === 0 ? 'today' : d === 1 ? '1 day ago' : `${d} days ago`; })()
+    : null;
+
+  async function getContacts(e: React.MouseEvent) {
+    e.stopPropagation();
+    setLoadingContact(true);
+    setContactError('');
+    try {
+      const res = await api<{ contact: ApolloContact }>(`/leadengine/signals/${signal.id}/contacts`, { method: 'POST' });
+      setContact(res.contact);
+    } catch (err) {
+      setContactError(err instanceof Error ? err.message : 'No contact found');
+    } finally {
+      setLoadingContact(false);
+    }
+  }
+
+  const meta = getSourceMeta(signal.platform);
 
   return (
-    <svg
-      viewBox={`0 0 ${MAP_W} ${MAP_H}`}
-      style={{ width: '100%', maxWidth: 380, height: 'auto', display: 'block' }}
-      aria-label="Kenya lead heat map"
-    >
-      {/* Background */}
+    <div onClick={onSelect} style={{
+      padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+      border: `1.5px solid ${selected ? STRENGTH_COLOR[signal.intentStrength] : 'var(--border-color, #e5e7eb)'}`,
+      background: selected ? STRENGTH_COLOR[signal.intentStrength] + '08' : 'var(--surface, #fff)',
+      transition: 'border-color 0.15s',
+    }}>
+
+      {/* Header row */}
+      <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+        <StrengthChip strength={signal.intentStrength} />
+        <SourceChip platform={signal.platform} />
+        <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary, #94a3b8)', marginLeft: 'auto' }}>
+          {ago ?? 'recently'}
+        </span>
+      </div>
+
+      {/* Title */}
+      <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.4, marginBottom: signal.snippet ? 4 : 0 }}>
+        {signal.title}
+      </p>
+
+      {/* Snippet */}
+      {signal.snippet && (
+        <p style={{
+          margin: 0, fontSize: '0.72rem', color: 'var(--text-secondary, #666)', lineHeight: 1.4,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {signal.snippet}
+        </p>
+      )}
+
+      {/* Source description (plain English) */}
+      <p style={{ margin: '4px 0 0', fontSize: '0.65rem', color: 'var(--text-secondary, #94a3b8)', fontStyle: 'italic' }}>
+        {meta.icon} {meta.description}
+      </p>
+
+      {signal.location && (
+        <p style={{ margin: '3px 0 0', fontSize: '0.67rem', color: 'var(--text-secondary, #94a3b8)' }}>
+          📍 {signal.location}
+        </p>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <a href={signal.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+          style={{ fontSize: '0.72rem', color: 'var(--primary, #6366f1)', textDecoration: 'none', fontWeight: 500 }}>
+          ↗ View source
+        </a>
+
+        {!contact && (
+          <button type="button" onClick={(e) => void getContacts(e)} disabled={loadingContact}
+            style={{
+              fontSize: '0.7rem', fontWeight: 600, padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
+              background: '#fdf4ff', color: '#7c3aed', border: '1px solid #d8b4fe',
+              opacity: loadingContact ? 0.6 : 1,
+            }}>
+            {loadingContact ? '⏳ Looking up…' : '👤 Get Contact'}
+          </button>
+        )}
+
+        {contactError && (
+          <span style={{ fontSize: '0.65rem', color: '#ef4444' }}>{contactError}</span>
+        )}
+
+        <button type="button" onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+          style={{ marginLeft: 'auto', fontSize: '0.67rem', background: 'none', border: 'none', color: 'var(--text-secondary, #94a3b8)', cursor: 'pointer', padding: 0 }}>
+          Dismiss
+        </button>
+      </div>
+
+      {/* Apollo contact result */}
+      {contact && <ContactCard contact={contact} />}
+    </div>
+  );
+}
+
+function KenyaMap({ signals, selected, onSelect }: {
+  signals: IntentSignal[]; selected: string | null; onSelect: (id: string) => void;
+}) {
+  const mappable = signals.filter((s) => s.lat !== null && s.lng !== null);
+  return (
+    <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} style={{ width: '100%', maxWidth: 400, height: 'auto', display: 'block' }}>
       <rect width={MAP_W} height={MAP_H} fill="#e8f4fd" rx={10} />
-
-      {/* Kenya outline */}
       <path d={KENYA_PATH} fill="#d1fae5" stroke="#6ee7b7" strokeWidth={1.5} opacity={0.7} />
-
-      {/* City reference pins */}
-      {CITY_PINS.map((c) => (
+      {CITIES.map((c) => (
         <g key={c.name}>
-          <circle cx={toSvgX(c.lng)} cy={toSvgY(c.lat)} r={3} fill="#94a3b8" opacity={0.5} />
-          <text
-            x={toSvgX(c.lng) + 5}
-            y={toSvgY(c.lat) + 4}
-            fontSize={7}
-            fill="#64748b"
-            fontFamily="Inter, sans-serif"
-          >
-            {c.name}
-          </text>
+          <circle cx={toX(c.lng)} cy={toY(c.lat)} r={3} fill="#94a3b8" opacity={0.4} />
+          <text x={toX(c.lng) + 5} y={toY(c.lat) + 4} fontSize={7} fill="#64748b" fontFamily="Inter,sans-serif">{c.name}</text>
         </g>
       ))}
-
-      {/* Signal dots */}
       {mappable.map((s) => {
-        const x = toSvgX(s.lng!);
-        const y = toSvgY(s.lat!);
+        const x = toX(s.lng!), y = toY(s.lat!);
         const col = STRENGTH_COLOR[s.intentStrength];
-        const isSelected = selected === s.id;
         const r = s.intentStrength === 'HOT' ? 9 : s.intentStrength === 'WARM' ? 7 : 5;
+        const isSelected = selected === s.id;
         return (
           <g key={s.id} onClick={() => onSelect(s.id)} style={{ cursor: 'pointer' }}>
-            <circle cx={x} cy={y} r={r + 6} fill={col} opacity={0.15} />
+            <circle cx={x} cy={y} r={r + 7} fill={col} opacity={0.12} />
             <circle cx={x} cy={y} r={r} fill={col} opacity={isSelected ? 1 : 0.75}
               stroke={isSelected ? '#fff' : 'none'} strokeWidth={2} />
           </g>
@@ -154,78 +250,32 @@ function KenyaMap({
   );
 }
 
-// ── Signal card ────────────────────────────────────────────────────────────
+// ── Source legend ──────────────────────────────────────────────────────────
 
-function SignalCard({
-  signal,
-  selected,
-  onSelect,
-  onDismiss,
-}: {
-  signal: IntentSignal;
-  selected: boolean;
-  onSelect: () => void;
-  onDismiss: () => void;
-}) {
-  const ago = signal.publishedAt
-    ? (() => {
-        const d = Math.floor((Date.now() - new Date(signal.publishedAt).getTime()) / 86400000);
-        return d === 0 ? 'today' : d === 1 ? '1 day ago' : `${d} days ago`;
-      })()
-    : null;
-
+function SourceLegend() {
+  const items = [
+    { platform: 'tavily',        count_label: 'AI Web' },
+    { platform: 'ppra',          count_label: 'Tenders' },
+    { platform: 'reddit',        count_label: 'Social' },
+    { platform: 'google_search', count_label: 'Forums' },
+  ];
   return (
-    <div
-      onClick={onSelect}
-      style={{
-        padding: '10px 12px',
-        borderRadius: 8,
-        border: `1.5px solid ${selected ? STRENGTH_COLOR[signal.intentStrength] : 'var(--border-color, #e5e7eb)'}`,
-        background: selected ? STRENGTH_COLOR[signal.intentStrength] + '08' : 'var(--surface, #fff)',
-        cursor: 'pointer',
-        transition: 'border-color 0.15s',
-      }}
-    >
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
-        <StrengthBadge strength={signal.intentStrength} />
-        <SourceBadge source={signal.source} />
-        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary, #888)', marginLeft: 'auto' }}>
-          {signal.platform}
-          {ago ? ` · ${ago}` : ''}
-        </span>
-      </div>
-      <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.4, marginBottom: signal.snippet ? 4 : 0 }}>
-        {signal.title}
-      </p>
-      {signal.snippet && (
-        <p style={{ margin: 0, fontSize: '0.73rem', color: 'var(--text-secondary, #666)', lineHeight: 1.4,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {signal.snippet}
-        </p>
-      )}
-      {signal.location && (
-        <p style={{ margin: '4px 0 0', fontSize: '0.68rem', color: 'var(--text-secondary, #888)' }}>
-          📍 {signal.location}
-        </p>
-      )}
-      <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
-        <a
-          href={signal.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          style={{ fontSize: '0.72rem', color: 'var(--primary, #6366f1)', textDecoration: 'none', fontWeight: 500 }}
-        >
-          ↗ View source
-        </a>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-          style={{ marginLeft: 'auto', fontSize: '0.68rem', background: 'none', border: 'none',
-            color: 'var(--text-secondary, #aaa)', cursor: 'pointer', padding: 0 }}
-        >
-          Dismiss
-        </button>
+    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary, #888)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Signal Sources</p>
+      {items.map(({ platform }) => {
+        const m = getSourceMeta(platform);
+        return (
+          <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem' }}>
+            <span>{m.icon}</span>
+            <span style={{ fontWeight: 600, color: m.color }}>{m.label}</span>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary, #94a3b8)', marginLeft: 2 }}>— {m.description}</span>
+          </div>
+        );
+      })}
+      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem' }}>
+        <span>👤</span>
+        <span style={{ fontWeight: 600, color: '#7c3aed' }}>Apollo Contact</span>
+        <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary, #94a3b8)', marginLeft: 2 }}>— on-demand · 1 credit per lookup · 50/month free</span>
       </div>
     </div>
   );
@@ -234,20 +284,20 @@ function SignalCard({
 // ── Main HeatMapTab ────────────────────────────────────────────────────────
 
 export function HeatMapTab({ campaignId }: { campaignId: string }) {
-  const [signals, setSignals] = useState<IntentSignal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filterStrength, setFilterStrength] = useState<IntentStrength | 'ALL'>('ALL');
-  const [filterSource, setFilterSource] = useState<SignalSource | 'ALL'>('ALL');
-  const [lastResult, setLastResult] = useState<{ created: number; sources: Record<string, number> } | null>(null);
+  const [signals,       setSignals]       = useState<IntentSignal[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [running,       setRunning]       = useState(false);
+  const [error,         setError]         = useState('');
+  const [selectedId,    setSelectedId]    = useState<string | null>(null);
+  const [filterStrength,setFilterStrength]= useState<IntentStrength | 'ALL'>('ALL');
+  const [filterSource,  setFilterSource]  = useState<SignalSource | 'ALL'>('ALL');
+  const [lastResult,    setLastResult]    = useState<{ created: number; sources: Record<string, number> } | null>(null);
 
   const loadSignals = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (filterStrength !== 'ALL') params.set('intentStrength', filterStrength);
-      if (filterSource !== 'ALL') params.set('source', filterSource);
+      if (filterSource   !== 'ALL') params.set('source',         filterSource);
       const data = await api<{ signals: IntentSignal[] }>(
         `/leadengine/campaigns/${campaignId}/heat-map${params.toString() ? '?' + params : ''}`,
       );
@@ -261,127 +311,97 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
 
   useEffect(() => { void loadSignals(); }, [loadSignals]);
 
-  async function runDiscovery() {
-    setRunning(true);
-    setError('');
-    setLastResult(null);
+  async function runScan() {
+    setRunning(true); setError(''); setLastResult(null);
     try {
       const result = await api<{ created: number; skipped: number; sources: Record<string, number> }>(
-        `/leadengine/campaigns/${campaignId}/heat-map`,
-        { method: 'POST' },
+        `/leadengine/campaigns/${campaignId}/heat-map`, { method: 'POST' },
       );
       setLastResult(result);
       await loadSignals();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Discovery failed');
+      setError(e instanceof Error ? e.message : 'Scan failed');
     } finally {
       setRunning(false);
     }
   }
 
-  async function dismissSignal(signalId: string) {
+  async function dismissSignal(id: string) {
     try {
-      await api(`/leadengine/signals/${signalId}/status`, {
-        method: 'PATCH',
-        body: { status: 'DISMISSED', campaignId },
-      });
-      setSignals((prev) => prev.filter((s) => s.id !== signalId));
-      if (selectedId === signalId) setSelectedId(null);
+      await api(`/leadengine/signals/${id}/status`, { method: 'PATCH', body: { status: 'DISMISSED', campaignId } });
+      setSignals((p) => p.filter((s) => s.id !== id));
+      if (selectedId === id) setSelectedId(null);
     } catch { /* non-fatal */ }
   }
 
-  // Stats
-  const total = signals.length;
-  const hotCount = signals.filter((s) => s.intentStrength === 'HOT').length;
-  const warmCount = signals.filter((s) => s.intentStrength === 'WARM').length;
-  const tenderCount = signals.filter((s) => s.source === 'TENDER').length;
-  const socialCount = signals.filter((s) => s.source === 'SOCIAL').length;
-  const discussionCount = signals.filter((s) => s.source === 'DISCUSSION').length;
-
   const filtered = signals.filter((s) =>
     (filterStrength === 'ALL' || s.intentStrength === filterStrength) &&
-    (filterSource === 'ALL' || s.source === filterSource),
+    (filterSource   === 'ALL' || s.source        === filterSource),
   );
+
+  const hotCount        = signals.filter((s) => s.intentStrength === 'HOT').length;
+  const warmCount       = signals.filter((s) => s.intentStrength === 'WARM').length;
+  const tenderCount     = signals.filter((s) => ['ppra','tenderskenya'].includes(s.platform)).length;
+  const tavilyCount     = signals.filter((s) => s.platform === 'tavily').length;
+  const redditCount     = signals.filter((s) => s.platform === 'reddit').length;
 
   return (
     <div style={{ padding: '16px 0' }}>
+
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => void runDiscovery()}
-          disabled={running}
-          style={{ minWidth: 160 }}
-        >
-          {running ? '⏳ Scanning signals…' : '🔥 Run Heat Map Scan'}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+        <button type="button" className="btn-primary" onClick={() => void runScan()} disabled={running} style={{ minWidth: 170 }}>
+          {running ? '⏳ Scanning all sources…' : '🔥 Run Heat Map Scan'}
         </button>
-
-        {/* Strength filter */}
-        <select
-          className="input"
-          value={filterStrength}
-          onChange={(e) => setFilterStrength(e.target.value as IntentStrength | 'ALL')}
-          style={{ fontSize: '0.82rem', padding: '6px 10px', width: 'auto' }}
-        >
+        <select className="input" value={filterStrength} onChange={(e) => setFilterStrength(e.target.value as IntentStrength | 'ALL')}
+          style={{ fontSize: '0.82rem', padding: '6px 10px', width: 'auto' }}>
           <option value="ALL">All intent levels</option>
-          <option value="HOT">🔴 Hot (tenders)</option>
-          <option value="WARM">🟠 Warm (social)</option>
-          <option value="MEDIUM">🔵 Medium (discussions)</option>
+          <option value="HOT">🔴 Hot — formal tenders &amp; RFQs</option>
+          <option value="WARM">🟠 Warm — social &amp; expressed need</option>
+          <option value="MEDIUM">🔵 Medium — research discussions</option>
         </select>
-
-        {/* Source filter */}
-        <select
-          className="input"
-          value={filterSource}
-          onChange={(e) => setFilterSource(e.target.value as SignalSource | 'ALL')}
-          style={{ fontSize: '0.82rem', padding: '6px 10px', width: 'auto' }}
-        >
+        <select className="input" value={filterSource} onChange={(e) => setFilterSource(e.target.value as SignalSource | 'ALL')}
+          style={{ fontSize: '0.82rem', padding: '6px 10px', width: 'auto' }}>
           <option value="ALL">All sources</option>
-          <option value="TENDER">Tenders</option>
-          <option value="SOCIAL">Social (Reddit)</option>
-          <option value="DISCUSSION">Discussions</option>
+          <option value="TENDER">📋 Government Tenders</option>
+          <option value="SOCIAL">💬 Social &amp; Web (Tavily + Reddit)</option>
+          <option value="DISCUSSION">🌐 Forums &amp; Articles</option>
         </select>
-
         <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-secondary, #888)' }}>
-          {total} signal{total !== 1 ? 's' : ''}
+          {signals.length} signal{signals.length !== 1 ? 's' : ''} total
         </span>
       </div>
 
-      {/* Last run result banner */}
+      {/* Scan result banner */}
       {lastResult && (
-        <div style={{
-          padding: '10px 14px', borderRadius: 8, background: '#f0fdf4',
-          border: '1px solid #86efac', marginBottom: 14, fontSize: '0.82rem', color: '#166534',
-        }}>
+        <div style={{ padding: '10px 14px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #86efac', marginBottom: 12, fontSize: '0.82rem', color: '#166534' }}>
           ✓ Scan complete — {lastResult.created} new signal{lastResult.created !== 1 ? 's' : ''} found
           {Object.keys(lastResult.sources).length > 0 && (
-            <span style={{ marginLeft: 8, opacity: 0.75 }}>
-              ({Object.entries(lastResult.sources).map(([k, v]) => `${v} ${k}`).join(', ')})
+            <span style={{ marginLeft: 8, opacity: 0.7 }}>
+              ({Object.entries(lastResult.sources).map(([k, v]) => `${v} from ${getSourceMeta(k).label}`).join(', ')})
             </span>
           )}
         </div>
       )}
 
       {error && (
-        <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2',
-          border: '1px solid #fca5a5', marginBottom: 14, fontSize: '0.82rem', color: '#b91c1c' }}>
+        <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', marginBottom: 12, fontSize: '0.82rem', color: '#b91c1c' }}>
           {error}
         </div>
       )}
 
       {/* Stats row */}
-      {total > 0 && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+      {signals.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           {[
-            { label: 'Tenders', count: tenderCount, color: '#ef4444' },
-            { label: 'Social', count: socialCount, color: '#f97316' },
-            { label: 'Discussions', count: discussionCount, color: '#6366f1' },
-            { label: 'Hot signals', count: hotCount, color: '#ef4444' },
-            { label: 'Warm signals', count: warmCount, color: '#f97316' },
-          ].map(({ label, count, color }) => (
-            <div key={label} style={{
-              padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+            { label: 'Hot signals',         count: hotCount,    color: '#ef4444', title: 'Formal tenders & RFQs — highest buying intent' },
+            { label: 'Warm signals',         count: warmCount,   color: '#f97316', title: 'Social posts & expressed needs' },
+            { label: 'Gov\'t tenders',       count: tenderCount, color: '#ef4444', title: 'PPRA Kenya + TendersKenya' },
+            { label: 'Web Intelligence',     count: tavilyCount, color: '#eab308', title: 'Tavily AI web search results' },
+            { label: 'Community posts',      count: redditCount, color: '#f97316', title: 'Reddit discussions' },
+          ].map(({ label, count, color, title }) => (
+            <div key={label} title={title} style={{
+              padding: '5px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, cursor: 'help',
               background: color + '15', color, border: `1px solid ${color}33`,
             }}>
               {count} {label}
@@ -392,55 +412,56 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
 
       {loading ? (
         <p style={{ color: 'var(--text-secondary, #888)', fontSize: '0.85rem' }}>Loading signals…</p>
-      ) : total === 0 ? (
+      ) : signals.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-secondary, #888)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🗺️</div>
           <p style={{ fontWeight: 600, marginBottom: 6 }}>No signals yet</p>
-          <p style={{ fontSize: '0.83rem' }}>
-            Click <strong>Run Heat Map Scan</strong> to discover active buying signals from
-            government tenders, social discussions, and forums.
+          <p style={{ fontSize: '0.83rem', maxWidth: 420, margin: '0 auto' }}>
+            Click <strong>Run Heat Map Scan</strong> to search across Tavily Web Intelligence,
+            government tender portals, Reddit, and web forums for active buying signals.
           </p>
+          <SourceLegend />
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.6fr)', gap: 16 }}>
-          {/* Map panel */}
-          <div>
-            <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary, #888)',
-              textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              Signal map
-            </p>
-            <KenyaMap signals={filtered} selected={selectedId} onSelect={setSelectedId} />
-            {/* Legend */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-              {(['HOT', 'WARM', 'MEDIUM'] as IntentStrength[]).map((s) => (
-                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.68rem',
-                  color: 'var(--text-secondary, #888)' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: STRENGTH_COLOR[s],
-                    display: 'inline-block' }} />
-                  {STRENGTH_LABEL[s]}
-                </span>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.7fr)', gap: 16 }}>
+
+            {/* Map */}
+            <div>
+              <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary, #888)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Geographic signal heat
+              </p>
+              <KenyaMap signals={filtered} selected={selectedId} onSelect={(id) => setSelectedId(selectedId === id ? null : id)} />
+              <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+                {(['HOT','WARM','MEDIUM'] as IntentStrength[]).map((s) => (
+                  <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', color: 'var(--text-secondary, #888)' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: STRENGTH_COLOR[s], display: 'inline-block' }} />
+                    {s.charAt(0) + s.slice(1).toLowerCase()} intent
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Signal list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 540, overflowY: 'auto' }}>
+              <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary, #888)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>
+                {filtered.length} signal{filtered.length !== 1 ? 's' : ''}
+                {filterStrength !== 'ALL' || filterSource !== 'ALL' ? ' (filtered)' : ''}
+                {' '}— hover source badges for explanation
+              </p>
+              {filtered.map((s) => (
+                <SignalCard key={s.id} signal={s} selected={selectedId === s.id}
+                  onSelect={() => setSelectedId(selectedId === s.id ? null : s.id)}
+                  onDismiss={() => void dismissSignal(s.id)} />
               ))}
             </div>
           </div>
 
-          {/* Signal list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 520, overflowY: 'auto' }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary, #888)',
-              textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px' }}>
-              {filtered.length} signal{filtered.length !== 1 ? 's' : ''}
-              {filterStrength !== 'ALL' || filterSource !== 'ALL' ? ' (filtered)' : ''}
-            </p>
-            {filtered.map((s) => (
-              <SignalCard
-                key={s.id}
-                signal={s}
-                selected={selectedId === s.id}
-                onSelect={() => setSelectedId(selectedId === s.id ? null : s.id)}
-                onDismiss={() => void dismissSignal(s.id)}
-              />
-            ))}
+          {/* Source legend */}
+          <div style={{ marginTop: 20, padding: '12px 16px', borderRadius: 8, background: 'var(--surface, #f8fafc)', border: '1px solid var(--border-color, #e5e7eb)' }}>
+            <SourceLegend />
           </div>
-        </div>
+        </>
       )}
     </div>
   );

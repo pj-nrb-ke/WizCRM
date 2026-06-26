@@ -3,12 +3,14 @@ import { prisma } from '../../../lib/prisma.js';
 import { TenderProvider } from './tender.provider.js';
 import { RedditProvider } from './reddit.provider.js';
 import { DiscussionProvider } from './discussion.provider.js';
+import { TavilyProvider } from './tavily.provider.js';
 import type { IntentSignalRaw } from './signal-provider.interface.js';
 
 const providers = [
-  new TenderProvider(),
-  new RedditProvider(),
-  new DiscussionProvider(),
+  new TavilyProvider(),    // primary — AI web search across all sources
+  new TenderProvider(),    // PPRA Kenya + TendersKenya — structured tenders
+  new RedditProvider(),    // r/Kenya, r/nairobi community discussions
+  new DiscussionProvider(),// Google Custom Search — forums & articles
 ];
 
 export async function runHeatMapDiscovery(
