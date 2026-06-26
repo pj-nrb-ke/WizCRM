@@ -20,6 +20,7 @@ import { quotationRoutes } from './routes/quotations.js';
 import { leadThreadRoutes } from './routes/lead-thread.js';
 import { reminderRoutes } from './routes/reminders.js';
 import { leadEngineRoutes, handleUnsubscribe } from './routes/lead-engine.js';
+import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
 export async function buildApp() {
@@ -78,6 +79,19 @@ export async function buildApp() {
   await app.register(integrationRoutes, { prefix: '/integrations' });
   await app.register(quotationRoutes, { prefix: '/quotations' });
   await app.register(leadEngineRoutes, { prefix: '/leadengine' });
+
+  // Brevo transactional webhooks — no JWT, secured by shared secret header
+  app.post('/webhooks/brevo', async (request, reply) => {
+    const secret = config.brevoWebhookSecret;
+    if (secret) {
+      const provided = request.headers['x-wizcrm-webhook-key'];
+      if (provided !== secret) {
+        return reply.status(401).send({ error: 'Invalid webhook key' });
+      }
+    }
+    const result = await handleBrevoEvent(request.body as import('./services/lead-engine/webhook.service.js').BrevoWebhookEvent);
+    return reply.send(result);
+  });
 
   // Public unsubscribe — no auth required, verified by HMAC token
   app.get('/unsubscribe', async (request, reply) => {

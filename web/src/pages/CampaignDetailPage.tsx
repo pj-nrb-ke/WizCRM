@@ -213,11 +213,17 @@ function ProspectsTab({
   async function bulkImport() {
     setBulkError('');
     const ids = [...selected];
-    const results = await Promise.allSettled(
-      ids.map((id) => api(`/leadengine/prospects/${id}/import`, { method: 'POST' })),
-    );
-    const failed = results.filter((r) => r.status === 'rejected').length;
-    if (failed) setBulkError(`${failed} import(s) failed — some may already exist as leads.`);
+    try {
+      const result = await api<{ imported: number; skipped: number; errors: string[] }>(
+        `/leadengine/campaigns/${campaignId}/bulk-import`,
+        { method: 'POST', body: { prospectIds: ids } },
+      );
+      if (result.errors.length) {
+        setBulkError(`${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} error(s).`);
+      }
+    } catch (e) {
+      setBulkError(e instanceof Error ? e.message : 'Bulk import failed');
+    }
     setSelected(new Set());
     onRefresh();
   }

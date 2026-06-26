@@ -68,7 +68,9 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
 
   // ── Discovery ──────────────────────────────────────────────────────────────
 
-  app.post('/campaigns/:id/discover', async (request, reply) => {
+  app.post('/campaigns/:id/discover', {
+    config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
     try {
       const runId = await startDiscoveryRun(id, request.user.organizationId);
@@ -213,6 +215,20 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     return { ok: true };
   });
 
+  // ── Kenya DPA: hard-delete prospect PII on data-subject request ───────────
+  // Cascade in schema removes ProspectContact, ProspectEnrichment, EmailSend.
+
+  app.delete('/prospects/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const prospect = await prisma.prospect.findFirst({
+      where: { id, campaign: { organizationId: request.user.organizationId } },
+      select: { id: true },
+    });
+    if (!prospect) return reply.status(404).send({ error: 'Prospect not found' });
+    await prisma.prospect.delete({ where: { id } });
+    return reply.status(204).send();
+  });
+
   // ── Import to pipeline ─────────────────────────────────────────────────────
 
   app.post('/prospects/:id/import', async (request, reply) => {
@@ -275,6 +291,86 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     });
 
     return reply.status(201).send({ leadId: lead.id, ok: true });
+  });
+
+  // ── Bulk import ────────────────────────────────────────────────────────────
+
+  app.post('/campaigns/:id/bulk-import', async (request, reply) => {
+    const { id: campaignId } = request.params as { id: string };
+    const { prospectIds } = request.body as { prospectIds?: string[] };
+
+    if (!Array.isArray(prospectIds) || prospectIds.length === 0) {
+      return reply.status(400).send({ error: 'prospectIds must be a non-empty array' });
+    }
+
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, organizationId: request.user.organizationId },
+    });
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' });
+
+    const result = { imported: 0, skipped: 0, errors: [] as string[] };
+
+    for (const prospectId of prospectIds) {
+      try {
+        const prospect = await prisma.prospect.findFirst({
+          where: { id: prospectId, campaignId, organizationId: request.user.organizationId },
+          include: { contacts: { take: 1 } },
+        });
+        if (!prospect) { result.skipped++; continue; }
+        if (prospect.importedLeadId) { result.skipped++; continue; }
+
+        const contact = prospect.contacts[0];
+
+        const dupe = contact?.email || prospect.phone
+          ? await prisma.lead.findFirst({
+              where: {
+                organizationId: request.user.organizationId,
+                OR: [
+                  ...(contact?.email ? [{ emailNormalized: contact.email.toLowerCase() }] : []),
+                  ...(prospect.phone ? [{ phoneNormalized: prospect.phone.replace(/\D/g, '') }] : []),
+                ],
+              },
+            })
+          : null;
+
+        if (dupe) {
+          await prisma.prospect.update({ where: { id: prospectId }, data: { importedLeadId: dupe.id, status: 'IMPORTED' } });
+          result.skipped++;
+          continue;
+        }
+
+        const lead = await prisma.lead.create({
+          data: {
+            organizationId: request.user.organizationId,
+            ownerId: request.user.sub,
+            name: contact?.fullName ?? prospect.companyName,
+            company: prospect.companyName,
+            email: contact?.email ?? null,
+            emailNormalized: contact?.email?.toLowerCase() ?? null,
+            phone: prospect.phone ?? null,
+            phoneNormalized: prospect.phone?.replace(/\D/g, '') ?? null,
+            address: prospect.address ?? null,
+            googleMapsUrl: prospect.lat && prospect.lng
+              ? `https://maps.google.com/?q=${prospect.lat},${prospect.lng}`
+              : null,
+            source: `lead_generator:${campaignId}`,
+            stage: 'NEW',
+            tags: prospect.tier ? [`tier-${prospect.tier.toLowerCase()}`] : [],
+          },
+        });
+
+        await prisma.prospect.update({
+          where: { id: prospectId },
+          data: { status: 'IMPORTED', importedLeadId: lead.id },
+        });
+
+        result.imported++;
+      } catch (err) {
+        result.errors.push(`${prospectId}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    return result;
   });
 
   // ── Suppression ────────────────────────────────────────────────────────────
@@ -401,7 +497,9 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
 
   // ── Email sending ──────────────────────────────────────────────────────────
 
-  app.post('/campaigns/:id/send/:step', async (request, reply) => {
+  app.post('/campaigns/:id/send/:step', {
+    config: { rateLimit: { max: 3, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const { id, step } = request.params as { id: string; step: string };
     const stepNum = Number(step);
     if (!Number.isInteger(stepNum) || stepNum < 1 || stepNum > 10) {

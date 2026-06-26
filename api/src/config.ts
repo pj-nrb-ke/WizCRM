@@ -50,4 +50,7 @@ export const config = {
   // Lead Generator
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? '',
   leadEngineEnabled: Boolean(process.env.GOOGLE_PLACES_API_KEY),
+
+  // Brevo webhook shared secret — set in Brevo dashboard as custom header X-WizCRM-Webhook-Key
+  brevoWebhookSecret: process.env.BREVO_WEBHOOK_SECRET ?? '',
 };
