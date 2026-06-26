@@ -25,6 +25,122 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
   return <span className={map[status]}>{status.charAt(0) + status.slice(1).toLowerCase()}</span>;
 }
 
+// ── Tag input (reused from LeadGeneratorPage) ──────────────────────────────
+
+function TagInput({ label, placeholder, values, onChange }: {
+  label: string; placeholder: string; values: string[]; onChange: (v: string[]) => void;
+}) {
+  const [input, setInput] = useState('');
+  function commit() {
+    const tag = input.trim().replace(/,$/, '');
+    if (tag && !values.includes(tag)) onChange([...values, tag]);
+    setInput('');
+  }
+  return (
+    <div>
+      <label style={{ display: 'block', marginBottom: 6, color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>{label}</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', minHeight: 42 }}>
+        {values.map((v) => (
+          <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--primary-soft)', color: 'var(--primary)', borderRadius: 6, padding: '2px 8px', fontSize: '0.8rem', fontWeight: 500 }}>
+            {v}
+            <button type="button" onClick={() => onChange(values.filter((x) => x !== v))}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, lineHeight: 1 }}>×</button>
+          </span>
+        ))}
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); }
+            else if (e.key === 'Backspace' && !input && values.length) onChange(values.slice(0, -1));
+          }}
+          onBlur={commit}
+          placeholder={values.length === 0 ? placeholder : ''}
+          style={{ flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.85rem' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Edit campaign modal ────────────────────────────────────────────────────
+
+function EditCampaignModal({ campaign, onClose, onSaved }: {
+  campaign: Campaign; onClose: () => void; onSaved: (updated: Campaign) => void;
+}) {
+  const [name, setName] = useState(campaign.name);
+  const [goal, setGoal] = useState(campaign.goal ?? '');
+  const [keywords, setKeywords] = useState<string[]>((campaign.industryKeywords as string[]) ?? []);
+  const [locations, setLocations] = useState<string[]>((campaign.locations as string[]) ?? []);
+  const [status, setStatus] = useState<CampaignStatus>(campaign.status);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await api<Campaign>(`/leadengine/campaigns/${campaign.id}`, {
+        method: 'PUT',
+        body: { name: name.trim(), goal: goal.trim() || null, industryKeywords: keywords, locations, status },
+      });
+      onSaved(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="presentation">
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <h2 style={{ margin: '0 0 20px', fontSize: '1.1rem', fontWeight: 700 }}>Edit Campaign</h2>
+        <form onSubmit={(e) => { void save(e); }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Campaign name</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Goal / description</label>
+            <textarea className="input" value={goal} onChange={(e) => setGoal(e.target.value)} rows={2} style={{ resize: 'vertical' }} />
+          </div>
+          <TagInput
+            label="Industry keywords (press Enter or comma to add)"
+            placeholder="e.g. roofing contractor, hardware store…"
+            values={keywords}
+            onChange={setKeywords}
+          />
+          <TagInput
+            label="Locations (press Enter or comma to add)"
+            placeholder="e.g. Nairobi, Mombasa…"
+            values={locations}
+            onChange={setLocations}
+          />
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Status</label>
+            <select className="input" value={status} onChange={(e) => setStatus(e.target.value as CampaignStatus)}>
+              <option value="DRAFT">Draft</option>
+              <option value="ACTIVE">Active</option>
+              <option value="PAUSED">Paused</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+          </div>
+          {error && <p style={{ color: 'var(--error)', margin: 0, fontSize: '0.85rem' }}>{error}</p>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={saving || !name.trim()}>
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Add prospect modal ─────────────────────────────────────────────────────
 
 function AddProspectModal({
@@ -704,6 +820,7 @@ export function CampaignDetailPage() {
   const [loadingProspects, setLoadingProspects] = useState(false);
   const [error, setError] = useState('');
   const [selectedProspectId, setSelectedProspectId] = useState<string | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
 
   const loadCampaign = useCallback(() => {
     if (!campaignId) return;
@@ -781,6 +898,9 @@ export function CampaignDetailPage() {
         actions={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <StatusBadge status={campaign.status} />
+            <button type="button" className="btn-secondary" onClick={() => setShowEdit(true)}>
+              ✎ Edit
+            </button>
             <button type="button" className="btn-secondary" onClick={() => navigate('/lead-generator')}>
               ← All campaigns
             </button>
@@ -836,6 +956,15 @@ export function CampaignDetailPage() {
         onClose={() => setSelectedProspectId(null)}
         onImported={loadProspects}
       />
+
+      {/* Edit campaign modal */}
+      {showEdit && (
+        <EditCampaignModal
+          campaign={campaign}
+          onClose={() => setShowEdit(false)}
+          onSaved={(updated) => { setCampaign(updated); setShowEdit(false); }}
+        />
+      )}
     </div>
   );
 }
