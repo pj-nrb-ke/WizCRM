@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import type { IntentSignal, IntentStrength, SignalSource } from '../../lib/lead-engine-types';
+import type { IntentSignal, IntentStrength } from '../../lib/lead-engine-types';
 
 // ── Kenya map ──────────────────────────────────────────────────────────────
 
@@ -329,14 +329,15 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
   const [error,         setError]         = useState('');
   const [selectedId,    setSelectedId]    = useState<string | null>(null);
   const [filterStrength,setFilterStrength]= useState<IntentStrength | 'ALL'>('ALL');
-  const [filterSource,  setFilterSource]  = useState<SignalSource | 'ALL'>('ALL');
+  const [filterPlatform,setFilterPlatform]= useState<string>('ALL');
+  const [searchText,    setSearchText]    = useState('');
   const [lastResult,    setLastResult]    = useState<{ created: number; sources: Record<string, number> } | null>(null);
 
   const loadSignals = useCallback(async () => {
     try {
+      // Only strength filter hits the API (reduces payload); platform + text are client-side
       const params = new URLSearchParams();
       if (filterStrength !== 'ALL') params.set('intentStrength', filterStrength);
-      if (filterSource   !== 'ALL') params.set('source',         filterSource);
       const data = await api<{ signals: IntentSignal[] }>(
         `/leadengine/campaigns/${campaignId}/heat-map${params.toString() ? '?' + params : ''}`,
       );
@@ -346,7 +347,7 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [campaignId, filterStrength, filterSource]);
+  }, [campaignId, filterStrength]);
 
   useEffect(() => { void loadSignals(); }, [loadSignals]);
 
@@ -373,9 +374,11 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
     } catch { /* non-fatal */ }
   }
 
+  const needle = searchText.trim().toLowerCase();
   const filtered = signals.filter((s) =>
-    (filterStrength === 'ALL' || s.intentStrength === filterStrength) &&
-    (filterSource   === 'ALL' || s.source        === filterSource),
+    (filterStrength  === 'ALL' || s.intentStrength === filterStrength) &&
+    (filterPlatform  === 'ALL' || s.platform       === filterPlatform) &&
+    (!needle || s.title.toLowerCase().includes(needle) || (s.snippet ?? '').toLowerCase().includes(needle)),
   );
 
   const hotCount        = signals.filter((s) => s.intentStrength === 'HOT').length;
@@ -401,19 +404,35 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
         <select className="input" value={filterStrength} onChange={(e) => setFilterStrength(e.target.value as IntentStrength | 'ALL')}
           style={{ fontSize: '0.82rem', padding: '6px 10px', width: 'auto' }}>
           <option value="ALL">All intent levels</option>
-          <option value="HOT">🔴 Hot — formal tenders &amp; RFQs</option>
-          <option value="WARM">🟠 Warm — social &amp; expressed need</option>
-          <option value="MEDIUM">🔵 Medium — research discussions</option>
+          <option value="HOT">🔴 Hot</option>
+          <option value="WARM">🟠 Warm</option>
+          <option value="MEDIUM">🔵 Medium</option>
         </select>
-        <select className="input" value={filterSource} onChange={(e) => setFilterSource(e.target.value as SignalSource | 'ALL')}
+        <select className="input" value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}
           style={{ fontSize: '0.82rem', padding: '6px 10px', width: 'auto' }}>
           <option value="ALL">All sources</option>
-          <option value="TENDER">📋 Government Tenders</option>
-          <option value="SOCIAL">💬 Social &amp; Web (Tavily + Reddit)</option>
-          <option value="DISCUSSION">🌐 Forums &amp; Articles</option>
+          <option value="tavily">🔍 Web Intelligence</option>
+          <option value="linkedin">💼 LinkedIn</option>
+          <option value="job_signals">💼 Hiring Signals</option>
+          <option value="opencorporates">🏛️ Company Registry</option>
+          <option value="registry_lookup">🗂️ Global Registry</option>
+          <option value="new_business">🏢 New Business</option>
+          <option value="ppra">📋 PPRA Tenders</option>
+          <option value="tenderskenya">📋 TendersKenya</option>
+          <option value="reddit">💬 Reddit</option>
+          <option value="google_search">🌐 Forums</option>
         </select>
-        <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-secondary, #888)' }}>
-          {signals.length} signal{signals.length !== 1 ? 's' : ''} total
+        {/* Live text search — filters title + snippet client-side instantly */}
+        <input
+          type="search"
+          className="input"
+          placeholder="Search signals… e.g. ERP, Sage, payroll"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{ fontSize: '0.82rem', padding: '6px 10px', minWidth: 220, flex: 1 }}
+        />
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary, #888)', whiteSpace: 'nowrap' }}>
+          {filtered.length}/{signals.length}
         </span>
       </div>
 
@@ -491,7 +510,7 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 540, overflowY: 'auto' }}>
               <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary, #888)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>
                 {filtered.length} signal{filtered.length !== 1 ? 's' : ''}
-                {filterStrength !== 'ALL' || filterSource !== 'ALL' ? ' (filtered)' : ''}
+                {filterStrength !== 'ALL' || filterPlatform !== 'ALL' || needle ? ' (filtered)' : ''}
                 {' '}— hover source badges for explanation
               </p>
               {filtered.map((s) => (
