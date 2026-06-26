@@ -59,4 +59,6 @@ export const config = {
   googleCustomSearchEngineId: process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID ?? '',
   tavilyApiKey: process.env.TAVILY_API_KEY ?? '',
   apolloApiKey: process.env.APOLLO_API_KEY ?? '',
+  // Optional — unauthenticated OpenCorporates works (100 req/day free); add key for 500 req/day
+  openCorporatesApiKey: process.env.OPENCORPORATES_API_KEY ?? '',
 };

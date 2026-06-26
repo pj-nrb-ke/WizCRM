@@ -28,6 +28,7 @@ const KENYA_PATH = 'M 162,18 L 210,10 L 280,30 L 320,60 L 330,110 L 310,150 L 29
 const SOURCE_META: Record<string, { icon: string; label: string; description: string; color: string; border: string; bg: string }> = {
   tavily:       { icon: '🔍', label: 'Web Intelligence',      description: 'AI web search — forums, news, B2B sites (10 targeted queries)',   color: '#854d0e', border: '#fde047', bg: '#fefce8' },
   linkedin:     { icon: '💼', label: 'LinkedIn Signal',        description: 'LinkedIn posts & profiles of buyers actively discussing the need', color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
+  opencorporates:{ icon: '🏛️', label: 'Company Registry',       description: 'Officially incorporated in Kenya (OpenCorporates) — verified new company', color: '#0f766e', border: '#5eead4', bg: '#f0fdfa' },
   new_business: { icon: '🏢', label: 'New Business',           description: 'Newly registered or opened company — prime ERP adoption target',  color: '#7c3aed', border: '#c4b5fd', bg: '#faf5ff' },
   ppra:         { icon: '📋', label: 'Government Tender',      description: 'Official procurement posted on PPRA Kenya portal',                color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
   tenderskenya: { icon: '📋', label: 'Government Tender',      description: 'Aggregated public tender from TendersKenya.co.ke',                color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
@@ -259,12 +260,13 @@ function KenyaMap({ signals, selected, onSelect }: {
 
 function SourceLegend() {
   const items = [
-    { platform: 'tavily'       },
-    { platform: 'linkedin'     },
-    { platform: 'new_business' },
-    { platform: 'ppra'         },
-    { platform: 'reddit'       },
-    { platform: 'google_search'},
+    { platform: 'tavily'         },
+    { platform: 'linkedin'       },
+    { platform: 'opencorporates' },
+    { platform: 'new_business'   },
+    { platform: 'ppra'           },
+    { platform: 'reddit'         },
+    { platform: 'google_search'  },
   ];
   return (
     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
