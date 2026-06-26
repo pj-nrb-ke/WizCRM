@@ -7,16 +7,20 @@ import { TavilyProvider } from './tavily.provider.js';
 import { LinkedInProvider } from './linkedin.provider.js';
 import { NewBusinessProvider } from './new-business.provider.js';
 import { OpenCorporatesProvider } from './opencorporates.provider.js';
+import { RegistryLookupProvider } from './registry-lookup.provider.js';
+import { JobSignalsProvider } from './job-signals.provider.js';
 import type { IntentSignalRaw } from './signal-provider.interface.js';
 
 const providers = [
-  new TavilyProvider(),         // primary — AI web search (10 queries, HOT/WARM/MEDIUM)
-  new LinkedInProvider(),       // LinkedIn posts & profiles via Tavily
-  new OpenCorporatesProvider(), // official company registry — newly incorporated in Kenya
-  new NewBusinessProvider(),    // Tavily search for new business announcements
-  new TenderProvider(),         // PPRA Kenya + TendersKenya — government tenders
-  new RedditProvider(),         // r/Kenya, r/nairobi community discussions
-  new DiscussionProvider(),     // Google Custom Search — forums & articles
+  new TavilyProvider(),          // AI web search — 10 intent queries
+  new LinkedInProvider(),        // LinkedIn buyer posts via Tavily
+  new JobSignalsProvider(),      // hiring signals — HR/Finance/IT/Payroll roles = ERP buyers
+  new OpenCorporatesProvider(),  // official registry — newly incorporated Kenya companies
+  new RegistryLookupProvider(),  // registry-lookup.com — 521M entities, complements OpenCorporates
+  new NewBusinessProvider(),     // Tavily — new business announcements & openings
+  new TenderProvider(),          // PPRA Kenya + TendersKenya — government tenders
+  new RedditProvider(),          // r/Kenya community discussions
+  new DiscussionProvider(),      // Google Custom Search — forums & articles
 ];
 
 export async function runHeatMapDiscovery(

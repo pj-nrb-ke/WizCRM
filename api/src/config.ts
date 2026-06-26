@@ -61,4 +61,6 @@ export const config = {
   apolloApiKey: process.env.APOLLO_API_KEY ?? '',
   // Optional — unauthenticated OpenCorporates works (100 req/day free); add key for 500 req/day
   openCorporatesApiKey: process.env.OPENCORPORATES_API_KEY ?? '',
+  // Registry Lookup — 5,000 free calls/month; register at registry-lookup.com
+  registryLookupApiKey: process.env.REGISTRY_LOOKUP_API_KEY ?? '',
 };
