@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { LEAD_STAGES } from '../lib/stages';
 import { api } from '../lib/api';
 import type { LeadSummary } from '../lib/types';
@@ -320,7 +321,7 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                   <dt>Phone</dt>
                   <dd>{lead.phone ?? '—'}</dd>
                   <dt>Source</dt>
-                  <dd>{lead.source ?? '—'}</dd>
+                  <dd><LeadSource source={lead.source} /></dd>
                 </dl>
 
                 {lead.tasks && lead.tasks.length > 0 ? (
@@ -445,4 +446,21 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
       ) : null}
     </div>
   );
+}
+
+function LeadSource({ source }: { source?: string | null }) {
+  if (!source) return <span>—</span>;
+  if (source.startsWith('lead_generator:')) {
+    const campaignId = source.slice('lead_generator:'.length);
+    return (
+      <Link
+        to={`/lead-generator/${campaignId}`}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--primary)', textDecoration: 'none' }}
+      >
+        <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>Lead Generator</span>
+        <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>↗ view campaign</span>
+      </Link>
+    );
+  }
+  return <span>{source}</span>;
 }

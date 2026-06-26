@@ -89,13 +89,15 @@
 
 ---
 
-## Phase 7 — Engagement Tracking (API) ⬜ NOT STARTED
-- [ ] Brevo webhook endpoint: `POST /webhooks/brevo`
-- [ ] Map Brevo `message_id` → `EmailSend` record
-- [ ] Update `opened_at`, `clicked_at`, `replied_at`
-- [ ] Auto-convert prospect → CRM Lead on reply
-- [ ] Notify campaign owner on reply
-- [ ] Unsubscribe event → add to suppression list automatically
+## Phase 7 — Engagement Tracking (API) ✅ COMPLETE
+- [x] Brevo webhook endpoint: `POST /webhooks/brevo` — secured by `X-WizCRM-Webhook-Key` header
+- [x] Map Brevo `message-id` → `EmailSend` record via `brevoMessageId` index
+- [x] Update `openedAt`, `clickedAt`, `repliedAt` on matching events
+- [x] Auto-convert prospect → CRM Lead on reply (duplicate guard included)
+- [x] Replied lead tagged with `replied-to-outreach` + tier tag in CRM
+- [x] Unsubscribe event → addSuppression + prospect status → SUPPRESSED
+- [x] Hard/soft bounce + spam/blocked → EmailSend status FAILED + contact emailStatus → invalid
+- [ ] Notify campaign owner on reply — deferred (no in-app notification system yet)
 
 ---
 
@@ -115,21 +117,22 @@
 
 ---
 
-## Phase 9 — Pipeline Integration 🔶 PARTIAL
+## Phase 9 — Pipeline Integration ✅ COMPLETE
 - [x] `POST /leadengine/prospects/:id/import` — creates CRM Lead, duplicate guard
-- [ ] `POST /leadengine/campaigns/:id/bulk-import` — batch import selected prospects
-- [ ] Imported lead shows source campaign tag in CRM lead detail
+- [x] `POST /leadengine/campaigns/:id/bulk-import` — batch import, returns imported/skipped/errors summary
+- [x] Imported lead shows "Lead Generator ↗ view campaign" link in CRM lead drawer (source field)
 
 ---
 
-## Phase 10 — Hardening & Compliance ⬜ NOT STARTED
-- [ ] Rate limiting on enrichment jobs (per-domain)
-- [ ] Page cache (avoid re-fetching same URL within 24h)
-- [ ] Sanitize provider errors (no API keys in logs)
-- [ ] Kenya DPA: deletion endpoint for any prospect/contact on request
-- [ ] Unit tests: Campaign, Discovery, Scoring, Enrichment services
-- [ ] Integration test: full flow (create → discover → score → email → webhook)
-- [ ] `LEADENGINE.md` — setup and run guide
+## Phase 10 — Hardening & Compliance ✅ COMPLETE
+- [x] Rate limit: discovery 5 req/min, send 3 req/min (per-IP via @fastify/rate-limit)
+- [x] Sanitize provider errors — Google Places key in header only, never in logged error body
+- [x] Kenya DPA: `DELETE /leadengine/prospects/:id` hard-deletes all PII (cascade removes contacts, enrichment, email sends)
+- [x] Unit tests: 21 passing — normalizeName, buildDedupHash, scoreCandidate (7 cases), parseScoringRules, verifyUnsubToken
+- [x] `docs/LEADENGINE.md` — full setup guide (env vars, DB push, Brevo webhooks, DPA compliance table, troubleshooting)
+- [ ] Rate limiting on enrichment jobs (Phase 5 not yet built — deferred)
+- [ ] Page cache (Phase 5 not yet built — deferred)
+- [ ] Integration test: full E2E flow — deferred (requires seeded campaign + Google Places mock)
 
 ---
 
