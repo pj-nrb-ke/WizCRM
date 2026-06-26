@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { ProspectDrawer } from '../components/lead-engine/ProspectDrawer';
 import { api } from '../lib/api';
+import { HeatMapTab } from '../components/lead-engine/HeatMapTab';
 import type {
   Campaign, CampaignStatus, DiscoveryRun, EmailTemplate, Prospect, SequenceStep,
 } from '../lib/lead-engine-types';
@@ -803,7 +804,7 @@ function ResultsTab({ campaignId }: { campaignId: string }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
-type Tab = 'prospects' | 'outreach' | 'results';
+type Tab = 'prospects' | 'outreach' | 'results' | 'heatmap';
 
 export function CampaignDetailPage() {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -910,7 +911,7 @@ export function CampaignDetailPage() {
 
       {/* Tabs */}
       <div className="drawer-tabs" style={{ marginBottom: 24 }} role="tablist">
-        {([['prospects', 'Prospects'], ['outreach', 'Email Outreach'], ['results', 'Results']] as [Tab, string][]).map(
+        {([['prospects', 'Prospects'], ['outreach', 'Email Outreach'], ['results', 'Results'], ['heatmap', '🔥 Heat Map']] as [Tab, string][]).map(
           ([key, label]) => (
             <button key={key} type="button" role="tab" aria-selected={tab === key}
               className={tab === key ? 'drawer-tab active' : 'drawer-tab'}
@@ -949,6 +950,7 @@ export function CampaignDetailPage() {
         />
       )}
       {tab === 'results' && <ResultsTab campaignId={campaign.id} />}
+      {tab === 'heatmap' && <HeatMapTab campaignId={campaign.id} />}
 
       {/* Prospect detail drawer */}
       <ProspectDrawer

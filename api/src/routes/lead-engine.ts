@@ -523,6 +523,54 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     const stepNum = Number(step);
     return countEligibleForStep(id, stepNum, request.user.organizationId);
   });
+
+  // ── Heat Map ────────────────────────────────────────────────────────────
+
+  app.post('/campaigns/:id/heat-map', {
+    config: { rateLimit: { max: 3, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const { id: campaignId } = request.params as { id: string };
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, organizationId: request.user.organizationId },
+      select: { id: true, industryKeywords: true, locations: true, goal: true },
+    });
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' });
+
+    const keywords = (campaign.industryKeywords as string[]) ?? [];
+    const locations = (campaign.locations as string[]) ?? [];
+    if (keywords.length === 0) return reply.status(400).send({ error: 'Campaign has no industry keywords' });
+
+    const { runHeatMapDiscovery } = await import('../services/lead-engine/heat-map/heat-map.service.js');
+    const result = await runHeatMapDiscovery(campaignId, keywords, locations);
+    return reply.send(result);
+  });
+
+  app.get('/campaigns/:id/heat-map', async (request, reply) => {
+    const { id: campaignId } = request.params as { id: string };
+    const { source, intentStrength } = request.query as { source?: string; intentStrength?: string };
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, organizationId: request.user.organizationId },
+      select: { id: true },
+    });
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' });
+
+    const { getHeatMapSignals } = await import('../services/lead-engine/heat-map/heat-map.service.js');
+    const signals = await getHeatMapSignals(campaignId, { source, intentStrength });
+    return reply.send({ signals });
+  });
+
+  app.patch('/signals/:signalId/status', async (request, reply) => {
+    const { signalId } = request.params as { signalId: string };
+    const { status, campaignId } = request.body as { status: 'SAVED' | 'DISMISSED'; campaignId: string };
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, organizationId: request.user.organizationId },
+      select: { id: true },
+    });
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' });
+    const { updateSignalStatus } = await import('../services/lead-engine/heat-map/heat-map.service.js');
+    await updateSignalStatus(signalId, campaignId, status);
+    return reply.status(204).send();
+  });
 };
 
 // Public unsubscribe handler — registered separately in app.ts so it has no auth hook

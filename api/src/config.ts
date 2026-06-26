@@ -53,4 +53,8 @@ export const config = {
 
   // Brevo webhook shared secret — set in Brevo dashboard as custom header X-WizCRM-Webhook-Key
   brevoWebhookSecret: process.env.BREVO_WEBHOOK_SECRET ?? '',
+
+  // Heat Map signal discovery
+  googleCustomSearchKey: process.env.GOOGLE_CUSTOM_SEARCH_KEY ?? process.env.GOOGLE_PLACES_API_KEY ?? '',
+  googleCustomSearchEngineId: process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID ?? '',
 };

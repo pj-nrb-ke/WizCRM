@@ -94,6 +94,29 @@ export interface SequenceStep {
   template: { id: string; name: string; subject: string } | null;
 }
 
+export type IntentStrength = 'HOT' | 'WARM' | 'MEDIUM';
+export type SignalSource = 'TENDER' | 'SOCIAL' | 'DISCUSSION';
+
+export interface IntentSignal {
+  id: string;
+  campaignId: string;
+  source: SignalSource;
+  platform: string;
+  title: string;
+  snippet: string | null;
+  url: string;
+  authorName: string | null;
+  authorCompany: string | null;
+  location: string | null;
+  lat: number | null;
+  lng: number | null;
+  publishedAt: string | null;
+  intentStrength: IntentStrength;
+  engagementScore: number;
+  status: 'NEW' | 'SAVED' | 'DISMISSED';
+  createdAt: string;
+}
+
 export interface EmailTemplate {
   id: string;
   name: string;
