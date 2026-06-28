@@ -78,8 +78,9 @@ export function LandingNav() {
               fontFamily: "'Plus Jakarta Sans', sans-serif",
               fontWeight: 800,
               fontSize: '1.25rem',
-              color: '#0f172a',
+              color: scrolled ? '#0f172a' : '#ffffff',
               letterSpacing: '-0.03em',
+              transition: 'color 0.3s',
             }}
           >
             WizCRM
@@ -98,18 +99,18 @@ export function LandingNav() {
                 padding: '0.5rem 0.875rem',
                 fontSize: '0.9rem',
                 fontWeight: 500,
-                color: '#475569',
+                color: scrolled ? '#475569' : '#e2e8f0',
                 borderRadius: '0.625rem',
                 cursor: 'pointer',
                 transition: 'color 0.15s, background 0.15s',
                 fontFamily: 'inherit',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.color = '#6366f1';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)';
+                (e.currentTarget as HTMLButtonElement).style.color = scrolled ? '#6366f1' : '#ffffff';
+                (e.currentTarget as HTMLButtonElement).style.background = scrolled ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.15)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.color = '#475569';
+                (e.currentTarget as HTMLButtonElement).style.color = scrolled ? '#475569' : '#e2e8f0';
                 (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
               }}
             >
@@ -126,14 +127,14 @@ export function LandingNav() {
             style={{
               fontSize: '0.9rem',
               fontWeight: 600,
-              color: '#475569',
+              color: scrolled ? '#475569' : '#e2e8f0',
               textDecoration: 'none',
               padding: '0.5rem 0.875rem',
               borderRadius: '0.625rem',
               transition: 'color 0.15s',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#6366f1'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#475569'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = scrolled ? '#6366f1' : '#ffffff'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = scrolled ? '#475569' : '#e2e8f0'; }}
           >
             Sign In
           </Link>
