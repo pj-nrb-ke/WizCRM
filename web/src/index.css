@@ -297,11 +297,7 @@ textarea {
 
 .main {
   padding: 28px 36px 48px;
-  max-width: 1280px;
-}
-
-.main:has(.page-wide) {
-  max-width: none;
+  width: 100%;
 }
 
 /* —— Page header —— */

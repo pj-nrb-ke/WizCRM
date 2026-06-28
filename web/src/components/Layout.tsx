@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { ChevronDown, Lock, Unlock } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
@@ -65,7 +65,7 @@ function NavItem({
             <NavIcon name={icon} />
           </span>
           {expanded && (
-            <span style={{ color: isActive ? '#e0e7ff' : '#7c8fa6', fontSize: 13, whiteSpace: 'nowrap' }}>
+            <span style={{ color: isActive ? '#e0e7ff' : '#94a3b8', fontSize: 13, whiteSpace: 'nowrap' }}>
               {label}
             </span>
           )}
@@ -119,7 +119,7 @@ function CollapsibleNavGroup({
       >
         <span
           className="text-[10px] font-700 uppercase tracking-widest"
-          style={{ color: '#334155', letterSpacing: '0.09em' }}
+          style={{ color: '#64748b', letterSpacing: '0.09em' }}
         >
           {label}
         </span>
@@ -146,18 +146,19 @@ export function Layout() {
   const [brandName, setBrandName] = useState('WizCRM');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
-  // Collapsing rail sidebar state
-  const [locked, setLocked] = useState<boolean>(() => {
-    try { return localStorage.getItem('wiz-sidebar-locked') === 'true'; } catch { return false; }
+  // Sidebar open/collapsed state — defaults open
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('wiz-sidebar-open');
+      return stored !== null ? stored === 'true' : true;
+    } catch { return true; }
   });
-  const [hovered, setHovered] = useState(false);
-  const expanded = locked || hovered;
   const sidebarW = expanded ? W_EXPANDED : W_COLLAPSED;
 
-  function toggleLock() {
-    setLocked((v) => {
+  function toggleSidebar() {
+    setExpanded((v) => {
       const next = !v;
-      try { localStorage.setItem('wiz-sidebar-locked', String(next)); } catch {}
+      try { localStorage.setItem('wiz-sidebar-open', String(next)); } catch {}
       return next;
     });
   }
@@ -183,8 +184,6 @@ export function Layout() {
       <aside
         className="sidebar"
         style={{ width: sidebarW }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
       >
         {/* Brand mark */}
         <div
@@ -192,11 +191,11 @@ export function Layout() {
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            padding: expanded ? '0 12px 14px' : '0 0 14px',
+            padding: expanded ? '0 12px 14px' : '0 8px 14px',
             marginBottom: 4,
             borderBottom: '1px solid rgba(255,255,255,0.055)',
-            justifyContent: expanded ? 'flex-start' : 'center',
-            transition: 'padding 200ms ease, justify-content 200ms ease',
+            justifyContent: expanded ? 'space-between' : 'center',
+            transition: 'padding 200ms ease',
             overflow: 'hidden',
           }}
         >
@@ -219,33 +218,64 @@ export function Layout() {
               style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }}
             />
           </div>
+          {/* Logo + name row (only when expanded) */}
           {expanded && (
-            <div className="flex flex-col min-w-0 overflow-hidden">
-              <span
-                className="font-700 text-sm leading-tight truncate"
-                style={{ color: '#f1f5f9', letterSpacing: '-0.01em', fontFamily: 'var(--font-display)' }}
-              >
-                {brandName}
-              </span>
-              <span className="text-[11px]" style={{ color: '#3d4f63' }}>
-                Enterprise CRM
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+              <div className="flex flex-col min-w-0 overflow-hidden">
+                <span
+                  className="font-700 text-sm leading-tight truncate"
+                  style={{ color: '#f1f5f9', letterSpacing: '-0.01em', fontFamily: 'var(--font-display)' }}
+                >
+                  {brandName}
+                </span>
+                <span className="text-[11px]" style={{ color: '#64748b' }}>
+                  Enterprise CRM
+                </span>
+              </div>
+              <div className="relative flex-shrink-0">
+                <span
+                  className="absolute inset-0 rounded-full animate-ping"
+                  style={{ background: '#10b981', opacity: 0.35 }}
+                />
+                <div
+                  className="relative h-2 w-2 rounded-full"
+                  style={{ background: '#10b981', boxShadow: '0 0 5px rgba(16,185,129,0.6)' }}
+                  title="System operational"
+                />
+              </div>
             </div>
           )}
-          {/* Live status dot — only when expanded */}
-          {expanded && (
-            <div className="ml-auto flex-shrink-0 relative">
-              <span
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: '#10b981', opacity: 0.35 }}
-              />
-              <div
-                className="relative h-2 w-2 rounded-full"
-                style={{ background: '#10b981', boxShadow: '0 0 5px rgba(16,185,129,0.6)' }}
-                title="System operational"
-              />
-            </div>
-          )}
+
+          {/* Collapse / expand toggle — always visible */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            style={{
+              flexShrink: 0,
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 6,
+              color: '#94a3b8',
+              width: 26,
+              height: 26,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#e2e8f0';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8';
+            }}
+          >
+            {expanded ? <ChevronLeft size={14} strokeWidth={2.5} /> : <ChevronRight size={14} strokeWidth={2.5} />}
+          </button>
         </div>
 
         {/* Nav */}
@@ -326,7 +356,7 @@ export function Layout() {
                 <span className="text-xs font-600 leading-tight truncate" style={{ color: '#e2e8f0' }}>
                   {user?.name}
                 </span>
-                <span className="text-[10px]" style={{ color: '#3d4f63' }}>
+                <span className="text-[10px]" style={{ color: '#64748b' }}>
                   {roleLabel}
                 </span>
               </div>
@@ -346,49 +376,31 @@ export function Layout() {
             </div>
           )}
 
-          {/* Lock / sign-out row */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {expanded && (
-              <button
-                type="button"
-                className="btn-logout"
-                onClick={logout}
-                style={{
-                  flex: 1,
-                  background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: 8,
-                  color: '#475569',
-                  transition: 'all 0.15s',
-                  fontSize: '0.78rem',
-                  padding: '8px 10px',
-                }}
-              >
-                <NavIcon name="logout" />
-                Sign out
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={toggleLock}
-              title={locked ? 'Unpin sidebar' : 'Pin sidebar open'}
-              style={{
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 8,
-                color: locked ? '#D97706' : '#475569',
-                padding: 7,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'color 0.15s, border-color 0.15s',
-                borderColor: locked ? 'rgba(217,119,6,0.4)' : 'rgba(255,255,255,0.06)',
-              }}
-            >
-              {locked ? <Lock size={15} /> : <Unlock size={15} />}
-            </button>
-          </div>
+          {/* Sign-out */}
+          <button
+            type="button"
+            className="btn-logout"
+            onClick={logout}
+            title={expanded ? undefined : 'Sign out'}
+            style={{
+              width: '100%',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 8,
+              color: '#94a3b8',
+              transition: 'all 0.15s',
+              fontSize: '0.78rem',
+              padding: expanded ? '8px 10px' : '8px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: expanded ? 'flex-start' : 'center',
+              gap: 6,
+              cursor: 'pointer',
+            }}
+          >
+            <NavIcon name="logout" />
+            {expanded && 'Sign out'}
+          </button>
         </div>
       </aside>
 
