@@ -18,7 +18,7 @@ function CollapsibleSubtitle({ text }: { text: string }) {
         onClick={() => setExpanded((v) => !v)}
         style={{
           background: 'none', border: 'none', padding: 0,
-          fontSize: 'inherit', color: 'var(--primary, #6366f1)',
+          fontSize: 'inherit', color: 'var(--primary)',
           cursor: 'pointer', fontWeight: 500,
         }}
       >
@@ -40,7 +40,7 @@ export function PageHeader({
   return (
     <header className="page-header">
       <div className="page-header-text">
-        <h1>{title}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}>{title}</h1>
         {subtitle ? <CollapsibleSubtitle text={subtitle} /> : null}
       </div>
       {actions ? <div className="page-header-actions">{actions}</div> : null}

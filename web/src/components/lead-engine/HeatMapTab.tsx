@@ -44,8 +44,8 @@ function getSourceMeta(platform: string) {
 
 // ── Intent strength colours ────────────────────────────────────────────────
 
-const STRENGTH_COLOR: Record<IntentStrength, string> = { HOT: '#ef4444', WARM: '#f97316', MEDIUM: '#6366f1' };
-const STRENGTH_LABEL: Record<IntentStrength, string> = { HOT: '🔴 Hot — formal buying intent', WARM: '🟠 Warm — expressed need', MEDIUM: '🔵 Medium — research phase' };
+const STRENGTH_COLOR: Record<IntentStrength, string> = { HOT: '#D97706', WARM: '#f97316', MEDIUM: '#1A56DB' };
+const STRENGTH_LABEL: Record<IntentStrength, string> = { HOT: '🟡 Hot — formal buying intent', WARM: '🟠 Warm — expressed need', MEDIUM: '🔵 Medium — research phase' };
 
 // ── Apollo contact type ────────────────────────────────────────────────────
 
@@ -196,7 +196,7 @@ function SignalCard({
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <a href={signal.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-          style={{ fontSize: '0.72rem', color: 'var(--primary, #6366f1)', textDecoration: 'none', fontWeight: 500 }}>
+          style={{ fontSize: '0.72rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>
           ↗ View source
         </a>
 
@@ -458,7 +458,7 @@ export function HeatMapTab({ campaignId }: { campaignId: string }) {
       {signals.length > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           {[
-            { label: 'Hot signals',         count: hotCount,    color: '#ef4444', title: 'Formal tenders & RFQs — highest buying intent' },
+            { label: 'Hot signals',         count: hotCount,    color: '#D97706', title: 'Formal tenders & RFQs — highest buying intent' },
             { label: 'Warm signals',         count: warmCount,   color: '#f97316', title: 'Social posts & expressed needs' },
             { label: 'Gov\'t tenders',       count: tenderCount, color: '#ef4444', title: 'PPRA Kenya + TendersKenya' },
             { label: 'Web Intelligence',     count: tavilyCount, color: '#eab308', title: 'Tavily AI web search results' },

@@ -24,9 +24,9 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
     <div
       className="relative overflow-hidden rounded-2xl mb-4"
       style={{
-        background: 'linear-gradient(140deg, #0c1020 0%, #161240 25%, #1a2060 60%, #0c3a5e 100%)',
+        background: 'linear-gradient(140deg, #050D1F 0%, #0A2040 30%, #1A56DB 65%, #0A1628 100%)',
         padding: '28px 36px 24px',
-        boxShadow: '0 10px 40px rgba(20, 16, 70, 0.38), 0 2px 8px rgba(15, 23, 42, 0.18)',
+        boxShadow: '0 10px 40px rgba(5, 13, 31, 0.45), 0 2px 8px rgba(15, 23, 42, 0.18)',
       }}
     >
       {/* decorative blobs */}
@@ -35,7 +35,7 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
         style={{
           top: '-60px', right: '-60px', width: '260px', height: '260px',
           borderRadius: '50%',
-          background: 'rgba(99, 102, 241, 0.10)',
+          background: 'rgba(26, 86, 219, 0.12)',
         }}
       />
       <div
@@ -62,7 +62,7 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
           <div>
             <h1
               className="m-0 font-800 leading-tight tracking-tight"
-              style={{ color: '#f8fafc', letterSpacing: '-0.04em', fontSize: 'clamp(22px, 3vw, 32px)' }}
+              style={{ color: '#f8fafc', letterSpacing: '-0.04em', fontSize: 'clamp(22px, 3vw, 32px)', fontFamily: 'var(--font-display)' }}
             >
               {greeting}, {name}
             </h1>
@@ -77,13 +77,13 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
             <div
               className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-600"
               style={{
-                background: 'rgba(99, 102, 241, 0.18)',
-                border: '1px solid rgba(99, 102, 241, 0.28)',
-                color: '#a5b4fc',
+                background: 'rgba(26, 86, 219, 0.20)',
+                border: '1px solid rgba(26, 86, 219, 0.35)',
+                color: '#93c5fd',
                 backdropFilter: 'blur(8px)',
               }}
             >
-              <LiveIndicator color="#818cf8" size={6} />
+              <LiveIndicator color="#60a5fa" size={6} />
               AI insights active
             </div>
           </div>
@@ -129,14 +129,14 @@ function HeroKpiTile({ kpi }: { kpi: HeroKpi }) {
         className="flex h-7 w-7 items-center justify-center rounded-lg flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
         style={{
           background: kpi.warn ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.1)',
-          color: kpi.warn ? '#fcd34d' : '#a5b4fc',
+          color: kpi.warn ? '#fcd34d' : '#93c5fd',
         }}
       >
         <Icon size={13} strokeWidth={2} />
       </div>
       <div
         className="text-xl font-800 leading-none tracking-tight tabular-nums"
-        style={{ color: kpi.warn ? '#fde68a' : '#f1f5f9', letterSpacing: '-0.03em' }}
+        style={{ color: kpi.warn ? '#fde68a' : '#f1f5f9', letterSpacing: '-0.02em', fontFamily: 'var(--font-mono)' }}
       >
         {typeof kpi.value === 'number'
           ? <AnimatedCounter value={kpi.value} />

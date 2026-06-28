@@ -7,18 +7,33 @@ export default {
   theme: {
     extend: {
       colors: {
+        /* Meridian palette tokens */
+        midnight: '#050D1F',
+        command: '#0A1628',
+        sapphire: {
+          DEFAULT: '#1A56DB',
+          light: '#3B82F6',
+          dark: '#1245B8',
+          soft: '#EBF3FF',
+        },
+        amber: {
+          DEFAULT: '#D97706',
+          soft: '#FFFBEB',
+        },
+        workspace: '#EFF3F9',
+        /* Legacy brand scale kept for any remaining usages */
         brand: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50: '#EBF3FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#60A5FA',
+          500: '#1A56DB',
+          600: '#1649C0',
+          700: '#1245B8',
+          800: '#0D3A9E',
+          900: '#082F8A',
+          950: '#050D1F',
         },
       },
       fontWeight: {
@@ -45,9 +60,14 @@ export default {
       backdropBlur: {
         xs: '2px',
       },
+      fontFamily: {
+        display: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Cascadia Code', 'ui-monospace', 'monospace'],
+      },
       boxShadow: {
-        brand: '0 4px 20px rgba(79, 70, 229, 0.22)',
-        'brand-lg': '0 8px 32px rgba(79, 70, 229, 0.35)',
+        sapphire: '0 4px 20px rgba(26, 86, 219, 0.22)',
+        'sapphire-lg': '0 8px 32px rgba(26, 86, 219, 0.35)',
         glass: '0 8px 32px rgba(15, 23, 42, 0.12)',
         'glass-lg': '0 16px 48px rgba(15, 23, 42, 0.16)',
       },
