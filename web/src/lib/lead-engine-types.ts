@@ -126,3 +126,15 @@ export interface EmailTemplate {
   createdAt: string;
   createdBy: { id: string; name: string };
 }
+
+export interface IcpRunResult {
+  discovered: number;
+  enriched: number;
+  savedProspects: number;
+  roleContacts: number;
+  personalGated: number;
+  dedupMerges: number;
+  kdpaCompliant: true;
+  prospectIds: string[];
+  skippedReasons: string[];
+}

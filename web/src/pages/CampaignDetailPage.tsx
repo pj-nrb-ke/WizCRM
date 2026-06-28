@@ -7,8 +7,19 @@ import { ProspectDrawer } from '../components/lead-engine/ProspectDrawer';
 import { api } from '../lib/api';
 import { HeatMapTab } from '../components/lead-engine/HeatMapTab';
 import type {
-  Campaign, CampaignStatus, DiscoveryRun, EmailTemplate, Prospect, SequenceStep,
+  Campaign, CampaignStatus, DiscoveryRun, EmailTemplate, IcpRunResult, Prospect, SequenceStep,
 } from '../lib/lead-engine-types';
+
+// ── Spinner icon ───────────────────────────────────────────────────────────
+
+function SpinnerIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+      style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }}>
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+    </svg>
+  );
+}
 
 // ── Tier badge ─────────────────────────────────────────────────────────────
 
@@ -290,12 +301,18 @@ type ProspectsTabProps = {
   loadingProspects: boolean;
   activeRun: DiscoveryRun | null;
   onRunDiscovery: () => void;
+  onRunIcp: () => void;
+  icpRunning: boolean;
+  icpResult: IcpRunResult | null;
+  onClearIcpResult: () => void;
   onProspectClick: (id: string) => void;
   onRefresh: () => void;
 };
 
 function ProspectsTab({
-  campaignId, prospects, loadingProspects, activeRun, onRunDiscovery, onProspectClick, onRefresh,
+  campaignId, prospects, loadingProspects, activeRun, onRunDiscovery,
+  onRunIcp, icpRunning, icpResult, onClearIcpResult,
+  onProspectClick, onRefresh,
 }: ProspectsTabProps) {
   const [tierFilter, setTierFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -379,9 +396,26 @@ function ProspectsTab({
           type="button"
           className="btn-primary"
           onClick={onRunDiscovery}
-          disabled={!!activeRun}
+          disabled={!!activeRun || icpRunning}
+          style={{ background: 'var(--primary)' }}
         >
           {activeRun ? 'Discovery running…' : '⚡ Run Discovery'}
+        </button>
+        <button
+          type="button"
+          onClick={onRunIcp}
+          disabled={icpRunning || !!activeRun}
+          style={{
+            padding: '8px 16px', borderRadius: 8, border: 'none', cursor: icpRunning || !!activeRun ? 'not-allowed' : 'pointer',
+            background: icpRunning ? 'var(--amber, #D97706)' : '#D97706',
+            color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+            opacity: icpRunning || !!activeRun ? 0.65 : 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          {icpRunning
+            ? <><SpinnerIcon />ICP running…</>
+            : '🤖 Run ICP'}
         </button>
       </div>
 
@@ -395,6 +429,60 @@ function ProspectsTab({
           <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Refreshes automatically
           </span>
+        </div>
+      )}
+
+      {/* ICP run progress banner */}
+      {icpRunning && (
+        <div style={{
+          marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 16px', borderRadius: 10,
+          background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.3)',
+        }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#D97706', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
+          <div>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#92400e' }}>
+              ICP pipeline running
+            </span>
+            <span style={{ fontSize: '0.85rem', color: '#92400e', marginLeft: 8 }}>
+              Discovering via Apify → enriching via Firecrawl → contacts via Apollo…
+            </span>
+          </div>
+          <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#b45309', whiteSpace: 'nowrap' }}>
+            ~60–90 seconds
+          </span>
+        </div>
+      )}
+
+      {/* ICP run result summary */}
+      {icpResult && !icpRunning && (
+        <div style={{
+          marginBottom: 16, padding: '14px 18px', borderRadius: 10,
+          background: 'rgba(26,86,219,0.05)', border: '1px solid rgba(26,86,219,0.2)',
+          display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+            ICP run complete
+          </span>
+          {([
+            ['Discovered', icpResult.discovered],
+            ['Enriched', icpResult.enriched],
+            ['Saved', icpResult.savedProspects],
+            ['Contacts', icpResult.roleContacts],
+            ['Dupes skipped', icpResult.dedupMerges],
+            ['KDPA gated', icpResult.personalGated],
+          ] as [string, number][]).map(([label, val]) => (
+            <div key={label} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)', lineHeight: 1 }}>{val}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={onClearIcpResult}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1, padding: 4 }}
+            aria-label="Dismiss"
+          >×</button>
         </div>
       )}
 
@@ -429,7 +517,7 @@ function ProspectsTab({
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
           {prospects.length === 0
-            ? 'No prospects yet — click ⚡ Run Discovery to find matching companies.'
+            ? 'No prospects yet — click 🤖 Run ICP to discover and enrich companies automatically, or ⚡ Run Discovery for Google Places only.'
             : 'No prospects match your filters.'}
         </div>
       ) : (
@@ -822,6 +910,8 @@ export function CampaignDetailPage() {
   const [error, setError] = useState('');
   const [selectedProspectId, setSelectedProspectId] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
+  const [icpRunning, setIcpRunning] = useState(false);
+  const [icpResult, setIcpResult] = useState<IcpRunResult | null>(null);
 
   const loadCampaign = useCallback(() => {
     if (!campaignId) return;
@@ -875,6 +965,24 @@ export function CampaignDetailPage() {
       setActiveRun({ id: result.runId, status: 'RUNNING', resultsCount: 0, startedAt: new Date().toISOString(), finishedAt: null, error: null });
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Failed to start discovery');
+    }
+  }
+
+  async function runIcp() {
+    if (!campaignId || icpRunning) return;
+    setIcpRunning(true);
+    setIcpResult(null);
+    try {
+      const result = await api<IcpRunResult>(
+        `/leadengine/campaigns/${campaignId}/icp-run`,
+        { method: 'POST', body: { limit: 10 } },
+      );
+      setIcpResult(result);
+      loadProspects();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'ICP run failed');
+    } finally {
+      setIcpRunning(false);
     }
   }
 
@@ -936,6 +1044,10 @@ export function CampaignDetailPage() {
           loadingProspects={loadingProspects}
           activeRun={activeRun}
           onRunDiscovery={runDiscovery}
+          onRunIcp={runIcp}
+          icpRunning={icpRunning}
+          icpResult={icpResult}
+          onClearIcpResult={() => setIcpResult(null)}
           onProspectClick={setSelectedProspectId}
           onRefresh={loadProspects}
         />

@@ -2528,6 +2528,15 @@ tbody tr:last-child td {
   to { transform: translateX(0); }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 .drilldown-loading {
   align-items: center;
   justify-content: center;
