@@ -1,4 +1,5 @@
 import type { CompanyCandidate, ScoringRules, ScoreResult } from './types.js';
+import { defaultScoringRules } from './campaign.service.js';
 
 export function scoreCandidate(
   candidate: CompanyCandidate,
@@ -46,6 +47,5 @@ export function parseScoringRules(raw: unknown): ScoringRules {
   if (raw && typeof raw === 'object' && 'signals' in raw) {
     return raw as ScoringRules;
   }
-  // Fallback: empty rules — everything scores 0 / tier null (dropped)
-  return { signals: [], tierThresholds: { A: 60, B: 35, C: 15 } };
+  return defaultScoringRules();
 }

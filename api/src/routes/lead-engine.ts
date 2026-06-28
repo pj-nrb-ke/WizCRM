@@ -14,6 +14,9 @@ import {
 } from '../services/lead-engine/discovery/discovery.service.js';
 import { addSuppression } from '../services/lead-engine/suppression.service.js';
 import { normalizeName } from '../services/lead-engine/discovery/google-places.provider.js';
+import { runIcpPipeline } from '../services/lead-engine/icp-pipeline.service.js';
+import { enrichCompany } from '../services/lead-engine/enrichment/enrichment.service.js';
+import { purgePersonalData } from '../services/lead-engine/kdpa.js';
 import {
   sendSequenceStep,
   getEmailStats,
@@ -87,6 +90,99 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     const run = await getRunStatus(runId, request.user.organizationId);
     if (!run) return reply.status(404).send({ error: 'Run not found' });
     return run;
+  });
+
+  // ── ICP Pipeline ──────────────────────────────────────────────────────────
+
+  app.post('/campaigns/:id/icp-run', {
+    config: { rateLimit: { max: 3, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as {
+      keywords?: string[];
+      locations?: string[];
+      limit?: number;
+    };
+
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, organizationId: request.user.organizationId },
+      select: { id: true, industryKeywords: true, locations: true },
+    });
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' });
+
+    const keywords: string[] = body?.keywords ?? (campaign.industryKeywords as string[] | null) ?? [];
+    const locs: string[] = body?.locations ?? (campaign.locations as string[] | null) ?? ['Nairobi'];
+    const limit = Math.min(Number(body?.limit ?? 10), 50);
+
+    if (!keywords.length) {
+      return reply.status(400).send({ error: 'keywords are required (set on campaign or pass in body)' });
+    }
+
+    try {
+      const result = await runIcpPipeline({
+        campaignId: id,
+        organizationId: request.user.organizationId,
+        keywords,
+        locations: locs,
+        limit,
+      });
+      return reply.status(200).send(result);
+    } catch (err) {
+      return reply.status(500).send({
+        error: err instanceof Error ? err.message : 'ICP pipeline failed',
+      });
+    }
+  });
+
+  // ── Prospect on-demand enrichment ─────────────────────────────────────────
+
+  app.post('/prospects/:id/enrich', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const prospect = await prisma.prospect.findFirst({
+      where: { id, campaign: { organizationId: request.user.organizationId } },
+      select: { id: true, website: true },
+    });
+    if (!prospect) return reply.status(404).send({ error: 'Prospect not found' });
+    if (!prospect.website) return reply.status(400).send({ error: 'Prospect has no website to enrich' });
+
+    const profile = await enrichCompany(prospect.website);
+    if (!profile) return reply.status(200).send({ enriched: false, message: 'No data returned from enrichment' });
+
+    const enrichment = await prisma.prospectEnrichment.upsert({
+      where: { prospectId: id },
+      create: {
+        prospectId: id,
+        websiteSummary: profile.websiteSummary,
+        employeeEstimate: parseEmployeeBand(profile.estimatedEmployees),
+        existingErpDetected: Boolean(profile.erpSoftware),
+        signals: {
+          sector: profile.sector,
+          accountingSoftware: profile.accountingSoftware,
+          servicesOrProducts: profile.servicesOrProducts,
+          yearFounded: profile.yearFounded,
+          provenance: { provider: profile.source, retrievedAt: profile.retrievedAt },
+        },
+      },
+      update: {
+        websiteSummary: profile.websiteSummary,
+        employeeEstimate: parseEmployeeBand(profile.estimatedEmployees),
+        existingErpDetected: Boolean(profile.erpSoftware),
+      },
+    });
+
+    return { enriched: true, enrichment };
+  });
+
+  // ── KDPA data-subject deletion ─────────────────────────────────────────────
+
+  app.delete('/data-subject', async (request, reply) => {
+    const body = request.body as { email?: string };
+    if (!body?.email?.trim()) {
+      return reply.status(400).send({ error: 'email is required' });
+    }
+    const result = await purgePersonalData(request.user.organizationId, body.email.trim());
+    return { ok: true, ...result };
   });
 
   // ── Prospects ──────────────────────────────────────────────────────────────
@@ -630,4 +726,10 @@ export async function handleUnsubscribe(
 function extractMergeFields(html: string): string[] {
   const matches = html.matchAll(/\{\{(\w+)\}\}/g);
   return [...new Set([...matches].map((m) => m[1]))];
+}
+
+function parseEmployeeBand(band: string | null | undefined): number | null {
+  if (!band) return null;
+  const match = band.match(/\d+/);
+  return match ? parseInt(match[0], 10) : null;
 }

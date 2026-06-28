@@ -63,4 +63,13 @@ export const config = {
   openCorporatesApiKey: process.env.OPENCORPORATES_API_KEY ?? '',
   // Registry Lookup — 5,000 free calls/month; register at registry-lookup.com
   registryLookupApiKey: process.env.REGISTRY_LOOKUP_API_KEY ?? '',
+
+  // ICP Pipeline — enrichment + discovery
+  firecrawlApiKey: process.env.FIRECRAWL_API_KEY ?? '',
+  apifyToken: process.env.APIFY_TOKEN ?? '',
+  /** Apify actor for Google Maps — override with APIFY_ACTOR_ID env var */
+  apifyActorId: process.env.APIFY_ACTOR_ID ?? 'compass~crawler-google-places',
+
+  // Kenya Data Protection Act — 'gate' strips personal identifiers; 'block' excludes entirely
+  kdpaMode: (process.env.KDPA_PERSONAL_DATA ?? 'gate') as 'block' | 'gate',
 };
