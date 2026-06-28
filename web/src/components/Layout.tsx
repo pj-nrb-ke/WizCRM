@@ -326,6 +326,7 @@ export function Layout() {
             <CollapsibleNavGroup label="Admin" storageKey="admin" defaultOpen={false} expanded={expanded}>
               <NavItem to="/users" icon="users" label="Users" expanded={expanded} />
               <NavItem to="/settings/branding" icon="org" label="Branding" expanded={expanded} />
+              <NavItem to="/settings/lead-engine" icon="ai" label="Data Sources" expanded={expanded} />
               <NavItem to="/platform" icon="ai" label="AI & platform" expanded={expanded} />
               <NavItem to="/connection" icon="mobile" label="Mobile connection" expanded={expanded} />
               <NavItem to="/integrations" icon="leads" label="Integrations" expanded={expanded} />

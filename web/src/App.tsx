@@ -30,6 +30,7 @@ import { TargetsPage } from './pages/TargetsPage';
 import { DataHygienePage } from './pages/DataHygienePage';
 import { BrandingPage } from './pages/BrandingPage';
 import { BusinessPage } from './pages/BusinessPage';
+import LeadEngineSettingsPage from './pages/LeadEngineSettingsPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -120,6 +121,14 @@ export default function App() {
               element={
                 <AdminOnly>
                   <BrandingPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/settings/lead-engine"
+              element={
+                <AdminOnly>
+                  <LeadEngineSettingsPage />
                 </AdminOnly>
               }
             />

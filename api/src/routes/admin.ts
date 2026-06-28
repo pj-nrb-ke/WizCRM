@@ -293,4 +293,84 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return status;
   });
 
+  // ─── Lead Engine — Data Sources settings ────────────────────────────────────
+
+  const PROVIDER_ENV_KEYS: Record<string, string> = {
+    apify: 'APIFY_TOKEN',
+    firecrawl: 'FIRECRAWL_API_KEY',
+    apollo: 'APOLLO_API_KEY',
+    hunter: 'HUNTER_API_KEY',
+    tavily: 'TAVILY_API_KEY',
+    opencorporates: 'OPENCORPORATES_API_KEY',
+  };
+
+  const PROVIDER_DEFAULTS: Record<string, boolean> = {
+    apify: true,
+    firecrawl: true,
+    apollo: false,
+    hunter: false,
+    tavily: false,
+    opencorporates: false,
+  };
+
+  app.get('/settings/lead-engine', { preHandler: requireAdmin() }, async (request) => {
+    const org = await prisma.organization.findUnique({
+      where: { id: request.user.organizationId },
+      select: { settings: true },
+    });
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    const stored = (settings.leadEngine ?? {}) as Record<string, unknown>;
+    const storedProviders = (stored.providers ?? {}) as Record<string, { enabled: boolean }>;
+
+    const providers: Record<string, { enabled: boolean; configured: boolean }> = {};
+    for (const [id, envKey] of Object.entries(PROVIDER_ENV_KEYS)) {
+      const configured = Boolean(process.env[envKey]);
+      const defaultOn = PROVIDER_DEFAULTS[id] ?? false;
+      const storedEnabled = storedProviders[id]?.enabled ?? defaultOn;
+      providers[id] = { enabled: storedEnabled && configured, configured };
+    }
+
+    return {
+      providers,
+      globalLimit: (stored.globalLimit as number | undefined) ?? 20,
+    };
+  });
+
+  app.put('/settings/lead-engine', { preHandler: requireAdmin() }, async (request, reply) => {
+    const body = request.body as {
+      providers?: Record<string, { enabled: boolean }>;
+      globalLimit?: number;
+    };
+    if (!body || typeof body !== 'object') {
+      return reply.status(400).send({ error: 'Invalid body' });
+    }
+
+    const safeProviders: Record<string, { enabled: boolean }> = {};
+    for (const id of Object.keys(PROVIDER_ENV_KEYS)) {
+      if (body.providers && id in body.providers) {
+        const configured = Boolean(process.env[PROVIDER_ENV_KEYS[id]]);
+        safeProviders[id] = { enabled: Boolean(body.providers[id].enabled) && configured };
+      }
+    }
+
+    const globalLimit = Math.min(Math.max(Number(body.globalLimit ?? 20), 1), 100);
+
+    const org = await prisma.organization.findUnique({
+      where: { id: request.user.organizationId },
+      select: { settings: true },
+    });
+    const current = (org?.settings ?? {}) as Record<string, unknown>;
+    await prisma.organization.update({
+      where: { id: request.user.organizationId },
+      data: {
+        settings: {
+          ...current,
+          leadEngine: { providers: safeProviders, globalLimit, updatedAt: new Date().toISOString() },
+        },
+      },
+    });
+
+    return { providers: safeProviders, globalLimit };
+  });
+
 };

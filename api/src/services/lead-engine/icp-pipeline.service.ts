@@ -7,6 +7,7 @@ import { dedupAgainstCrm } from './dedup.service.js';
 import { scoreCandidate, parseScoringRules } from './scoring.service.js';
 import { buildDedupHash } from './discovery/google-places.provider.js';
 import { isSuppressed } from './suppression.service.js';
+import { getLeadEngineConfig, isProviderEnabled } from './lead-engine-config.service.js';
 import type { IcpRunResult, CompanyProfile, ClassifiedContact } from './types.js';
 
 const apify = new ApifyDiscoveryProvider();
@@ -22,14 +23,24 @@ export interface IcpPipelineInput {
 export async function runIcpPipeline(input: IcpPipelineInput): Promise<IcpRunResult> {
   const { campaignId, organizationId, keywords, locations, limit = 10 } = input;
 
-  // Load campaign's scoring rules
-  const campaign = await prisma.campaign.findFirst({
-    where: { id: campaignId, organizationId },
-    select: { scoringRules: true },
-  });
+  // Load org provider config and campaign scoring rules in parallel
+  const [leConfig, campaign] = await Promise.all([
+    getLeadEngineConfig(organizationId),
+    prisma.campaign.findFirst({
+      where: { id: campaignId, organizationId },
+      select: { scoringRules: true },
+    }),
+  ]);
   const scoringRules = parseScoringRules(campaign?.scoringRules);
 
   // ── 1. Discover ─────────────────────────────────────────────────────────────
+  if (!isProviderEnabled(leConfig, 'apify')) {
+    return {
+      discovered: 0, enriched: 0, savedProspects: 0, roleContacts: 0,
+      personalGated: 0, dedupMerges: 0, kdpaCompliant: true,
+      prospectIds: [], skippedReasons: ['Discovery skipped: no discovery provider enabled'],
+    };
+  }
   const perQuery = Math.min(limit, 20);
   const candidates = await apify.search(keywords, locations, perQuery);
 
@@ -74,13 +85,18 @@ export async function runIcpPipeline(input: IcpPipelineInput): Promise<IcpRunRes
 
     // ── 5. Enrich ─────────────────────────────────────────────────────────────
     let profile: CompanyProfile | null = null;
-    if (candidate.website) {
+    if (candidate.website && isProviderEnabled(leConfig, 'firecrawl')) {
       profile = await enrichCompany(candidate.website);
       if (profile) result.enriched++;
+    } else if (candidate.website) {
+      result.skippedReasons.push(`${candidate.companyName}: enrichment skipped (Firecrawl disabled)`);
     }
 
     // ── 6. Contacts (role-based; KDPA gates personal) ─────────────────────────
-    const rawContacts = await findContacts(candidate.companyName, candidate.website);
+    const contactEnabled = isProviderEnabled(leConfig, 'apollo') || isProviderEnabled(leConfig, 'hunter');
+    const rawContacts = contactEnabled
+      ? await findContacts(candidate.companyName, candidate.website)
+      : [];
     const { allowed, gated } = gatePersonalData(rawContacts);
     result.personalGated += gated;
     const roleContacts = allowed.filter((c) => c.fieldClass !== 'PersonalContact');
