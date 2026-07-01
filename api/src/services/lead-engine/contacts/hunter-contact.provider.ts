@@ -45,7 +45,7 @@ type HunterDomainFinderResponse =
   | { data?: HunterDomainFinderEntry | HunterDomainFinderEntry[] }
   | HunterDomainFinderEntry[];
 
-/** Country-keyword → TLD mapping for domain scoring */
+/** Country-keyword → preferred TLD (tie-breaker only, not primary criterion) */
 const COUNTRY_TLDS: Record<string, string> = {
   kenya: '.co.ke',
   nigeria: '.com.ng',
@@ -57,29 +57,48 @@ const COUNTRY_TLDS: Record<string, string> = {
   rwanda: '.co.rw',
 };
 
+/** Words stripped before comparing company name to domain SLD */
+const NOISE_WORDS = new Set([
+  'kenya', 'nigeria', 'ghana', 'uganda', 'tanzania', 'south', 'africa',
+  'ethiopia', 'rwanda', 'limited', 'ltd', 'company', 'co', 'bank', 'group',
+  'holdings', 'east', 'west', 'north', 'international', 'services', 'the', 'and',
+]);
+
 function scoreDomain(domain: string, companyName: string): number {
   const lowerDomain = domain.toLowerCase();
   const lowerCompany = companyName.toLowerCase();
-  let score = 0;
+  const sld = lowerDomain.split('.')[0] ?? '';
 
-  // Check if company name contains a country keyword
-  for (const [country, tld] of Object.entries(COUNTRY_TLDS)) {
-    if (lowerCompany.includes(country)) {
-      if (lowerDomain.endsWith(tld)) score += 50;   // Perfect country match
-      else score -= 20;                               // Wrong country TLD
+  // Extract meaningful words from company name
+  const words = lowerCompany
+    .split(/[\s,.-]+/)
+    .filter((w) => w.length > 1 && !NOISE_WORDS.has(w));
+  const baseName = words.join('');
+
+  // ── PRIMARY: name match (determines accept/reject) ──────────────────────
+  let nameScore = 0;
+  if (baseName && sld) {
+    if (sld === baseName) {
+      nameScore = 100;                          // exact: "kcb" === "kcb"
+    } else if (sld.includes(baseName) || baseName.includes(sld)) {
+      nameScore = 50;                           // substring: "kcbgroup" ⊃ "kcb"
+    } else if (words.some((w) => w.length >= 3 && sld.includes(w))) {
+      nameScore = 20;                           // word match: sld contains a key word
+    } else {
+      nameScore = -999;                         // NO match → reject this domain
     }
   }
 
-  // Prefer domains where the SLD matches the company name (minus country words)
-  const baseName = lowerCompany
-    .replace(/\b(kenya|nigeria|ghana|uganda|tanzania|south africa|ethiopia|rwanda|limited|ltd|company|co)\b/g, '')
-    .trim()
-    .replace(/\s+/g, '');
-  const sld = lowerDomain.split('.')[0] ?? '';
-  if (sld === baseName) score += 30;
-  else if (sld.includes(baseName) || baseName.includes(sld)) score += 10;
+  // ── SECONDARY: country TLD tie-breaker (only adds +15, cannot rescue a bad name) ──
+  let countryBonus = 0;
+  for (const [country, tld] of Object.entries(COUNTRY_TLDS)) {
+    if (lowerCompany.includes(country) && lowerDomain.endsWith(tld)) {
+      countryBonus = 15;
+      break;
+    }
+  }
 
-  return score;
+  return nameScore + countryBonus;
 }
 
 export class HunterContactProvider extends ContactProvider {
