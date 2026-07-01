@@ -116,8 +116,12 @@ async function runWithCache(
   // Cache miss or stale — run waterfall
   const result = await runWaterfall(company, threshold, options.position);
 
-  // Persist results to cache
-  await upsertCache(options.organizationId, company, normalizedName, result);
+  // Only cache results that have at least some real contact details (email or phone).
+  // Name-only results are not worth caching — the waterfall should retry these fresh.
+  const hasRealContacts = result.contacts.some((c) => c.email || c.phone);
+  if (hasRealContacts) {
+    await upsertCache(options.organizationId, company, normalizedName, result);
+  }
 
   return { ...result, fromCache: false };
 }

@@ -18,8 +18,52 @@ interface HunterDomainSearchResponse {
   errors?: Array<{ details?: string }>;
 }
 
-interface HunterDomainFinderResponse {
-  data?: { domain?: string | null };
+interface HunterDomainFinderEntry {
+  domain?: string;
+  company_name?: string;
+  email_count?: number;
+}
+
+// Hunter returns either a single object or an array of candidates
+type HunterDomainFinderResponse =
+  | { data?: HunterDomainFinderEntry | HunterDomainFinderEntry[] }
+  | HunterDomainFinderEntry[];
+
+/** Country-keyword → TLD mapping for domain scoring */
+const COUNTRY_TLDS: Record<string, string> = {
+  kenya: '.co.ke',
+  nigeria: '.com.ng',
+  ghana: '.com.gh',
+  uganda: '.co.ug',
+  tanzania: '.co.tz',
+  'south africa': '.co.za',
+  ethiopia: '.com.et',
+  rwanda: '.co.rw',
+};
+
+function scoreDomain(domain: string, companyName: string): number {
+  const lowerDomain = domain.toLowerCase();
+  const lowerCompany = companyName.toLowerCase();
+  let score = 0;
+
+  // Check if company name contains a country keyword
+  for (const [country, tld] of Object.entries(COUNTRY_TLDS)) {
+    if (lowerCompany.includes(country)) {
+      if (lowerDomain.endsWith(tld)) score += 50;   // Perfect country match
+      else score -= 20;                               // Wrong country TLD
+    }
+  }
+
+  // Prefer domains where the SLD matches the company name (minus country words)
+  const baseName = lowerCompany
+    .replace(/\b(kenya|nigeria|ghana|uganda|tanzania|south africa|ethiopia|rwanda|limited|ltd|company|co)\b/g, '')
+    .trim()
+    .replace(/\s+/g, '');
+  const sld = lowerDomain.split('.')[0] ?? '';
+  if (sld === baseName) score += 30;
+  else if (sld.includes(baseName) || baseName.includes(sld)) score += 10;
+
+  return score;
 }
 
 export class HunterContactProvider extends ContactProvider {
@@ -47,8 +91,35 @@ export class HunterContactProvider extends ContactProvider {
       const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8_000) });
       if (!res.ok) return null;
 
-      const data = (await res.json()) as HunterDomainFinderResponse;
-      return data.data?.domain ?? null;
+      const raw = (await res.json()) as HunterDomainFinderResponse;
+
+      // Normalise to an array of candidates
+      let candidates: HunterDomainFinderEntry[] = [];
+      if (Array.isArray(raw)) {
+        candidates = raw;
+      } else if (Array.isArray((raw as { data?: unknown }).data)) {
+        candidates = (raw as { data: HunterDomainFinderEntry[] }).data;
+      } else if ((raw as { data?: HunterDomainFinderEntry }).data?.domain) {
+        candidates = [(raw as { data: HunterDomainFinderEntry }).data];
+      }
+
+      if (candidates.length === 0) return null;
+
+      // Score each candidate and pick the best one
+      const scored = candidates
+        .filter((c) => c.domain)
+        .map((c) => ({ domain: c.domain!, score: scoreDomain(c.domain!, companyName) }))
+        .sort((a, b) => b.score - a.score);
+
+      // Don't use a domain that scored very negatively (wrong country)
+      const best = scored[0];
+      if (!best || best.score < -10) {
+        console.log(`[Hunter] No suitable domain for "${companyName}" (best: ${best?.domain} score ${best?.score})`);
+        return null;
+      }
+
+      console.log(`[Hunter] Resolved "${companyName}" → ${best.domain} (score ${best.score})`);
+      return best.domain;
     } catch {
       return null;
     }
