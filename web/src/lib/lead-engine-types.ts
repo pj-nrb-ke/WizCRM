@@ -1,3 +1,17 @@
+export type FieldClass = 'Firmographic' | 'RoleBasedContact' | 'PersonalContact';
+
+export interface ClassifiedContact {
+  name: string | null;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  linkedinUrl: string | null;
+  fieldClass: FieldClass;
+  lawfulBasis: string | null;
+  source: string;
+  retrievedAt: string;
+}
+
 export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CLOSED';
 export type ProspectStatus =
   | 'NEW'

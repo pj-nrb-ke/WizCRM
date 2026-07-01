@@ -301,6 +301,7 @@ export function Layout() {
               <NavItem to="/leads" icon="leads" label="Leads" expanded={expanded} />
               <NavItem to="/leads/import" icon="leads" label="Bulk import" expanded={expanded} />
               <NavItem to="/lead-generator" icon="ai" label="Lead Generator" expanded={expanded} />
+              <NavItem to="/contact-finder" icon="leads" label="Contact Finder" expanded={expanded} />
               <NavItem to="/calendar" icon="calendar" label="Calendar" expanded={expanded} />
             </CollapsibleNavGroup>
           )}

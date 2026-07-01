@@ -20,6 +20,7 @@ import { quotationRoutes } from './routes/quotations.js';
 import { leadThreadRoutes } from './routes/lead-thread.js';
 import { reminderRoutes } from './routes/reminders.js';
 import { leadEngineRoutes, handleUnsubscribe } from './routes/lead-engine.js';
+import { contactFinderRoutes } from './routes/contact-finder.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
@@ -79,6 +80,7 @@ export async function buildApp() {
   await app.register(integrationRoutes, { prefix: '/integrations' });
   await app.register(quotationRoutes, { prefix: '/quotations' });
   await app.register(leadEngineRoutes, { prefix: '/leadengine' });
+  await app.register(contactFinderRoutes, { prefix: '/contacts/finder' });
 
   // Brevo transactional webhooks — no JWT, secured by shared secret header
   app.post('/webhooks/brevo', async (request, reply) => {

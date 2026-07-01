@@ -31,6 +31,7 @@ import { DataHygienePage } from './pages/DataHygienePage';
 import { BrandingPage } from './pages/BrandingPage';
 import { BusinessPage } from './pages/BusinessPage';
 import LeadEngineSettingsPage from './pages/LeadEngineSettingsPage';
+import { ContactFinderPage } from './pages/ContactFinderPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -161,6 +162,14 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <LeadGeneratorPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/contact-finder"
+              element={
+                <ManagerOnly>
+                  <ContactFinderPage />
                 </ManagerOnly>
               }
             />
