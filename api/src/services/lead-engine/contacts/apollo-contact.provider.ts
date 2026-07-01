@@ -1,9 +1,8 @@
-import { ContactProvider } from './contact-provider.interface.js';
+import { ContactProvider, type ContactProviderOpts } from './contact-provider.interface.js';
 import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
 import { config } from '../../../config.js';
 
-// Roles most likely to influence Sage Evolution / ERP purchasing
 const DECISION_TITLES = [
   'Purchasing Manager', 'Procurement Officer', 'Procurement Manager',
   'Supply Chain Manager', 'Operations Director', 'Operations Manager',
@@ -33,12 +32,20 @@ interface ApolloResponse {
 export class ApolloContactProvider extends ContactProvider {
   readonly name = 'apollo';
 
-  async findContacts(companyName: string, domain: string | null): Promise<ClassifiedContact[]> {
+  async findContacts(
+    companyName: string,
+    domain: string | null,
+    opts?: ContactProviderOpts,
+  ): Promise<ClassifiedContact[]> {
     if (!config.apolloApiKey) return [];
 
+    const titles = opts?.positionHint
+      ? [opts.positionHint, ...DECISION_TITLES]
+      : DECISION_TITLES;
+
     const body: Record<string, unknown> = {
-      person_titles: DECISION_TITLES,
-      per_page: 3,   // 3 Apollo credits max per company
+      person_titles: titles,
+      per_page: 10,
       page: 1,
     };
 
@@ -49,14 +56,14 @@ export class ApolloContactProvider extends ContactProvider {
     }
 
     try {
-      const res = await fetch('https://api.apollo.io/v1/mixed_people_search', {
+      const res = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': config.apolloApiKey,
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(12_000),
+        signal: AbortSignal.timeout(15_000),
       });
 
       if (!res.ok) {

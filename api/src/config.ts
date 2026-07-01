@@ -64,6 +64,12 @@ export const config = {
   // Registry Lookup — 5,000 free calls/month; register at registry-lookup.com
   registryLookupApiKey: process.env.REGISTRY_LOOKUP_API_KEY ?? '',
 
+  // Contact Finder — waterfall providers
+  hunterApiKey: process.env.HUNTER_API_KEY ?? '',
+  prospeoApiKey: process.env.PROSPEO_API_KEY ?? '',
+  tombaApiKey: process.env.TOMBA_API_KEY ?? '',
+  tombaApiSecret: process.env.TOMBA_API_SECRET ?? '',
+
   // ICP Pipeline — enrichment + discovery
   firecrawlApiKey: process.env.FIRECRAWL_API_KEY ?? '',
   apifyToken: process.env.APIFY_TOKEN ?? '',

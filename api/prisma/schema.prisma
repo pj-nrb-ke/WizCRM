@@ -18,6 +18,7 @@ model Organization {
   campaigns       Campaign[]
   emailTemplates  EmailTemplate[]
   suppressionList SuppressionList[]
+  contactCaches   ContactFinderCache[]
 }
 
 model Team {
@@ -667,4 +668,40 @@ model IntentSignal {
   @@index([campaignId])
   @@index([campaignId, intentStrength])
   @@unique([campaignId, dedupHash])
+}
+
+// ─── Contact Finder Cache ───────────────────────────────────────────────────
+
+model ContactFinderCache {
+  id             String                 @id @default(uuid())
+  organizationId String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  companyName    String
+  normalizedName String
+  domain         String?
+  providers      String[]               @default([])
+  contacts       ContactFinderContact[]
+  lastQueriedAt  DateTime               @default(now())
+  createdAt      DateTime               @default(now())
+
+  @@unique([organizationId, normalizedName])
+  @@index([organizationId, normalizedName])
+}
+
+model ContactFinderContact {
+  id          String             @id @default(uuid())
+  cacheId     String
+  cache       ContactFinderCache @relation(fields: [cacheId], references: [id], onDelete: Cascade)
+  name        String?
+  title       String?
+  email       String?
+  phone       String?
+  linkedinUrl String?
+  fieldClass  String             @default("RoleBasedContact")
+  lawfulBasis String?
+  source      String
+  retrievedAt DateTime
+  createdAt   DateTime           @default(now())
+
+  @@index([cacheId])
 }
