@@ -188,7 +188,10 @@ async function runWaterfall(
         accumulated.push(...raw);
         usedProviders.push(provider.name);
         const unique = dedup(accumulated);
-        if (unique.length >= threshold) {
+        // Only count contacts with actual contact details (email or phone) toward threshold.
+        // Name-only records don't stop the waterfall — we keep going to get real details.
+        const withDetails = unique.filter((c) => c.email || c.phone);
+        if (withDetails.length >= threshold) {
           return {
             company: company.name,
             contacts: sortByPosition(unique, position),

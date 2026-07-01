@@ -47,6 +47,9 @@ export class ApolloContactProvider extends ContactProvider {
       person_titles: titles,
       per_page: 10,
       page: 1,
+      // Ask Apollo to include emails in the response (costs 1 credit each but we need the data)
+      reveal_personal_emails: true,
+      reveal_phone_number: true,
     };
 
     if (domain) {
