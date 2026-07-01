@@ -3,6 +3,21 @@ import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
 import { config } from '../../../config.js';
 
+/** Generic role-based prefixes — not individual contacts */
+const GENERIC_PREFIXES = new Set([
+  'info', 'contact', 'admin', 'careers', 'hr', 'vacancy', 'vacancies',
+  'recruitment', 'jobs', 'marketing', 'sales', 'support', 'hello',
+  'general', 'enquiries', 'enquiry', 'office', 'accounts', 'finance',
+  'billing', 'help', 'media', 're', 'security', 'legal', 'compliance',
+  'ops', 'operations', 'logistics', 'training', 'newsletter', 'noreply',
+  'no-reply', 'donotreply', 'webmaster', 'hostmaster', 'postmaster',
+]);
+
+function isGenericEmail(email: string): boolean {
+  const prefix = email.split('@')[0]?.toLowerCase().replace(/[._-].*$/, '') ?? '';
+  return GENERIC_PREFIXES.has(prefix);
+}
+
 interface HunterEmail {
   value?: string;
   first_name?: string;
@@ -11,6 +26,7 @@ interface HunterEmail {
   phone_number?: string;
   linkedin?: string;
   confidence?: number;
+  type?: string;
 }
 
 interface HunterDomainSearchResponse {
@@ -140,16 +156,18 @@ export class HunterContactProvider extends ContactProvider {
       }
 
       const data = (await res.json()) as HunterDomainSearchResponse;
-      return (data.data?.emails ?? []).map((e) =>
-        classifyContact({
-          name: [e.first_name, e.last_name].filter(Boolean).join(' ') || null,
-          title: e.position ?? null,
-          email: e.value ?? null,
-          phone: e.phone_number ?? null,
-          linkedinUrl: e.linkedin ?? null,
-          source: 'hunter',
-        }),
-      );
+      return (data.data?.emails ?? [])
+        .filter((e) => e.value && !isGenericEmail(e.value) && (e.first_name || e.last_name))
+        .map((e) =>
+          classifyContact({
+            name: [e.first_name, e.last_name].filter(Boolean).join(' ') || null,
+            title: e.position ?? null,
+            email: e.value ?? null,
+            phone: e.phone_number ?? null,
+            linkedinUrl: e.linkedin ?? null,
+            source: 'hunter',
+          }),
+        );
     } catch (err) {
       console.error('[Hunter] failed:', err instanceof Error ? err.message : String(err));
       return [];

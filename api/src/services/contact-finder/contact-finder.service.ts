@@ -192,9 +192,9 @@ async function runWaterfall(
         accumulated.push(...raw);
         usedProviders.push(provider.name);
         const unique = dedup(accumulated);
-        // Only count contacts with actual contact details (email or phone) toward threshold.
-        // Name-only records don't stop the waterfall — we keep going to get real details.
-        const withDetails = unique.filter((c) => c.email || c.phone);
+        // Only count contacts with a name AND (email or phone) toward threshold.
+        // Generic role emails without a person name don't stop the waterfall.
+        const withDetails = unique.filter((c) => c.name && (c.email || c.phone));
         if (withDetails.length >= threshold) {
           return {
             company: company.name,
