@@ -1,6 +1,6 @@
 # WizCRM Mobile — Field Sales Reporting & Enablement
 
-> **Status:** Draft v1 · **Date:** 2026-07-05 · **Scope:** mobile (Expo 54 / RN 0.81) · **Prepared for:** PJ (Wise & Agile)
+> **Status:** v1.1 · D1–D3 locked · **Date:** 2026-07-05 · **Scope:** mobile (Expo 54 / RN 0.81) · **Prepared for:** PJ (Wise & Agile)
 
 Turn the mobile app into the salesperson's field tool: capture what happens with the customer, and carry everything needed to sell — leads, quotes, email, and the latest catalog — into places with no signal.
 
@@ -37,27 +37,27 @@ Status legend: **Exists** = already on mobile, polish only · **API-ready** = ba
 
 ---
 
-## Open decisions (needed before Part 2 — shape R3 and R5)
+## Decisions (locked 2026-07-05 — PM call)
 
-Recommended default in **bold**; awaiting sign-off.
+All three ship as **org-level settings** a manager can tune; the values below are the launch defaults. Every limit is **enforced server-side** — per Verification, the API has no guardrail today, so a UI-only limit is no limit.
 
-### D1 · Lead-gen / finder cost guardrails
-Every ICP run hits paid providers (Apify + Firecrawl + Apollo); every Finder lookup hits Apollo/Hunter/Prospeo/Tomba/Firecrawl. Finder has a 30-day cache (repeat lookups = 0 credits); the ICP generator does not cache the same way.
-- **(a) Cache-first + per-rep monthly quota** — e.g. 20 Finder lookups + 5 ICP runs / rep / month, cache hits don't count. Predictable cost, reps stay autonomous.
-- (b) Manager-approval per run — tightest control, most friction, defeats "on the fly".
-- (c) Cache-first only, no quota — simplest, power users can still overspend.
-- ⚠️ **Must be enforced server-side** — see Verification (the API has no cost/role guardrail today).
+### D1 · Cost guardrail → **cache-first + per-rep quota + org ceiling**
+- **Finder: 30 lookups / rep / month** — cache hits cost 0, so repeat lookups don't count (~1.5 per working day; fits field cadence).
+- **ICP Generator: 4 runs / rep / month** — the expensive path (Apify + Firecrawl + Apollo); ~1 batch/week.
+- **Org monthly ceiling** (manager-set) as a hard backstop, so the sum of rep usage can never exceed the API budget.
+- Rep sees remaining quota in-app ("18 / 30 left") — a guardrail, not a mystery wall.
+- *Why:* keeps the "on the fly" autonomy while making spend predictable. Approval-per-run defeats the point; no-quota lets one curious rep burn the month's budget in an afternoon.
 
-### D2 · Who gets lead-gen & finder
-One entitlement flag either way; affects cost blast-radius and data quality.
-- **(a) Senior reps / team leads only** — start here, widen once D1 proves out.
-- (b) Every salesperson — max pipeline, higher cost + more dupes/noise.
+### D2 · Who gets it → **split by cost & judgment** (not one flag — two)
+- **Lead Finder → every salesperson.** Cheap, cached, and it *is* the core mobile moment — standing in front of a prospect, needing their email. Contained by the D1 quota.
+- **Lead / ICP Generator → senior reps & team leads only.** Expensive batch run that needs ICP judgment; junior reps still work the leads it produces, they just don't spend credits generating them.
+- *Why:* maximizes the value every rep needs while ring-fencing the costly, judgment-heavy tool. One entitlement flag each — widen the Generator once D1 proves out.
 
-### D3 · Quotes to the customer
-Speed vs. margin control. Mobile already lets a rep create + mark-sent.
-- **(a) Direct send, with approval above a discount/total threshold** — reps move fast on standard quotes; only above-threshold discounts route to a manager.
-- (b) Always manager-approve — tight, slow.
-- (c) Always direct — fast, no margin guardrail.
+### D3 · Quotes → **direct send, approval only above a discount threshold**
+- Rep sends standard quotes directly. A quote **> 10% discount off list** enters **Pending approval** (manager notified) before Send unlocks.
+- Absolute-value gate exists but is **off by default** — turn on per org if large deals warrant a second look.
+- The quote is still **built and shown to the customer on the spot**; only the Send button waits. On-the-fly survives, margin is protected.
+- *Why:* reps erode margin through discounting, not through honest list-price quotes — so gate the discount, not the speed.
 
 ---
 
@@ -78,7 +78,7 @@ Ordered by value-on-ready-infrastructure. Effort is rough single-dev t-shirt siz
 
 ### Phase 3 · Lead Finder & Generator on mobile — `M · ~2 wks`
 - **Mobile:** `app/prospect/finder.tsx` + `app/prospect/generator.tsx` consuming `/contacts/finder` and `/leadengine` (APIs already ready).
-- **Guardrail:** entitlement gate + per-rep quota (per D1/D2), **enforced server-side**. Lean on Finder's 30-day cache.
+- **Guardrail (per D1/D2):** Finder = all reps @ 30 lookups/mo · Generator = seniors @ 4 runs/mo · org ceiling · **enforced server-side**. Lean on Finder's 30-day cache.
 - **Note:** UI-heavy but no new backend.
 
 ### Phase 4 · In-app email compose — `S · ~1 wk`
@@ -155,4 +155,4 @@ DELETE /documents/:id             soft delete (isActive = false)
 
 ---
 
-*WizCRM · Mobile Field Sales · Requirements & Build Plan · Draft v1 · 2026-07-05*
+*WizCRM · Mobile Field Sales · Requirements & Build Plan · v1.1 (D1–D3 locked) · 2026-07-05*
