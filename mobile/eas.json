@@ -13,9 +13,21 @@
         "EXPO_PUBLIC_API_URL": "http://REPLACE_WITH_YOUR_PC_IP:3000"
       }
     },
+    "field": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.wizcrm.app"
+      }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.wizcrm.app"
       }
     }
   }
