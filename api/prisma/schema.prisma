@@ -19,6 +19,7 @@ model Organization {
   emailTemplates  EmailTemplate[]
   suppressionList SuppressionList[]
   contactCaches   ContactFinderCache[]
+  productDocuments ProductDocument[]
 }
 
 model Team {
@@ -61,6 +62,7 @@ model User {
   ownedCampaigns      Campaign[]        @relation("CampaignOwner")
   emailTemplates      EmailTemplate[]   @relation("EmailTemplateCreator")
   suppressionEntries  SuppressionList[] @relation("SuppressionAddedBy")
+  productDocuments    ProductDocument[]
 
   @@index([organizationId])
   @@index([teamId])
@@ -241,6 +243,29 @@ model LeadAttachment {
   createdAt   DateTime @default(now())
 
   @@index([leadId, createdAt(sort: Desc)])
+}
+
+/// Org-wide catalog/brochure library (R7) — shared product documents, not per-lead.
+model ProductDocument {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  category       String?          // "Catalog" | "Brochure" | "Price list" | "Spec sheet"
+  productTags    String[]     @default([])
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  storagePath    String
+  version        Int          @default(1)
+  isActive       Boolean      @default(true)
+  uploadedById   String
+  uploadedBy     User         @relation(fields: [uploadedById], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, isActive])
+  @@index([organizationId, category])
 }
 
 model SalesOpportunity {
