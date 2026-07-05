@@ -11,8 +11,25 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio';
 import { api } from '../../lib/api';
 import { queueOfflineMutation, isOfflineError } from '../../lib/offline-queue';
+import {
+  attachmentPayload,
+  buildVoiceAttachment,
+  capturePhoto,
+  isAttachmentTooLarge,
+  readBase64FromUri,
+  summarizeAttachments,
+  uploadAttachment,
+  type CapturedAttachment,
+} from '../../lib/attachments';
 
 const OUTCOME_CHIPS = [
   'Interested',
@@ -47,7 +64,64 @@ export default function VisitReportScreen() {
   const [nextDue, setNextDue] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [attachLocation, setAttachLocation] = useState(true);
+  const [attachments, setAttachments] = useState<CapturedAttachment[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recState = useAudioRecorderState(recorder);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+
+  async function addPhoto(source: 'camera' | 'gallery') {
+    try {
+      const file = await capturePhoto(source);
+      if (!file) return;
+      if (isAttachmentTooLarge(file.dataBase64)) {
+        Alert.alert('Photo', 'That photo is too large (max ~5MB). Try again.');
+        return;
+      }
+      setAttachments((prev) => [...prev, file]);
+    } catch (e) {
+      Alert.alert('Photo', e instanceof Error ? e.message : 'Could not add the photo.');
+    }
+  }
+
+  async function toggleVoice() {
+    if (voiceBusy) return;
+    try {
+      if (!recState.isRecording) {
+        const status = await AudioModule.requestRecordingPermissionsAsync();
+        if (!status.granted) {
+          Alert.alert('Microphone', 'Allow microphone access to record a voice note.');
+          return;
+        }
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        await recorder.prepareToRecordAsync();
+        recorder.record();
+      } else {
+        setVoiceBusy(true);
+        await recorder.stop();
+        const uri = recorder.uri;
+        if (!uri) {
+          Alert.alert('Recording', 'No audio captured. Try again.');
+          return;
+        }
+        const base64 = await readBase64FromUri(uri);
+        if (isAttachmentTooLarge(base64)) {
+          Alert.alert('Voice note', 'That recording is too large (max ~5MB). Keep it under a couple of minutes.');
+          return;
+        }
+        setAttachments((prev) => [...prev, buildVoiceAttachment(base64)]);
+      }
+    } catch (e) {
+      Alert.alert('Voice note', e instanceof Error ? e.message : 'Could not record. Try again.');
+    } finally {
+      setVoiceBusy(false);
+    }
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }
 
   async function getCoords(): Promise<{ lat: number; lng: number } | undefined> {
     try {
@@ -68,6 +142,11 @@ export default function VisitReportScreen() {
     setSaving(true);
     try {
       const location = attachLocation ? await getCoords() : undefined;
+      const attachSummary = summarizeAttachments(attachments);
+      const baseNotes = notes.trim();
+      const notesOut = attachSummary
+        ? `${baseNotes}${baseNotes ? '\n\n' : ''}[Attached: ${attachSummary}]`
+        : baseNotes || undefined;
       const payload = {
         outcome: outcome.trim(),
         whoMet: whoMet.trim() || undefined,
@@ -75,30 +154,63 @@ export default function VisitReportScreen() {
         objection: objection.trim() || undefined,
         nextStep: nextStep.trim() || undefined,
         nextStepDueAt: nextStep.trim() && nextDue ? nextDue : undefined,
-        notes: notes.trim() || undefined,
+        notes: notesOut,
         location,
         capturedAt: new Date().toISOString(),
       };
+
+      // 1) Save the report (falls back to the offline queue on a network error).
+      let offline = false;
       try {
         await api(`/leads/${leadId}/visit-report`, { method: 'POST', body: payload });
-        Alert.alert(
-          'Saved',
-          nextStep.trim() ? 'Visit logged and follow-up task created.' : 'Visit logged to CRM.',
-          [{ text: 'OK', onPress: () => router.back() }],
-        );
       } catch (e) {
         const msg = e instanceof Error ? e.message : '';
-        if (isOfflineError(msg)) {
-          await queueOfflineMutation({ type: 'VISIT_REPORT', leadId, payload });
-          Alert.alert(
-            'Saved offline',
-            'Visit report queued — it will sync when you are back online.',
-            [{ text: 'OK', onPress: () => router.back() }],
-          );
-        } else {
+        if (!isOfflineError(msg)) {
           Alert.alert('Error', msg || 'Could not save visit report');
+          return;
+        }
+        await queueOfflineMutation({ type: 'VISIT_REPORT', leadId, payload });
+        offline = true;
+      }
+
+      // 2) Upload each attachment — or queue it if we are (or go) offline.
+      let uploaded = 0;
+      let queued = 0;
+      let failed = 0;
+      for (const file of attachments) {
+        if (offline) {
+          await queueOfflineMutation({ type: 'ATTACHMENT', leadId, payload: attachmentPayload(file) });
+          queued += 1;
+          continue;
+        }
+        try {
+          await uploadAttachment(leadId, file);
+          uploaded += 1;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : '';
+          if (isOfflineError(msg)) {
+            await queueOfflineMutation({ type: 'ATTACHMENT', leadId, payload: attachmentPayload(file) });
+            queued += 1;
+          } else {
+            failed += 1;
+          }
         }
       }
+
+      // 3) Report the outcome.
+      const lines: string[] = [
+        offline
+          ? 'Visit report queued — it will sync when you are back online.'
+          : nextStep.trim()
+            ? 'Visit logged and follow-up task created.'
+            : 'Visit logged to CRM.',
+      ];
+      if (uploaded) lines.push(`${uploaded} attachment${uploaded > 1 ? 's' : ''} uploaded.`);
+      if (queued) lines.push(`${queued} attachment${queued > 1 ? 's' : ''} queued.`);
+      if (failed) lines.push(`${failed} attachment${failed > 1 ? 's' : ''} failed — reopen the lead to retry.`);
+      Alert.alert(offline ? 'Saved offline' : 'Saved', lines.join(' '), [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
     } finally {
       setSaving(false);
     }
@@ -192,6 +304,44 @@ export default function VisitReportScreen() {
         multiline
       />
 
+      <Text style={styles.label}>Photos &amp; voice notes</Text>
+      <View style={styles.chipRow}>
+        <Pressable style={styles.attachBtn} onPress={() => addPhoto('camera')}>
+          <Text style={styles.attachBtnText}>📷 Photo</Text>
+        </Pressable>
+        <Pressable style={styles.attachBtn} onPress={() => addPhoto('gallery')}>
+          <Text style={styles.attachBtnText}>🖼 Gallery</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.attachBtn, recState.isRecording && styles.attachBtnRec]}
+          onPress={toggleVoice}
+          disabled={voiceBusy}
+        >
+          {voiceBusy ? (
+            <ActivityIndicator color="#f8fafc" />
+          ) : (
+            <Text style={styles.attachBtnText}>{recState.isRecording ? '⏺ Stop' : '🎙 Voice'}</Text>
+          )}
+        </Pressable>
+      </View>
+      {recState.isRecording ? (
+        <Text style={styles.recHint}>Recording… tap Stop when done.</Text>
+      ) : null}
+      {attachments.length > 0 ? (
+        <View style={styles.attachList}>
+          {attachments.map((a) => (
+            <View key={a.id} style={styles.attachItem}>
+              <Text style={styles.attachItemText} numberOfLines={1}>
+                {a.kind === 'photo' ? '📷' : '🎙'} {a.fileName} · {a.sizeLabel}
+              </Text>
+              <Pressable onPress={() => removeAttachment(a.id)} hitSlop={8}>
+                <Text style={styles.attachRemove}>✕</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <Pressable style={styles.locationRow} onPress={() => setAttachLocation((v) => !v)}>
         <View style={[styles.checkbox, attachLocation && styles.checkboxOn]}>
           {attachLocation ? <Text style={styles.checkboxTick}>✓</Text> : null}
@@ -247,6 +397,30 @@ const styles = StyleSheet.create({
   checkboxOn: { backgroundColor: '#38bdf8', borderColor: '#38bdf8' },
   checkboxTick: { color: '#0f172a', fontWeight: '900', fontSize: 14 },
   locationText: { color: '#cbd5e1' },
+  attachBtn: {
+    backgroundColor: '#334155',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    minWidth: 88,
+    alignItems: 'center',
+  },
+  attachBtnRec: { backgroundColor: '#f87171' },
+  attachBtnText: { color: '#f8fafc', fontWeight: '600', fontSize: 13 },
+  recHint: { color: '#f87171', fontSize: 12, marginBottom: 4 },
+  attachList: { marginTop: 4, gap: 8 },
+  attachItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  attachItemText: { color: '#cbd5e1', fontSize: 13, flex: 1 },
+  attachRemove: { color: '#94a3b8', fontSize: 16, fontWeight: '700' },
   primaryBtn: {
     backgroundColor: '#38bdf8',
     padding: 16,
