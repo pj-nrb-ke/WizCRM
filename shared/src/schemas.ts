@@ -160,6 +160,14 @@ export const voiceNoteSchema = z.object({
   transcript: z.string().min(1).max(10000),
 });
 
+/**
+ * AI Visit Capture: a rep's raw post-visit voice transcript that AI turns into
+ * a structured Visit Report draft (the "self-writing CRM"). leadId is in the path.
+ */
+export const visitCaptureSchema = z.object({
+  transcript: z.string().min(1).max(10000),
+});
+
 export const createTeamSchema = z.object({
   name: z.string().min(1).max(100),
 });
@@ -293,3 +301,4 @@ export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type BulkUpdateLeadsInput = z.infer<typeof bulkUpdateLeadsSchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;
+export type VisitCaptureInput = z.infer<typeof visitCaptureSchema>;

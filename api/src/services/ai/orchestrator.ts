@@ -253,6 +253,105 @@ export async function processPostCall(
   return result;
 }
 
+const CAPTURE_STAGES: LeadStage[] = [
+  'NEW',
+  'CONTACTED',
+  'QUALIFIED',
+  'PROPOSAL',
+  'NEGOTIATION',
+  'WON',
+  'LOST',
+];
+
+export type VisitCaptureDraft = {
+  outcome: string;
+  whoMet?: string;
+  competitor?: string;
+  objection?: string;
+  nextStep?: string;
+  suggestedDueAt?: string;
+  summary: string;
+  suggestedStage?: LeadStage;
+};
+
+/**
+ * The "self-writing CRM": turn a rep's raw post-visit voice transcript into a
+ * structured Visit Report draft (outcome / who / competitor / objection / next
+ * step) plus a guarded stage suggestion. The rep reviews and confirms before it
+ * is saved — this only drafts, it never writes to the lead.
+ */
+export async function processVisitCapture(
+  organizationId: string,
+  userId: string,
+  lead: LeadContext,
+  transcript: string,
+  nowIso: string,
+): Promise<VisitCaptureDraft> {
+  const client = ensureClient();
+  const input = `${formatLeadContext(lead)}\n\nToday is ${nowIso}.\nRaw voice note dictated by the rep right after a field visit:\n${transcript}`;
+  const raw = await chatJson<{
+    outcome: string;
+    whoMet: string | null;
+    competitor: string | null;
+    objection: string | null;
+    nextStep: string | null;
+    suggestedDueAt: string | null;
+    summary: string;
+    suggestedStage: string | null;
+  }>(
+    client,
+    `You are a CRM assistant for field sales reps. Turn a rep's rough post-visit voice note into a structured visit report. Return JSON only:
+{
+  "outcome": string,            // short result of the visit, e.g. "Interested", "Requested quote", "Not now", "Closed-won"
+  "whoMet": string|null,        // person and/or role they met
+  "competitor": string|null,    // competitor named, else null
+  "objection": string|null,     // main concern/objection raised, else null
+  "nextStep": string|null,      // one concrete next action the rep should take, else null
+  "suggestedDueAt": string|null,// ISO 8601 datetime for the next step if a timeframe is implied (e.g. "Thursday", "next week"), resolved against today's date; else null
+  "summary": string,            // 1-3 sentence clean summary for the CRM note
+  "suggestedStage": string|null // one of NEW, CONTACTED, QUALIFIED, PROPOSAL, NEGOTIATION, WON, LOST if the visit clearly advances the deal, else null
+}
+Use only facts stated in the note; put null for anything not mentioned. Never invent names, competitors, or commitments. Preserve the rep's meaning. The lead's current stage is ${lead.stage}.`,
+    input,
+  );
+
+  let suggestedStage: LeadStage | undefined;
+  if (raw.suggestedStage && CAPTURE_STAGES.includes(raw.suggestedStage as LeadStage)) {
+    const candidate = raw.suggestedStage as LeadStage;
+    if (
+      candidate !== lead.stage &&
+      lead.stage !== 'WON' &&
+      isAllowedStageTransition(lead.stage, candidate)
+    ) {
+      suggestedStage = candidate;
+    }
+  }
+
+  await audit({
+    organizationId,
+    userId,
+    feature: 'visit_capture',
+    inputSummary: transcript.slice(0, 2000),
+    outputSummary: JSON.stringify({
+      outcome: raw.outcome,
+      nextStep: raw.nextStep,
+      suggestedStage: suggestedStage ?? null,
+    }),
+    approved: false,
+  });
+
+  return {
+    outcome: raw.outcome,
+    whoMet: raw.whoMet ?? undefined,
+    competitor: raw.competitor ?? undefined,
+    objection: raw.objection ?? undefined,
+    nextStep: raw.nextStep ?? undefined,
+    suggestedDueAt: raw.suggestedDueAt ?? undefined,
+    summary: raw.summary,
+    suggestedStage,
+  };
+}
+
 export async function transcribeVoiceNote(
   organizationId: string,
   userId: string,
