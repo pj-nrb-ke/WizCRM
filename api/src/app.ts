@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { authRoutes } from './routes/auth.js';
 import { leadRoutes } from './routes/leads.js';
 import { activityRoutes } from './routes/activities.js';
+import { documentRoutes } from './routes/documents.js';
 import { taskRoutes } from './routes/tasks.js';
 import { aiRoutes } from './routes/ai.js';
 import { healthRoutes } from './routes/health.js';
@@ -79,6 +80,7 @@ export async function buildApp() {
   await app.register(reminderRoutes, { prefix: '/reminders' });
   await app.register(integrationRoutes, { prefix: '/integrations' });
   await app.register(quotationRoutes, { prefix: '/quotations' });
+  await app.register(documentRoutes, { prefix: '/documents' });
   await app.register(leadEngineRoutes, { prefix: '/leadengine' });
   await app.register(contactFinderRoutes, { prefix: '/contacts/finder' });
 
