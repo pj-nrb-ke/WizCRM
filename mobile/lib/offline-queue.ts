@@ -22,6 +22,23 @@ export type OfflineMutation =
       leadId: string;
       createdAt: string;
       payload: { title: string; dueAt?: string };
+    }
+  | {
+      id: string;
+      type: 'VISIT_REPORT';
+      leadId: string;
+      createdAt: string;
+      payload: {
+        outcome: string;
+        notes?: string;
+        whoMet?: string;
+        competitor?: string;
+        objection?: string;
+        nextStep?: string;
+        nextStepDueAt?: string;
+        location?: { lat: number; lng: number; label?: string };
+        capturedAt?: string;
+      };
     };
 
 const FILE = `${FileSystem.documentDirectory}offline-queue.json`;
@@ -127,6 +144,12 @@ async function replayOne(item: OfflineMutation): Promise<void> {
           dueAt: item.payload.dueAt,
           leadId: item.leadId,
         },
+      });
+      break;
+    case 'VISIT_REPORT':
+      await api(`/leads/${item.leadId}/visit-report`, {
+        method: 'POST',
+        body: item.payload,
       });
       break;
     default:
