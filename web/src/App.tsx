@@ -32,6 +32,7 @@ import { BrandingPage } from './pages/BrandingPage';
 import { BusinessPage } from './pages/BusinessPage';
 import LeadEngineSettingsPage from './pages/LeadEngineSettingsPage';
 import { ContactFinderPage } from './pages/ContactFinderPage';
+import { ProductDocumentsPage } from './pages/ProductDocumentsPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -170,6 +171,14 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <ContactFinderPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <ManagerOnly>
+                  <ProductDocumentsPage />
                 </ManagerOnly>
               }
             />
