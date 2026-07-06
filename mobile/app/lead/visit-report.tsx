@@ -30,6 +30,15 @@ import {
   uploadAttachment,
   type CapturedAttachment,
 } from '../../lib/attachments';
+import { captureVisitFromAudio, type VisitCaptureDraft } from '../../lib/visit-capture';
+
+/** Stages the rep can't advance to from a visit report — they need the close flow. */
+const TERMINAL_STAGES = ['WON', 'LOST'];
+
+/** Pretty-print a stage enum: PROPOSAL -> "Proposal". */
+function stageLabel(stage: string) {
+  return stage.charAt(0) + stage.slice(1).toLowerCase();
+}
 
 const OUTCOME_CHIPS = [
   'Interested',
@@ -70,6 +79,76 @@ export default function VisitReportScreen() {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recState = useAudioRecorderState(recorder);
   const [voiceBusy, setVoiceBusy] = useState(false);
+
+  // AI Visit Capture: a separate recorder whose audio is transcribed and drafted
+  // into the whole report, rather than attached as a file.
+  const captureRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const captureState = useAudioRecorderState(captureRecorder);
+  const [capturing, setCapturing] = useState(false);
+  const [aiFilled, setAiFilled] = useState(false);
+  const [stageSuggestion, setStageSuggestion] = useState<string | null>(null);
+  const [applyStage, setApplyStage] = useState(true);
+
+  /** Prefill the form from the AI draft, without clobbering anything the rep already typed. */
+  function applyDraft(draft: VisitCaptureDraft) {
+    if (draft.outcome) setOutcome(draft.outcome);
+    if (draft.whoMet) setWhoMet(draft.whoMet);
+    if (draft.competitor) setCompetitor(draft.competitor);
+    if (draft.objection) setObjection(draft.objection);
+    if (draft.nextStep) setNextStep(draft.nextStep);
+    if (draft.suggestedDueAt) setNextDue(draft.suggestedDueAt);
+    if (draft.summary) setNotes((prev) => (prev.trim() ? prev : draft.summary));
+    setStageSuggestion(draft.suggestedStage ?? null);
+    setApplyStage(Boolean(draft.suggestedStage) && !TERMINAL_STAGES.includes(draft.suggestedStage ?? ''));
+    setAiFilled(true);
+  }
+
+  async function toggleCapture() {
+    if (capturing || !leadId) return;
+    if (recState.isRecording) {
+      Alert.alert('Voice', 'Stop the voice note recording first.');
+      return;
+    }
+    try {
+      if (!captureState.isRecording) {
+        const status = await AudioModule.requestRecordingPermissionsAsync();
+        if (!status.granted) {
+          Alert.alert('Microphone', 'Allow microphone access to speak your visit.');
+          return;
+        }
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        await captureRecorder.prepareToRecordAsync();
+        captureRecorder.record();
+        return;
+      }
+      // Stop -> transcribe -> draft the report.
+      await captureRecorder.stop();
+      const uri = captureRecorder.uri;
+      if (!uri) {
+        Alert.alert('Voice', 'No audio captured. Try again.');
+        return;
+      }
+      setCapturing(true);
+      const base64 = await readBase64FromUri(uri);
+      if (isAttachmentTooLarge(base64)) {
+        Alert.alert('Voice', 'That recording is a bit long — keep it under ~2 minutes and try again.');
+        return;
+      }
+      const { draft } = await captureVisitFromAudio(leadId, base64);
+      applyDraft(draft);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '';
+      if (isOfflineError(msg)) {
+        Alert.alert('You are offline', 'AI capture needs a connection. Fill the report in manually — it still saves offline.');
+      } else if (msg.includes('AI_UNAVAILABLE') || msg.includes('503')) {
+        Alert.alert('AI capture is off', 'Voice capture is unavailable right now. Fill the report in manually.');
+      } else {
+        Alert.alert('Voice capture', msg || 'Could not draft the report. Try again.');
+      }
+    } finally {
+      setCapturing(false);
+    }
+  }
 
   async function addPhoto(source: 'camera' | 'gallery') {
     try {
@@ -197,6 +276,32 @@ export default function VisitReportScreen() {
         }
       }
 
+      // 2b) Apply the AI-suggested stage move if the rep kept it (best-effort).
+      let stageMoved: string | null = null;
+      if (stageSuggestion && applyStage && !TERMINAL_STAGES.includes(stageSuggestion)) {
+        const stagePatch = {
+          stage: stageSuggestion,
+          stageNote: 'Advanced from field visit',
+          confirmStageSuggestion: true,
+        };
+        if (offline) {
+          await queueOfflineMutation({ type: 'LEAD_PATCH', leadId, payload: stagePatch });
+          stageMoved = stageSuggestion;
+        } else {
+          try {
+            await api(`/leads/${leadId}`, { method: 'PATCH', body: stagePatch });
+            stageMoved = stageSuggestion;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : '';
+            if (isOfflineError(msg)) {
+              await queueOfflineMutation({ type: 'LEAD_PATCH', leadId, payload: stagePatch });
+              stageMoved = stageSuggestion;
+            }
+            // Otherwise leave the stage as-is — the visit is already logged.
+          }
+        }
+      }
+
       // 3) Report the outcome.
       const lines: string[] = [
         offline
@@ -208,6 +313,7 @@ export default function VisitReportScreen() {
       if (uploaded) lines.push(`${uploaded} attachment${uploaded > 1 ? 's' : ''} uploaded.`);
       if (queued) lines.push(`${queued} attachment${queued > 1 ? 's' : ''} queued.`);
       if (failed) lines.push(`${failed} attachment${failed > 1 ? 's' : ''} failed — reopen the lead to retry.`);
+      if (stageMoved) lines.push(`Stage moved to ${stageLabel(stageMoved)}.`);
       Alert.alert(offline ? 'Saved offline' : 'Saved', lines.join(' '), [
         { text: 'OK', onPress: () => router.back() },
       ]);
@@ -220,6 +326,55 @@ export default function VisitReportScreen() {
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Visit report{leadName ? `: ${leadName}` : ''}</Text>
       <Text style={styles.hint}>Capture what happened. Works offline — it syncs when signal returns.</Text>
+
+      <View style={styles.captureCard}>
+        <Text style={styles.captureTitle}>🎙 Speak your visit</Text>
+        <Text style={styles.captureSub}>
+          {aiFilled
+            ? '✨ Draft ready below — review, tweak, and save.'
+            : 'Talk for 20–30s about what happened. AI fills the report for you.'}
+        </Text>
+        <Pressable
+          style={[styles.captureBtn, captureState.isRecording && styles.captureBtnRec]}
+          onPress={toggleCapture}
+          disabled={capturing || voiceBusy || recState.isRecording}
+        >
+          {capturing ? (
+            <View style={styles.captureBtnInner}>
+              <ActivityIndicator color="#f8fafc" />
+              <Text style={styles.captureBtnText}>Writing your report…</Text>
+            </View>
+          ) : (
+            <Text style={styles.captureBtnText}>
+              {captureState.isRecording
+                ? '⏹  Stop & draft'
+                : aiFilled
+                  ? '🎙  Re-record'
+                  : '🎙  Start speaking'}
+            </Text>
+          )}
+        </Pressable>
+        {captureState.isRecording ? (
+          <Text style={styles.captureListening}>● Listening… speak naturally, then tap Stop.</Text>
+        ) : null}
+        {aiFilled && !captureState.isRecording && !capturing ? (
+          <Text style={styles.captureFilled}>✓ Filled from your voice note — everything below is editable.</Text>
+        ) : null}
+        {stageSuggestion ? (
+          TERMINAL_STAGES.includes(stageSuggestion) ? (
+            <Text style={styles.captureStageInfo}>
+              AI thinks this may be {stageLabel(stageSuggestion)} — set that on the lead when you have the details.
+            </Text>
+          ) : (
+            <Pressable style={styles.captureStage} onPress={() => setApplyStage((v) => !v)}>
+              <View style={[styles.checkbox, applyStage && styles.checkboxOn]}>
+                {applyStage ? <Text style={styles.checkboxTick}>✓</Text> : null}
+              </View>
+              <Text style={styles.captureStageText}>Advance stage to {stageLabel(stageSuggestion)} on save</Text>
+            </Pressable>
+          )
+        ) : null}
+      </View>
 
       <Text style={styles.label}>Outcome *</Text>
       <View style={styles.chipRow}>
@@ -315,7 +470,7 @@ export default function VisitReportScreen() {
         <Pressable
           style={[styles.attachBtn, recState.isRecording && styles.attachBtnRec]}
           onPress={toggleVoice}
-          disabled={voiceBusy}
+          disabled={voiceBusy || capturing || captureState.isRecording}
         >
           {voiceBusy ? (
             <ActivityIndicator color="#f8fafc" />
@@ -421,6 +576,33 @@ const styles = StyleSheet.create({
   },
   attachItemText: { color: '#cbd5e1', fontSize: 13, flex: 1 },
   attachRemove: { color: '#94a3b8', fontSize: 16, fontWeight: '700' },
+  captureCard: {
+    backgroundColor: '#0b2540',
+    borderWidth: 1,
+    borderColor: '#0ea5e9',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 4,
+    marginBottom: 4,
+    gap: 10,
+  },
+  captureTitle: { color: '#f8fafc', fontSize: 17, fontWeight: '700' },
+  captureSub: { color: '#7dd3fc', fontSize: 13, lineHeight: 18 },
+  captureBtn: {
+    backgroundColor: '#0369a1',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  captureBtnRec: { backgroundColor: '#dc2626' },
+  captureBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  captureBtnText: { color: '#f8fafc', fontWeight: '700', fontSize: 15 },
+  captureListening: { color: '#fca5a5', fontSize: 12, fontWeight: '600' },
+  captureFilled: { color: '#4ade80', fontSize: 12, fontWeight: '600' },
+  captureStage: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
+  captureStageText: { color: '#e0f2fe', fontSize: 13, fontWeight: '600' },
+  captureStageInfo: { color: '#fbbf24', fontSize: 12, lineHeight: 17 },
   primaryBtn: {
     backgroundColor: '#38bdf8',
     padding: 16,
