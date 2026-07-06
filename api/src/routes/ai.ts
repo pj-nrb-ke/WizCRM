@@ -6,6 +6,7 @@ import {
   postCallSchema,
   suggestLeadCaptureSchema,
   transcribeAudioSchema,
+  visitCaptureSchema,
   voiceNoteSchema,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
@@ -18,6 +19,7 @@ import {
   generateSalesDesk,
   parseBusinessCard,
   processPostCall,
+  processVisitCapture,
   suggestStage,
   suggestLeadCapture,
 } from '../services/ai/orchestrator.js';
@@ -350,6 +352,39 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(503).send({
           error: 'AI_UNAVAILABLE',
           message: 'Set OPENAI_API_KEY for voice transcription',
+        });
+      }
+      throw e;
+    }
+  });
+
+  // AI Visit Capture — rep's raw voice transcript -> structured Visit Report
+  // draft (outcome/who/competitor/objection/next-step + stage suggestion).
+  // Drafts only; the rep reviews and saves via POST /leads/:id/visit-report.
+  app.post('/leads/:leadId/visit-capture', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const { leadId } = request.params as { leadId: string };
+    const parsed = visitCaptureSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const lead = await loadLeadContext(leadId, organizationId);
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
+    try {
+      const draft = await processVisitCapture(
+        organizationId,
+        userId,
+        lead,
+        parsed.data.transcript,
+        new Date().toISOString(),
+      );
+      return { draft };
+    } catch (e) {
+      const err = e as Error;
+      if (err.message === 'AI_UNAVAILABLE') {
+        return reply.status(503).send({
+          error: 'AI_UNAVAILABLE',
+          message: 'Set OPENAI_API_KEY for AI visit capture',
         });
       }
       throw e;
