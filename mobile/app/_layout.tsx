@@ -67,6 +67,16 @@ function RootNavigator() {
           }}
         />
         <Stack.Screen
+          name="lead/visit-report"
+          options={{
+            headerShown: true,
+            title: 'Visit report',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <HeaderActions />,
+          }}
+        />
+        <Stack.Screen
           name="lead/edit"
           options={{
             headerShown: true,

@@ -641,6 +641,20 @@ export default function LeadDetailScreen() {
         </View>
       ) : null}
 
+      {!readOnly ? (
+        <Pressable
+          style={styles.visitReportBtn}
+          onPress={() =>
+            router.push({
+              pathname: '/lead/visit-report',
+              params: { leadId: id, leadName: lead.name },
+            })
+          }
+        >
+          <Text style={styles.visitReportBtnText}>＋ Visit report</Text>
+        </Pressable>
+      ) : null}
+
       {!readOnly && isClosed ? (
         <Pressable style={styles.reopenBtn} onPress={reopenLead}>
           <Text style={styles.reopenBtnText}>Reopen lead (Qualified)</Text>
@@ -965,6 +979,15 @@ const styles = StyleSheet.create({
   },
   compactBarBtnSecondary: { backgroundColor: '#1e3a5f' },
   compactBarBtnText: { color: '#38bdf8', fontWeight: '600', fontSize: 13 },
+  visitReportBtn: {
+    marginBottom: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#38bdf8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visitReportBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
   reopenBtn: {
     marginBottom: 8,
     padding: 12,
