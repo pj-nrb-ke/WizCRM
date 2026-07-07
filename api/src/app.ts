@@ -22,6 +22,7 @@ import { leadThreadRoutes } from './routes/lead-thread.js';
 import { reminderRoutes } from './routes/reminders.js';
 import { leadEngineRoutes, handleUnsubscribe } from './routes/lead-engine.js';
 import { contactFinderRoutes } from './routes/contact-finder.js';
+import { africasTalkingVoiceRoutes } from './routes/africastalking-voice.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 
@@ -31,6 +32,20 @@ export async function buildApp() {
     // Business card photos are sent as base64 from the mobile app.
     bodyLimit: 15 * 1024 * 1024,
   });
+
+  // Africa's Talking posts voice callbacks as application/x-www-form-urlencoded.
+  // Parse it into a plain object (no extra dependency; JSON routes are unaffected).
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    (_req, body, done) => {
+      try {
+        done(null, Object.fromEntries(new URLSearchParams(body as string)));
+      } catch (err) {
+        done(err as Error);
+      }
+    },
+  );
 
   await app.register(cors, {
     // Restrict browser origins to the known web app + local dev. Requests with
@@ -83,6 +98,9 @@ export async function buildApp() {
   await app.register(documentRoutes, { prefix: '/documents' });
   await app.register(leadEngineRoutes, { prefix: '/leadengine' });
   await app.register(contactFinderRoutes, { prefix: '/contacts/finder' });
+
+  // Africa's Talking Voice IVR (AI BDR spike) — public, AT posts urlencoded here
+  await app.register(africasTalkingVoiceRoutes);
 
   // Brevo transactional webhooks — no JWT, secured by shared secret header
   app.post('/webhooks/brevo', async (request, reply) => {
