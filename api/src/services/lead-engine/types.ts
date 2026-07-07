@@ -19,7 +19,7 @@ export interface ScoringSignal {
   points: number;
   matchKeywords?: string[];
   matchPlaceTypes?: string[];
-  builtIn?: 'has_website' | 'has_phone';
+  builtIn?: 'has_website' | 'has_phone' | 'has_rating' | 'strong_reputation' | 'established';
 }
 
 export interface ScoringRules {

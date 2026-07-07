@@ -72,7 +72,12 @@ describe('scoreCandidate', () => {
   const rules = defaultScoringRules();
 
   it('assigns tier A when score ≥ 60', () => {
-    const c = makeCandidate({ website: 'https://acme.co.ke', phone: '+254700000000' });
+    // keyword(30) + website(15) + phone(10) + strong_reputation(15) + established(10) + rating(5) = 85
+    const c = makeCandidate({
+      website: 'https://acme.co.ke',
+      phone: '+254700000000',
+      raw: { rating: 4.6, reviewCount: 120 },
+    });
     const result = scoreCandidate(c, rules, ['erp']);
     expect(result.tier).toBe('A');
     expect(result.score).toBeGreaterThanOrEqual(60);
@@ -105,7 +110,35 @@ describe('scoreCandidate', () => {
     const result = scoreCandidate(c, rules, ['erp']);
     const kwSignal = result.breakdown.find((b) => b.key === 'industry_keyword_match');
     expect(kwSignal?.detected).toBe(true);
-    expect(kwSignal?.points).toBe(50);
+    expect(kwSignal?.points).toBe(30);
+  });
+
+  it('strong_reputation fires for 4.0★+ with 20+ reviews', () => {
+    const c = makeCandidate({ sectorTags: [], raw: { rating: 4.5, reviewCount: 40 } });
+    const result = scoreCandidate(c, rules, ['cloud']); // no keyword match
+    expect(result.breakdown.find((b) => b.key === 'strong_reputation')?.detected).toBe(true);
+    expect(result.breakdown.find((b) => b.key === 'established')?.detected).toBe(false); // 40 < 50
+  });
+
+  it('strong_reputation does not fire below rating/review thresholds', () => {
+    const c = makeCandidate({ sectorTags: [], raw: { rating: 3.8, reviewCount: 100 } });
+    const result = scoreCandidate(c, rules, ['cloud']);
+    expect(result.breakdown.find((b) => b.key === 'strong_reputation')?.detected).toBe(false);
+    expect(result.breakdown.find((b) => b.key === 'established')?.detected).toBe(true); // 100 ≥ 50
+  });
+
+  it('reputable off-keyword company reaches tier B (no longer stuck at C)', () => {
+    // The core fix: website(15) + phone(10) + strong_reputation(15) + established(10) + rating(5)
+    // = 55 → B, even though the industry keyword does not match.
+    const c = makeCandidate({
+      website: 'https://x.co.ke',
+      phone: '+254700000000',
+      sectorTags: [],
+      raw: { rating: 4.8, reviewCount: 90 },
+    });
+    const result = scoreCandidate(c, rules, ['cloud']); // deliberately non-matching keyword
+    expect(result.score).toBe(55);
+    expect(result.tier).toBe('B');
   });
 
   it('breakdown has an entry per signal', () => {
@@ -135,7 +168,9 @@ describe('parseScoringRules', () => {
 
   it('returns fallback for null', () => {
     const result = parseScoringRules(null);
-    expect(result.signals).toEqual([]);
+    // Fallback must be the usable default ruleset (non-empty signals), not an
+    // empty one — empty signals would score every candidate 0.
+    expect(result.signals.length).toBeGreaterThan(0);
     expect(result.tierThresholds).toBeDefined();
   });
 

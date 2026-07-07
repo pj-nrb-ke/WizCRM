@@ -1,6 +1,17 @@
 import type { CompanyCandidate, ScoringRules, ScoreResult } from './types.js';
 import { defaultScoringRules } from './campaign.service.js';
 
+/** Reputation thresholds for built-in firmographic signals (Google Places data). */
+const STRONG_RATING = 4.0;
+const STRONG_REVIEWS = 20;
+const ESTABLISHED_REVIEWS = 50;
+
+/** Safely read a finite number from the candidate's raw discovery payload. */
+function rawNumber(raw: Record<string, unknown>, key: string): number | null {
+  const value = raw[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 export function scoreCandidate(
   candidate: CompanyCandidate,
   rules: ScoringRules,
@@ -16,6 +27,16 @@ export function scoreCandidate(
       detected = Boolean(candidate.website);
     } else if (signal.builtIn === 'has_phone') {
       detected = Boolean(candidate.phone);
+    } else if (signal.builtIn === 'has_rating') {
+      detected = rawNumber(candidate.raw, 'rating') !== null;
+    } else if (signal.builtIn === 'strong_reputation') {
+      const rating = rawNumber(candidate.raw, 'rating');
+      const reviews = rawNumber(candidate.raw, 'reviewCount');
+      detected =
+        rating !== null && reviews !== null && rating >= STRONG_RATING && reviews >= STRONG_REVIEWS;
+    } else if (signal.builtIn === 'established') {
+      const reviews = rawNumber(candidate.raw, 'reviewCount');
+      detected = reviews !== null && reviews >= ESTABLISHED_REVIEWS;
     } else {
       // Keyword matching: use signal-level keywords, fall back to campaign keywords
       const keywords = signal.matchKeywords?.length ? signal.matchKeywords : campaignKeywords;
