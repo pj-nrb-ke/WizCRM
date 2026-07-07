@@ -16,6 +16,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      # Generate the Prisma client so `tsc` (build -w api) can resolve @prisma/client types.
+      - run: npx prisma generate --schema api/prisma/schema.prisma
       - run: npm run build -w shared
       - run: npm run test -w shared
       - run: npm run build -w api
