@@ -5,7 +5,16 @@ node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
-mobile/android/
+
+# Android native project IS committed for reproducible local builds (no Expo/EAS cloud).
+# Ignore only build outputs, machine-local config, and signing secrets:
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.cxx/
+mobile/android/local.properties
+mobile/android/keystore.properties
+mobile/android/app/wizcrm-upload.keystore
 mobile/.expo/
 *.jks
 *.p8

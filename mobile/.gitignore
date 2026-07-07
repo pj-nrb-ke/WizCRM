@@ -36,7 +36,16 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# generated native folders (iOS not generated yet)
 /ios
-/android
 .android-apk-stash
+
+# Android native project is committed for reproducible local builds (no Expo/EAS cloud).
+# Ignore only build outputs, machine-local config, and signing secrets:
+android/.gradle/
+android/build/
+android/app/build/
+android/.cxx/
+android/local.properties
+android/keystore.properties
+android/app/wizcrm-upload.keystore
