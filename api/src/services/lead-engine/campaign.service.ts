@@ -16,16 +16,28 @@ export interface UpdateCampaignInput extends Partial<CreateCampaignInput> {
 }
 
 export function defaultScoringRules(): ScoringRules {
+  // Graded model: no single signal dominates, so candidates spread across tiers
+  // instead of collapsing to C whenever the keyword misses sparse Google Places
+  // categories. Reputation signals use rating/reviewCount captured at discovery.
+  // Max = 85; thresholds unchanged (A 60 / B 35 / C 15) so the drop floor holds.
   return {
     signals: [
       {
         key: 'industry_keyword_match',
         label: 'Matches target industry keywords',
-        points: 50,
+        points: 30,
         matchKeywords: [], // empty = inherits campaign.industryKeywords at score time
       },
+      {
+        key: 'strong_reputation',
+        label: 'Strong reputation (4.0★+ with 20+ reviews)',
+        points: 15,
+        builtIn: 'strong_reputation',
+      },
+      { key: 'established', label: 'Established (50+ reviews)', points: 10, builtIn: 'established' },
       { key: 'has_website', label: 'Has website', points: 15, builtIn: 'has_website' },
       { key: 'has_phone', label: 'Has phone number', points: 10, builtIn: 'has_phone' },
+      { key: 'has_rating', label: 'Has Google rating', points: 5, builtIn: 'has_rating' },
     ],
     tierThresholds: { A: 60, B: 35, C: 15 },
   };
