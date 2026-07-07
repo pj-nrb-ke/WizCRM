@@ -78,4 +78,15 @@ export const config = {
 
   // Kenya Data Protection Act — 'gate' strips personal identifiers; 'block' excludes entirely
   kdpaMode: (process.env.KDPA_PERSONAL_DATA ?? 'gate') as 'block' | 'gate',
+
+  // Africa's Talking — Voice IVR spike (AI BDR). Call origination uses these creds;
+  // the public voice callback endpoint needs only apiPublicUrl (no secret on the server).
+  atUsername: process.env.AT_USERNAME ?? '',
+  atApiKey: process.env.AT_API_KEY ?? '',
+  atVoiceNumber: process.env.AT_VOICE_NUMBER ?? '',
+  atVoiceEnabled: Boolean(process.env.AT_API_KEY && process.env.AT_USERNAME && process.env.AT_VOICE_NUMBER),
+  /** Optional shared secret; if set, the voice callback requires ?k=<secret>. */
+  atVoiceCallbackSecret: process.env.AT_VOICE_CALLBACK_SECRET ?? '',
+  /** Public base URL of THIS api, used to build the AT voice callback URL. */
+  apiPublicUrl: process.env.API_PUBLIC_URL ?? 'https://api.wizcrm.app',
 };
