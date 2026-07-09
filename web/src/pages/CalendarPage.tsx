@@ -36,6 +36,9 @@ const RSVP_ICON: Record<string, string> = {
 
 type OrgUser = { id: string; name: string; email: string; role: string; team: { name: string } | null };
 
+type BusyBlock = { eventId: string; startAt: string; endAt: string; allDay: boolean; title: string };
+type UserAvailability = { userId: string; name: string; busy: BusyBlock[] };
+
 type Attendee = {
   userId: string;
   status: string;
@@ -100,10 +103,24 @@ export function CalendarPage() {
   const [organiser, setOrganiser] = useState<{ id: string; name: string } | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [rsvping, setRsvping] = useState(false);
+  const [availability, setAvailability] = useState<UserAvailability[]>([]);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   /** The organiser (or a manager) owns the event; an invitee can only RSVP. */
   const isOrganiser = !editingId || organiser?.id === meId || (!!organiser && isManager);
   const myInvite = attendees.find((a) => a.userId === meId) ?? null;
+
+  const busyByUser = useMemo(() => {
+    const m = new Map<string, BusyBlock[]>();
+    for (const row of availability) m.set(row.userId, row.busy);
+    return m;
+  }, [availability]);
+
+  /** People you have ticked who already have something else in this slot. */
+  const busyInvitees = useMemo(
+    () => availability.filter((a) => attendeeIds.includes(a.userId) && a.busy.length > 0),
+    [availability, attendeeIds],
+  );
 
   const range = useMemo(() => buildCalendarRange(view, cursor), [view, cursor]);
 
@@ -130,6 +147,41 @@ export function CalendarPage() {
       .then((d) => setOrgUsers(d.users ?? []))
       .catch(() => setOrgUsers([]));
   }, []);
+
+  // Ask who is busy for the slot currently in the form. Debounced, because the
+  // datetime inputs fire on every keystroke.
+  useEffect(() => {
+    if (!modalOpen || !startAt || !endAt) {
+      setAvailability([]);
+      return;
+    }
+    const iso = buildEventIsoRange(startAt, endAt, allDay);
+    if (!iso.startAt || !iso.endAt || new Date(iso.endAt) <= new Date(iso.startAt)) {
+      setAvailability([]);
+      return;
+    }
+    let cancelled = false;
+    setCheckingAvailability(true);
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams({ from: iso.startAt, to: iso.endAt });
+      // An event being rescheduled must not be reported as clashing with itself.
+      if (editingId) params.set('excludeEventId', editingId);
+      api<{ availability: UserAvailability[] }>(`/calendar/availability?${params}`)
+        .then((d) => {
+          if (!cancelled) setAvailability(d.availability ?? []);
+        })
+        .catch(() => {
+          if (!cancelled) setAvailability([]);
+        })
+        .finally(() => {
+          if (!cancelled) setCheckingAvailability(false);
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [modalOpen, startAt, endAt, allDay, editingId]);
 
   function eventsOnDay(day: Date) {
     const src = typeFilter === 'ALL' ? events : events.filter((e) => e.eventType === typeFilter);
@@ -586,7 +638,26 @@ export function CalendarPage() {
               <p className="muted" style={{ marginTop: 0, fontSize: '0.85rem' }}>
                 Organised by {organiser && organiser.id !== meId ? organiser.name : 'you'}. Invited
                 colleagues see this event on their own calendar and can reply.
+                {checkingAvailability ? (
+                  <> Checking who's free…</>
+                ) : availability.length ? (
+                  <>
+                    {' '}
+                    <strong>
+                      {availability.filter((a) => a.busy.length === 0).length} of {availability.length} free
+                    </strong>{' '}
+                    at this time.
+                  </>
+                ) : null}
               </p>
+              {busyInvitees.length ? (
+                <div className="alert alert-error" style={{ marginBottom: 8 }}>
+                  {busyInvitees.length === 1
+                    ? `${busyInvitees[0].name} is already booked at this time.`
+                    : `${busyInvitees.map((a) => a.name).join(', ')} are already booked at this time.`}{' '}
+                  Pick another slot or invite someone else.
+                </div>
+              ) : null}
               {isOrganiser ? (
                 <div
                   style={{
@@ -607,6 +678,7 @@ export function CalendarPage() {
                     .filter((u) => u.id !== (organiser?.id ?? meId))
                     .map((u) => {
                       const invite = attendees.find((a) => a.userId === u.id);
+                      const busy = busyByUser.get(u.id) ?? [];
                       return (
                         <label
                           key={u.id}
@@ -625,6 +697,18 @@ export function CalendarPage() {
                               {u.team?.name ? `· ${u.team.name}` : `· ${u.role.toLowerCase()}`}
                             </span>
                           </span>
+                          {busy.length ? (
+                            <span
+                              style={{ fontSize: '0.8rem', color: 'var(--danger, #b42318)' }}
+                              title={busy.map(busyLabel).join('\n')}
+                            >
+                              ● Busy
+                            </span>
+                          ) : availability.length ? (
+                            <span className="muted" style={{ fontSize: '0.8rem' }}>
+                              ○ Free
+                            </span>
+                          ) : null}
                           {invite ? (
                             <span
                               className="muted"
@@ -766,6 +850,11 @@ export function CalendarPage() {
 
 function sameMonth(a: Date, b: Date) {
   return a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+}
+
+function busyLabel(b: BusyBlock) {
+  const when = b.allDay ? 'All day' : `${fmtTime(b.startAt)}–${fmtTime(b.endAt)}`;
+  return `${when} · ${b.title}`;
 }
 
 function attendeeSummary(ev: CalendarEvent) {

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  calendarAvailabilityQuerySchema,
   calendarCheckInSchema,
   calendarCheckOutSchema,
   calendarQuerySchema,
@@ -12,6 +13,7 @@ import {
   checkOutCalendarEvent,
   createCalendarEvent,
   deleteCalendarEvent,
+  getTeamAvailability,
   listCalendarEvents,
   listOrgUsers,
   rsvpCalendarEvent,
@@ -62,6 +64,30 @@ export const calendarRoutes: FastifyPluginAsync = async (app) => {
     const { organizationId } = request.user;
     const users = await listOrgUsers(organizationId);
     return { users };
+  });
+
+  /** Free/busy for colleagues in a window, so you can pick a slot that suits everyone. */
+  app.get('/availability', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const parsed = calendarAvailabilityQuerySchema.safeParse(request.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const from = new Date(parsed.data.from);
+    const to = new Date(parsed.data.to);
+    if (to <= from) {
+      return reply.status(400).send({ error: 'to must be after from' });
+    }
+    const userIds = parsed.data.userIds
+      ? parsed.data.userIds.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined;
+    const availability = await getTeamAvailability(organizationId, userId, role, {
+      from,
+      to,
+      userIds,
+      excludeEventId: parsed.data.excludeEventId,
+    });
+    return { availability };
   });
 
   app.post('/events/:id/rsvp', async (request, reply) => {

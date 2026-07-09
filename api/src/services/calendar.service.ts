@@ -48,6 +48,84 @@ export async function listOrgUsers(organizationId: string) {
   });
 }
 
+export type BusyBlock = { eventId: string; startAt: Date; endAt: Date; allDay: boolean; title: string };
+export type UserAvailability = { userId: string; name: string; busy: BusyBlock[] };
+
+/**
+ * Who is unavailable between `from` and `to`.
+ *
+ * A person is busy for an event they organise, or one they were invited to and
+ * have not declined. Titles are only revealed to someone already entitled to see
+ * the event (its organiser, an attendee, or a manager); to everyone else a block
+ * reads "Busy", so the view never leaks what a colleague is doing.
+ */
+export async function getTeamAvailability(
+  organizationId: string,
+  viewerId: string,
+  role: string,
+  query: { from: Date; to: Date; userIds?: string[]; excludeEventId?: string },
+): Promise<UserAvailability[]> {
+  const isManager = role === 'MANAGER' || role === 'ADMIN';
+
+  const people = await prisma.user.findMany({
+    where: { organizationId, ...(query.userIds?.length ? { id: { in: query.userIds } } : {}) },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
+  if (people.length === 0) return [];
+  const ids = people.map((p) => p.id);
+
+  const events = await prisma.calendarEvent.findMany({
+    where: {
+      organizationId,
+      // Strict overlap: an event ending exactly when another starts is not a clash.
+      startAt: { lt: query.to },
+      endAt: { gt: query.from },
+      ...(query.excludeEventId ? { id: { not: query.excludeEventId } } : {}),
+      OR: [
+        { userId: { in: ids } },
+        { attendees: { some: { userId: { in: ids }, status: { not: 'DECLINED' } } } },
+      ],
+    },
+    select: {
+      id: true,
+      title: true,
+      startAt: true,
+      endAt: true,
+      allDay: true,
+      userId: true,
+      attendees: { select: { userId: true, status: true } },
+    },
+    orderBy: { startAt: 'asc' },
+  });
+
+  const byUser = new Map<string, BusyBlock[]>(ids.map((id) => [id, []]));
+
+  for (const ev of events) {
+    const viewerMaySeeTitle =
+      isManager || ev.userId === viewerId || ev.attendees.some((a) => a.userId === viewerId);
+    const title = viewerMaySeeTitle ? ev.title : 'Busy';
+
+    // The organiser is busy; so is every invitee who has not declined.
+    const busyFor = new Set<string>();
+    if (byUser.has(ev.userId)) busyFor.add(ev.userId);
+    for (const a of ev.attendees) {
+      if (a.status !== 'DECLINED' && byUser.has(a.userId)) busyFor.add(a.userId);
+    }
+    for (const uid of busyFor) {
+      byUser.get(uid)!.push({
+        eventId: ev.id,
+        startAt: ev.startAt,
+        endAt: ev.endAt,
+        allDay: ev.allDay,
+        title,
+      });
+    }
+  }
+
+  return people.map((p) => ({ userId: p.id, name: p.name, busy: byUser.get(p.id) ?? [] }));
+}
+
 export class GeofenceCheckInError extends Error {
   readonly code = 'GEOFENCE';
   constructor(

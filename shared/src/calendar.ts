@@ -73,6 +73,16 @@ export const calendarQuerySchema = z.object({
   view: z.enum(['day', 'week', 'month']).optional(),
 });
 
+/** "Who is busy between these two times?" — backs the free/busy check when scheduling. */
+export const calendarAvailabilityQuerySchema = z.object({
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  /** Comma-separated user ids. Omit for the whole org. */
+  userIds: z.string().optional(),
+  /** The event being rescheduled — it should not clash with itself. */
+  excludeEventId: z.string().uuid().optional(),
+});
+
 export const teamActivityFeedQuerySchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
