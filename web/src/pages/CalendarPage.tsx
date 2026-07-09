@@ -13,6 +13,20 @@ import {
 } from '../lib/calendar';
 import { PageHeader } from '../components/PageHeader';
 
+const EVENT_TYPES = ['MEETING', 'DEMO', 'EXPO', 'PRESENTATION', 'CONFERENCE_CALL', 'CALL', 'OTHER'] as const;
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  MEETING: 'Meeting', DEMO: 'Demo', EXPO: 'Expo', PRESENTATION: 'Online presentation',
+  CONFERENCE_CALL: 'Conference call', CALL: 'Call', OTHER: 'Other',
+};
+const MEETING_MODES = ['IN_PERSON', 'ZOOM', 'TEAMS', 'GOOGLE_MEET', 'PHONE', 'WHATSAPP', 'OTHER'] as const;
+const MEETING_MODE_LABELS: Record<string, string> = {
+  IN_PERSON: 'In person', ZOOM: 'Zoom', TEAMS: 'Microsoft Teams', GOOGLE_MEET: 'Google Meet',
+  PHONE: 'Phone', WHATSAPP: 'WhatsApp', OTHER: 'Other',
+};
+const MODE_ICON: Record<string, string> = {
+  IN_PERSON: '📍', ZOOM: '🎥', TEAMS: '💻', GOOGLE_MEET: '📹', PHONE: '📞', WHATSAPP: '💬', OTHER: '🔗',
+};
+
 type CalendarEvent = {
   id: string;
   title: string;
@@ -25,6 +39,9 @@ type CalendarEvent = {
   meetingAddress: string | null;
   meetingLat: number | null;
   meetingLng: number | null;
+  eventType: string;
+  meetingMode: string;
+  meetingUrl: string | null;
   checkInAt: string | null;
   checkOutAt: string | null;
   attendanceStatus: string | null;
@@ -48,6 +65,10 @@ export function CalendarPage() {
   const [meetingAddress, setMeetingAddress] = useState('');
   const [meetingLat, setMeetingLat] = useState('');
   const [meetingLng, setMeetingLng] = useState('');
+  const [eventType, setEventType] = useState('MEETING');
+  const [meetingMode, setMeetingMode] = useState('IN_PERSON');
+  const [meetingUrl, setMeetingUrl] = useState('');
+  const [typeFilter, setTypeFilter] = useState('ALL');
   const [checkInAt, setCheckInAt] = useState<string | null>(null);
   const [checkOutAt, setCheckOutAt] = useState<string | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<string | null>(null);
@@ -76,7 +97,8 @@ export function CalendarPage() {
   }, [load]);
 
   function eventsOnDay(day: Date) {
-    return getEventsOnDay(events, day);
+    const src = typeFilter === 'ALL' ? events : events.filter((e) => e.eventType === typeFilter);
+    return getEventsOnDay(src, day);
   }
 
   function closeModal() {
@@ -99,6 +121,9 @@ export function CalendarPage() {
     setMeetingAddress('');
     setMeetingLat('');
     setMeetingLng('');
+    setEventType('MEETING');
+    setMeetingMode('IN_PERSON');
+    setMeetingUrl('');
     setCheckInAt(null);
     setCheckOutAt(null);
     setAttendanceStatus(null);
@@ -119,6 +144,9 @@ export function CalendarPage() {
     setMeetingAddress(ev.meetingAddress ?? '');
     setMeetingLat(ev.meetingLat != null ? String(ev.meetingLat) : '');
     setMeetingLng(ev.meetingLng != null ? String(ev.meetingLng) : '');
+    setEventType(ev.eventType ?? 'MEETING');
+    setMeetingMode(ev.meetingMode ?? 'IN_PERSON');
+    setMeetingUrl(ev.meetingUrl ?? '');
     setCheckInAt(ev.checkInAt);
     setCheckOutAt(ev.checkOutAt);
     setAttendanceStatus(ev.attendanceStatus);
@@ -146,6 +174,9 @@ export function CalendarPage() {
       meetingAddress: meetingAddress.trim() || undefined,
       meetingLat: lat != null && !Number.isNaN(lat) ? lat : undefined,
       meetingLng: lng != null && !Number.isNaN(lng) ? lng : undefined,
+      eventType,
+      meetingMode,
+      meetingUrl: meetingUrl.trim() || undefined,
     };
     try {
       if (editingId) {
@@ -304,6 +335,29 @@ export function CalendarPage() {
         </div>
       </div>
 
+      <div
+        className="calendar-type-filter"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0' }}
+      >
+        <button
+          type="button"
+          className={typeFilter === 'ALL' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+          onClick={() => setTypeFilter('ALL')}
+        >
+          All
+        </button>
+        {EVENT_TYPES.map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={typeFilter === t ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+            onClick={() => setTypeFilter(t)}
+          >
+            {EVENT_TYPE_LABELS[t]}
+          </button>
+        ))}
+      </div>
+
       {error && !modalOpen ? <div className="alert alert-error">{error}</div> : null}
       {loading ? <p className="muted">Loading calendar…</p> : null}
 
@@ -346,7 +400,12 @@ export function CalendarPage() {
                         ? 'All day'
                         : `${fmtTime(ev.startAt)}–${fmtTime(ev.endAt)}`}
                     </span>
-                    <span className="calendar-event-title">{ev.title}</span>
+                    <span className="calendar-event-title">
+                      {ev.meetingMode && ev.meetingMode !== 'IN_PERSON'
+                        ? `${MODE_ICON[ev.meetingMode] ?? ''} `
+                        : ''}
+                      {ev.title}
+                    </span>
                     {ev.lead ? (
                       <span className="calendar-event-lead">{ev.lead.name}</span>
                     ) : null}
@@ -403,6 +462,51 @@ export function CalendarPage() {
                 Notes
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               </label>
+              <div className="field-row">
+                <label>
+                  Type
+                  <select value={eventType} onChange={(e) => setEventType(e.target.value)}>
+                    {EVENT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {EVENT_TYPE_LABELS[t]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  How
+                  <select value={meetingMode} onChange={(e) => setMeetingMode(e.target.value)}>
+                    {MEETING_MODES.map((m) => (
+                      <option key={m} value={m}>
+                        {MEETING_MODE_LABELS[m]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {meetingMode !== 'IN_PERSON' ? (
+                <label>
+                  {meetingMode === 'PHONE' ? 'Dial-in number' : 'Join link'}
+                  <input
+                    value={meetingUrl}
+                    onChange={(e) => setMeetingUrl(e.target.value)}
+                    placeholder={meetingMode === 'PHONE' ? '+254…' : 'https://…'}
+                  />
+                </label>
+              ) : null}
+              {meetingMode !== 'IN_PERSON' && meetingUrl.trim() ? (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const u = meetingUrl.trim();
+                    if (meetingMode === 'PHONE') window.open(`tel:${u.replace(/\s/g, '')}`);
+                    else window.open(u.startsWith('http') ? u : `https://${u}`, '_blank');
+                  }}
+                >
+                  {meetingMode === 'PHONE' ? 'Call now' : 'Open join link'}
+                </button>
+              ) : null}
               <h3>Meeting location</h3>
               <label>
                 Address

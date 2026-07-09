@@ -3,6 +3,14 @@ import { leadTagsField } from './lead-tags.js';
 
 export const CALENDAR_RECURRENCE = ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM'] as const;
 
+export const CALENDAR_EVENT_TYPES = [
+  'MEETING', 'DEMO', 'EXPO', 'PRESENTATION', 'CONFERENCE_CALL', 'CALL', 'OTHER',
+] as const;
+
+export const MEETING_MODES = [
+  'IN_PERSON', 'ZOOM', 'TEAMS', 'GOOGLE_MEET', 'PHONE', 'WHATSAPP', 'OTHER',
+] as const;
+
 const calendarEventFieldsSchema = z.object({
   title: z.string().min(1).max(300),
   notes: z.string().max(5000).optional(),
@@ -18,6 +26,9 @@ const calendarEventFieldsSchema = z.object({
   meetingAddress: z.string().max(500).optional(),
   meetingLat: z.number().min(-90).max(90).optional(),
   meetingLng: z.number().min(-180).max(180).optional(),
+  eventType: z.enum(CALENDAR_EVENT_TYPES).optional(),
+  meetingMode: z.enum(MEETING_MODES).optional(),
+  meetingUrl: z.string().max(1000).optional(),
 });
 
 export const ATTENDANCE_STATUSES = ['ON_TIME', 'LATE', 'NO_SHOW', 'PARTIAL'] as const;

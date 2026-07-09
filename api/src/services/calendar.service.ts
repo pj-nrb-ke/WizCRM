@@ -84,6 +84,9 @@ export async function createCalendarEvent(
       meetingAddress: input.meetingAddress,
       meetingLat: input.meetingLat,
       meetingLng: input.meetingLng,
+      eventType: input.eventType ?? 'MEETING',
+      meetingMode: input.meetingMode ?? 'IN_PERSON',
+      meetingUrl: input.meetingUrl,
     },
     include: {
       user: { select: { id: true, name: true } },
@@ -154,6 +157,9 @@ export async function updateCalendarEvent(
   if (input.meetingAddress !== undefined) data.meetingAddress = input.meetingAddress;
   if (input.meetingLat !== undefined) data.meetingLat = input.meetingLat;
   if (input.meetingLng !== undefined) data.meetingLng = input.meetingLng;
+  if (input.eventType !== undefined) data.eventType = input.eventType;
+  if (input.meetingMode !== undefined) data.meetingMode = input.meetingMode;
+  if (input.meetingUrl !== undefined) data.meetingUrl = input.meetingUrl;
 
   return prisma.calendarEvent.update({
     where: { id },

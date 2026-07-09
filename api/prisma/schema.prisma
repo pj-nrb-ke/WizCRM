@@ -364,6 +364,26 @@ model ErpSyncLog {
   @@index([quotationId])
 }
 
+enum CalendarEventType {
+  MEETING
+  DEMO
+  EXPO
+  PRESENTATION
+  CONFERENCE_CALL
+  CALL
+  OTHER
+}
+
+enum MeetingMode {
+  IN_PERSON
+  ZOOM
+  TEAMS
+  GOOGLE_MEET
+  PHONE
+  WHATSAPP
+  OTHER
+}
+
 model CalendarEvent {
   id                    String             @id @default(uuid())
   organizationId        String
@@ -376,6 +396,9 @@ model CalendarEvent {
   startAt               DateTime
   endAt                 DateTime
   allDay                Boolean            @default(false)
+  eventType             CalendarEventType  @default(MEETING)
+  meetingMode           MeetingMode        @default(IN_PERSON)
+  meetingUrl            String?
   recurrence            CalendarRecurrence @default(NONE)
   recurrenceIntervalDays Int?
   recurrenceUntil       DateTime?
