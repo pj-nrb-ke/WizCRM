@@ -73,10 +73,24 @@ else
   fi
 fi
 
+# Brevo's SMTP password is the "xsmtpsib-" key. In this deployment that key is
+# stored under BREVO_API_KEY while SMTP_PASS holds something else, so trusting
+# the variable names gets you "Login denied". The API resolves the same mix-up
+# at runtime in normalizeBrevoSecrets(); mirror that rule here: whichever
+# variable actually carries the xsmtpsib- key is the SMTP password.
+smtp_password() {
+  local pass key
+  pass=$(env_get SMTP_PASS)
+  key=$(env_get BREVO_API_KEY)
+  if [[ "$key" == xsmtpsib-* ]]; then
+    printf '%s' "$key"
+  else
+    printf '%s' "$pass"
+  fi
+}
+
 # Send over SMTP, the same channel the API itself uses. Brevo's REST endpoint
-# needs an "xkeysib-" key; the deployment only holds an "xsmtpsib-" SMTP key
-# (stored, confusingly, under BREVO_API_KEY — see normalizeBrevoSecrets in the
-# API). Using SMTP means the alert path works with the credentials that exist.
+# would need an "xkeysib-" key, and no such key exists on this box.
 send_email() {
   local subject="$1" body="$2"
   local host port user pass from to msg
@@ -84,7 +98,7 @@ send_email() {
   host=$(env_get SMTP_HOST)
   port=$(env_get SMTP_PORT); port=${port:-587}
   user=$(env_get SMTP_USER)
-  pass=$(env_get SMTP_PASS)
+  pass=$(smtp_password)
   from=$(env_get MAIL_FROM)
   to=$(env_get WATCHDOG_ALERT_TO); to=${to:-$from}
 
@@ -104,14 +118,20 @@ send_email() {
     printf '%s\n' "$body"
   } >"$msg"
 
-  if curl -s --max-time 25 --url "smtp://${host}:${port}" --ssl-reqd \
-      --mail-from "$from" --mail-rcpt "$to" \
-      --user "${user}:${pass}" --upload-file "$msg" 2>/tmp/wizcrm-watchdog-mail.err; then
+  # -sS so curl stays quiet on success but still explains itself on failure;
+  # the password is scrubbed before anything reaches the log.
+  local err rc
+  err=$(curl -sS --max-time 25 --url "smtp://${host}:${port}" --ssl-reqd \
+    --mail-from "$from" --mail-rcpt "$to" \
+    --user "${user}:${pass}" --upload-file "$msg" 2>&1)
+  rc=$?
+  rm -f "$msg"
+
+  if [[ $rc -eq 0 ]]; then
     log "alert email sent to $to"
   else
-    log "ALERT EMAIL FAILED: $(head -c 300 /tmp/wizcrm-watchdog-mail.err)"
+    log "ALERT EMAIL FAILED (curl $rc): $(printf '%s' "$err" | sed "s/${pass}/***/g" | head -c 300)"
   fi
-  rm -f "$msg"
 }
 
 prev_state=$(cat "$STATE_FILE" 2>/dev/null || echo healthy)

@@ -64,10 +64,14 @@ install -m 0700 ops/wizcrm-watchdog.sh /usr/local/bin/wizcrm-watchdog.sh
 
 Requires `curl`, `docker`, and in `/opt/wizcrm/api/.env`:
 
-- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` — the alert is sent over SMTP, the same
-  channel the API uses. Brevo's REST endpoint would need an `xkeysib-` key; this
-  deployment only holds an `xsmtpsib-` SMTP key, stored under the misleading name
-  `BREVO_API_KEY` (the API compensates for the swap in `normalizeBrevoSecrets`).
+- `SMTP_HOST`, `SMTP_USER`, and the Brevo `xsmtpsib-` key. The alert goes over
+  SMTP, the same channel the API uses; Brevo's REST endpoint would need an
+  `xkeysib-` key and none exists on this box. **The `xsmtpsib-` key is the SMTP
+  password**, and in this deployment it is stored under `BREVO_API_KEY` while
+  `SMTP_PASS` holds something else. Trusting the variable names yields
+  `curl: (67) Login denied`. The watchdog applies the same rule the API applies
+  in `normalizeBrevoSecrets()`: whichever variable carries the `xsmtpsib-` key
+  is the password.
 - `MAIL_FROM` — a sender verified in Brevo
 - `WATCHDOG_ALERT_TO` — who to wake up (defaults to `MAIL_FROM`)
 
