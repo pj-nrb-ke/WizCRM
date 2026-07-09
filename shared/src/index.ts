@@ -8,6 +8,7 @@ export * from './ai-rules.js';
 export * from './pipeline-stages.js';
 export * from './opportunity.js';
 export * from './calendar.js';
+export * from './expo.js';
 export * from './analytics.js';
 export * from './quotation.js';
 export * from './lead-tags.js';

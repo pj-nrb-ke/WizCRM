@@ -16,6 +16,7 @@ import { reportRoutes } from './routes/reports.js';
 import { emailRoutes } from './routes/email.js';
 import { opportunityRoutes } from './routes/opportunities.js';
 import { calendarRoutes } from './routes/calendar.js';
+import { expoRoutes } from './routes/expos.js';
 import { integrationRoutes } from './routes/integrations.js';
 import { quotationRoutes } from './routes/quotations.js';
 import { leadThreadRoutes } from './routes/lead-thread.js';
@@ -94,6 +95,7 @@ export async function buildApp() {
   await app.register(emailRoutes, { prefix: '/email' });
   await app.register(opportunityRoutes, { prefix: '/opportunities' });
   await app.register(calendarRoutes, { prefix: '/calendar' });
+  await app.register(expoRoutes, { prefix: '/expos' });
   await app.register(reminderRoutes, { prefix: '/reminders' });
   await app.register(integrationRoutes, { prefix: '/integrations' });
   await app.register(quotationRoutes, { prefix: '/quotations' });

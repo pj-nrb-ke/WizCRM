@@ -21,6 +21,7 @@ import { PipelinePage } from './pages/PipelinePage';
 import { LeadsPage } from './pages/LeadsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { ExposPage } from './pages/ExposPage';
 import { BulkImportPage } from './pages/BulkImportPage';
 import { LeadGeneratorPage } from './pages/LeadGeneratorPage';
 import { CampaignDetailPage } from './pages/CampaignDetailPage';
@@ -147,6 +148,14 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <CalendarPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/expos"
+              element={
+                <ManagerOnly>
+                  <ExposPage />
                 </ManagerOnly>
               }
             />

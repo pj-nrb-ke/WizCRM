@@ -20,6 +20,7 @@ model Organization {
   suppressionList SuppressionList[]
   contactCaches   ContactFinderCache[]
   productDocuments ProductDocument[]
+  expos           Expo[]
 }
 
 model Team {
@@ -390,6 +391,67 @@ enum RsvpStatus {
   ACCEPTED
   DECLINED
   TENTATIVE
+}
+
+/** Reach of an expo, from a Nairobi vantage point. */
+enum ExpoTier {
+  LOCAL_KENYA
+  EAST_AFRICA
+  MIDDLE_EAST_AFRICA
+  ASIA
+  INTERNATIONAL
+}
+
+/** Take a stand, attend as a delegate, or leave it alone. */
+enum ExpoRecommendation {
+  BOOTH
+  PARTICIPANT
+  SKIP
+}
+
+/**
+ * An upcoming trade show or exhibition, discovered from the public web.
+ *
+ * Every field that states a fact about the outside world (dates, venue) comes
+ * from a cited `sourceUrl` — never from the model's own recollection — so a
+ * blank date means "the source did not say", not "there is no date".
+ */
+model Expo {
+  id                   String              @id @default(uuid())
+  organizationId       String
+  organization         Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name                 String
+  /** Stable identity across re-runs: slug of the name + the month it starts. */
+  dedupKey             String
+  tier                 ExpoTier
+  /** What the event is, in a sentence or two. */
+  brief                String?
+  /** How WizAG should position itself there. */
+  positioning          String?
+  recommendation       ExpoRecommendation?
+  recommendationReason String?
+  startDate            DateTime?
+  endDate              DateTime?
+  /** Verbatim date text when the source gave no parseable date. */
+  dateText             String?
+  city                 String?
+  country              String?
+  venue                String?
+  websiteUrl           String?
+  /** The page this was read from. Always present; the row is dropped without it. */
+  sourceUrl            String
+  sourceTitle          String?
+  /** 0-100. How firmly the source pins down the event, not the model's mood. */
+  confidence           Int                 @default(0)
+  industryTags         String[]            @default([])
+  /** Set once someone puts this on the shared calendar. */
+  calendarEventId      String?
+  dismissedAt          DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@unique([organizationId, dedupKey])
+  @@index([organizationId, tier, startDate])
 }
 
 /** A colleague invited to a shared calendar event. The organiser is CalendarEvent.userId. */
