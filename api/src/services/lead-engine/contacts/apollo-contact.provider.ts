@@ -77,21 +77,29 @@ export class ApolloContactProvider extends ContactProvider {
 
       const data = (await res.json()) as ApolloResponse;
 
-      return (data.people ?? []).map((p) => {
+      // Apollo's free/un-enriched search masks the person's name (returns a title
+      // only). A title with no name isn't a usable contact — it just adds
+      // "Name not found" noise — so skip those and keep only named people.
+      const contacts: ClassifiedContact[] = [];
+      for (const p of data.people ?? []) {
         const fullName =
           p.name?.trim() ||
           [p.first_name, p.last_name].filter(Boolean).join(' ') ||
           null;
+        if (!fullName) continue;
 
-        return classifyContact({
-          name: fullName,
-          title: p.title ?? null,
-          email: p.email ?? null,
-          phone: p.phone_numbers?.[0]?.raw_number ?? null,
-          linkedinUrl: p.linkedin_url ?? null,
-          source: 'apollo',
-        });
-      });
+        contacts.push(
+          classifyContact({
+            name: fullName,
+            title: p.title ?? null,
+            email: p.email ?? null,
+            phone: p.phone_numbers?.[0]?.raw_number ?? null,
+            linkedinUrl: p.linkedin_url ?? null,
+            source: 'apollo',
+          }),
+        );
+      }
+      return contacts;
     } catch (err) {
       console.error('[Apollo Contacts] failed:', err instanceof Error ? err.message : String(err));
       return [];
