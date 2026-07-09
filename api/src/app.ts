@@ -22,6 +22,7 @@ import { leadThreadRoutes } from './routes/lead-thread.js';
 import { reminderRoutes } from './routes/reminders.js';
 import { leadEngineRoutes, handleUnsubscribe } from './routes/lead-engine.js';
 import { contactFinderRoutes } from './routes/contact-finder.js';
+import { leadDecisionMakerRoutes } from './routes/lead-decision-makers.js';
 import { africasTalkingVoiceRoutes } from './routes/africastalking-voice.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
@@ -84,6 +85,7 @@ export async function buildApp() {
   await app.register(leadRoutes, { prefix: '/leads' });
   await app.register(leadThreadRoutes, { prefix: '/leads' });
   await app.register(activityRoutes, { prefix: '/leads' });
+  await app.register(leadDecisionMakerRoutes, { prefix: '/leads' });
   await app.register(taskRoutes, { prefix: '/tasks' });
   await app.register(aiRoutes, { prefix: '/ai' });
   await app.register(teamRoutes, { prefix: '/teams' });

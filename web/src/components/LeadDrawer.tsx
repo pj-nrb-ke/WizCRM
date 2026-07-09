@@ -15,6 +15,7 @@ import { isManager } from '../lib/roles';
 import { LeadInsightsPanel } from './LeadInsightsPanel';
 import { CommunicationDraftPanel } from './CommunicationDraftPanel';
 import { LeadNextActionPanel } from './LeadNextActionPanel';
+import { DecisionMakersPanel } from './DecisionMakersPanel';
 import { LeadTeamChat } from './LeadTeamChat';
 
 type LeadDetail = LeadSummary & {
@@ -382,6 +383,8 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                 ) : (
                   <p className="muted">No sales opportunities yet.</p>
                 )}
+
+                <DecisionMakersPanel leadId={lead.id} />
 
                 {proInsights ? (
                   <>
