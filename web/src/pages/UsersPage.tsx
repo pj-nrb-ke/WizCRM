@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { CSSProperties, FormEvent, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
 type UserRow = {
@@ -11,6 +11,17 @@ type UserRow = {
 
 type TeamOption = { id: string; name: string };
 
+const OVERLAY: CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.5)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000,
+  padding: 16,
+};
+
 export function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
@@ -22,6 +33,12 @@ export function UsersPage() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'SALES' | 'MANAGER' | 'ADMIN'>('SALES');
   const [teamId, setTeamId] = useState('');
+
+  // Admin password reset
+  const [resetUser, setResetUser] = useState<UserRow | null>(null);
+  const [resetPw, setResetPw] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   function load() {
     return Promise.all([
@@ -45,13 +62,7 @@ export function UsersPage() {
     try {
       await api('/admin/users', {
         method: 'POST',
-        body: {
-          email,
-          name,
-          password,
-          role,
-          teamId: teamId || null,
-        },
+        body: { email, name, password, role, teamId: teamId || null },
       });
       setEmail('');
       setName('');
@@ -63,10 +74,30 @@ export function UsersPage() {
     }
   }
 
+  async function onReset(e: FormEvent) {
+    e.preventDefault();
+    if (!resetUser) return;
+    setResetError('');
+    setResetting(true);
+    try {
+      await api(`/admin/users/${resetUser.id}/reset-password`, {
+        method: 'POST',
+        body: { password: resetPw },
+      });
+      setMessage(`Password reset for ${resetUser.name}. Share the new password with them.`);
+      setResetUser(null);
+      setResetPw('');
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Reset failed');
+    } finally {
+      setResetting(false);
+    }
+  }
+
   return (
     <>
       <h1>Users</h1>
-      <p className="muted">Invite team members. Use strong passwords in production.</p>
+      <p className="muted">Add team members and reset passwords. Use strong passwords in production.</p>
 
       <form className="card" onSubmit={onCreate}>
         <h2>Add user</h2>
@@ -85,8 +116,11 @@ export function UsersPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={12}
           />
+          <span className="muted" style={{ fontSize: '0.8rem' }}>
+            At least 12 characters; avoid common words, the person's name or email.
+          </span>
         </div>
         <div className="field">
           <label>Role</label>
@@ -123,6 +157,7 @@ export function UsersPage() {
               <th>Email</th>
               <th>Role</th>
               <th>Team</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -132,18 +167,32 @@ export function UsersPage() {
                 <td>{u.email}</td>
                 <td>{u.role}</td>
                 <td>{u.team?.name ?? '—'}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() => {
+                      setResetUser(u);
+                      setResetPw('');
+                      setResetError('');
+                      setMessage('');
+                    }}
+                  >
+                    Reset password
+                  </button>
+                </td>
               </tr>
             ))}
             {!loading && users.length === 0 ? (
               <tr>
-                <td colSpan={4} className="muted" style={{ padding: 16, textAlign: 'center' }}>
+                <td colSpan={5} className="muted" style={{ padding: 16, textAlign: 'center' }}>
                   No users yet — add your first teammate above.
                 </td>
               </tr>
             ) : null}
             {loading ? (
               <tr>
-                <td colSpan={4} className="muted" style={{ padding: 16, textAlign: 'center' }}>
+                <td colSpan={5} className="muted" style={{ padding: 16, textAlign: 'center' }}>
                   Loading…
                 </td>
               </tr>
@@ -151,6 +200,51 @@ export function UsersPage() {
           </tbody>
         </table>
       </div>
+
+      {resetUser ? (
+        <div style={OVERLAY} onClick={() => setResetUser(null)}>
+          <form
+            className="card"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={onReset}
+            style={{ maxWidth: 420, width: '100%' }}
+          >
+            <h2>Reset password</h2>
+            <p className="muted">
+              Set a new password for <strong>{resetUser.name}</strong> ({resetUser.email}). Share it with
+              them — they can change it themselves after signing in.
+            </p>
+            <div className="field">
+              <label>New password</label>
+              <input
+                type="password"
+                value={resetPw}
+                onChange={(e) => setResetPw(e.target.value)}
+                required
+                minLength={12}
+                autoFocus
+              />
+              <span className="muted" style={{ fontSize: '0.8rem' }}>
+                At least 12 characters; avoid common words, the person's name or email.
+              </span>
+            </div>
+            {resetError ? <p className="error">{resetError}</p> : null}
+            <div className="toolbar" style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => setResetUser(null)}
+                disabled={resetting}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary btn-sm" disabled={resetting}>
+                {resetting ? 'Saving…' : 'Set password'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
+import zxcvbn from 'zxcvbn';
 import { config } from '../config.js';
 import { loginSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
@@ -96,6 +97,40 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     if (!user) return { user: null };
     const entitlements = await getOrganizationEntitlements(user.organizationId);
     return { user, entitlements };
+  });
+
+  app.post('/change-password', { onRequest: [app.authenticate] }, async (request, reply) => {
+    const body = (request.body ?? {}) as { currentPassword?: string; newPassword?: string };
+    const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword : '';
+    const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+    if (newPassword.length < 12) {
+      return reply.status(400).send({ error: 'New password must be at least 12 characters.' });
+    }
+    const user = await prisma.user.findUnique({ where: { id: request.user.sub } });
+    if (!user) return reply.status(404).send({ error: 'User not found' });
+
+    const currentOk = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!currentOk) return reply.status(401).send({ error: 'Current password is incorrect.' });
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      return reply.status(400).send({ error: 'New password must be different from your current one.' });
+    }
+
+    const strength = zxcvbn(newPassword, [user.email, user.name, 'wizcrm']);
+    if (strength.score < 3) {
+      return reply.status(400).send({
+        error:
+          strength.feedback.warning ||
+          'Password is too weak or common. Use a longer, less predictable passphrase.',
+        suggestions: strength.feedback.suggestions,
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, failedLoginCount: 0, lockoutUntil: null },
+    });
+    return { ok: true };
   });
 
   app.post('/gdpr-export-request', { onRequest: [app.authenticate] }, async (request) => {

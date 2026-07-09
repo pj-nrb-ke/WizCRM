@@ -222,6 +222,36 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return { user };
   });
 
+  app.post('/users/:id/reset-password', { preHandler: requireAdmin() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = (request.body ?? {}) as { password?: string };
+    const newPassword = typeof body.password === 'string' ? body.password : '';
+    if (newPassword.length < 12) {
+      return reply.status(400).send({ error: 'Password must be at least 12 characters.' });
+    }
+    const target = await prisma.user.findFirst({
+      where: { id, organizationId: request.user.organizationId },
+    });
+    if (!target) return reply.status(404).send({ error: 'User not found' });
+
+    const strength = zxcvbn(newPassword, [target.email, target.name, 'wizcrm']);
+    if (strength.score < 3) {
+      return reply.status(400).send({
+        error:
+          strength.feedback.warning ||
+          'Password is too weak or common. Use a longer, less predictable passphrase.',
+        suggestions: strength.feedback.suggestions,
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: target.id },
+      data: { passwordHash, failedLoginCount: 0, lockoutUntil: null },
+    });
+    return { ok: true };
+  });
+
   app.get('/teams', { preHandler: requireManager() }, async (request) => {
     const teams = await prisma.team.findMany({
       where: { organizationId: request.user.organizationId },
