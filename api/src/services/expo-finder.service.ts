@@ -135,6 +135,19 @@ export function isUpcoming(startDate: Date | null, endDate: Date | null, now: Da
   return last.getTime() >= now.getTime() - 86400000;
 }
 
+/**
+ * Catch a stale listing whose date was too loosely worded to parse — "4th-6th
+ * September 2025" yields no Date, so the upcoming check would wave it through.
+ * If every year named in the text is already behind us, the event is over.
+ * No year named means genuinely unknown, which we keep.
+ */
+export function dateTextLooksPast(dateText: string | null, now: Date): boolean {
+  if (!dateText) return false;
+  const years = [...dateText.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
+  if (years.length === 0) return false;
+  return Math.max(...years) < now.getUTCFullYear();
+}
+
 export function buildDedupKey(name: string, startDate: Date | null): string {
   const month = startDate ? startDate.toISOString().slice(0, 7) : 'tbd';
   return `${slugify(name)}|${month}`;
@@ -164,6 +177,9 @@ export function validateExtracted(
   if (startDate && endDate && endDate < startDate) return null;
   if (!isUpcoming(startDate, endDate, now)) return null;
 
+  const dateText = startDate ? null : asTrimmedString(raw.dateText, 200);
+  if (dateTextLooksPast(dateText, now)) return null;
+
   const recRaw = asTrimmedString(raw.recommendation, 20)?.toUpperCase();
   const recommendation = EXPO_RECOMMENDATIONS.includes(recRaw as ExpoRecommendation)
     ? (recRaw as ExpoRecommendation)
@@ -190,7 +206,7 @@ export function validateExtracted(
     recommendationReason: asTrimmedString(raw.recommendationReason, 1000),
     startDate,
     endDate,
-    dateText: startDate ? null : asTrimmedString(raw.dateText, 200),
+    dateText,
     city: asTrimmedString(raw.city, 120),
     country: asTrimmedString(raw.country, 120),
     venue,

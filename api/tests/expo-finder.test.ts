@@ -4,6 +4,7 @@ vi.mock('../src/lib/prisma.js', () => ({ prisma: {} }));
 
 import {
   buildDedupKey,
+  dateTextLooksPast,
   isUpcoming,
   parseIsoDate,
   scoreConfidence,
@@ -59,6 +60,29 @@ describe('isUpcoming', () => {
 
   it('keeps an undated event so it can be researched later', () => {
     expect(isUpcoming(null, null, NOW)).toBe(true);
+  });
+});
+
+describe('dateTextLooksPast', () => {
+  it('spots a stale listing whose wording was too loose to parse', () => {
+    // The exact string that slipped through the first live run.
+    expect(dateTextLooksPast('4th–6th September 2025', NOW)).toBe(true);
+    expect(dateTextLooksPast('November 2024', NOW)).toBe(true);
+  });
+
+  it('keeps this year and future years', () => {
+    expect(dateTextLooksPast('Q4 2026', NOW)).toBe(false);
+    expect(dateTextLooksPast('March 2027', NOW)).toBe(false);
+  });
+
+  it('keeps text naming no year at all — unknown is not past', () => {
+    expect(dateTextLooksPast('every autumn', NOW)).toBe(false);
+    expect(dateTextLooksPast(null, NOW)).toBe(false);
+  });
+
+  it('uses the latest year mentioned, for a range spanning the turn of a year', () => {
+    expect(dateTextLooksPast('December 2025 to January 2026', NOW)).toBe(false);
+    expect(dateTextLooksPast('December 2024 to January 2025', NOW)).toBe(true);
   });
 });
 
@@ -140,6 +164,11 @@ describe('validateExtracted', () => {
 
   it('rejects a nameless row', () => {
     expect(validateExtracted({ ...base, name: '  ' }, 'LOCAL_KENYA', allowed, NOW)).toBeNull();
+  });
+
+  it('rejects a loosely-worded expo whose year has already gone', () => {
+    const stale = { ...base, startDate: null, endDate: null, dateText: '4th–6th September 2025' };
+    expect(validateExtracted(stale, 'LOCAL_KENYA', allowed, NOW)).toBeNull();
   });
 
   it('keeps an undated expo but records the wording and scores it low', () => {
