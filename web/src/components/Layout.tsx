@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
 import { NavIcon } from './NavIcon';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { BoltGlyph } from './BrandMark';
 import { LicenseBanner } from './LicenseBanner';
 
@@ -143,6 +144,7 @@ export function Layout() {
   const manager = isManager(user?.role);
   const admin = isAdmin(user?.role);
   const roleLabel = admin ? 'Administrator' : manager ? 'Manager' : 'User';
+  const [showChangePw, setShowChangePw] = useState(false);
   const [brandName, setBrandName] = useState('WizCRM');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
@@ -378,6 +380,29 @@ export function Layout() {
               </div>
             </div>
           )}
+
+          {/* Change password */}
+          {expanded ? (
+            <button
+              type="button"
+              onClick={() => setShowChangePw(true)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 8,
+                color: '#94a3b8',
+                fontSize: '0.78rem',
+                padding: '7px 10px',
+                marginBottom: 6,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              Change password
+            </button>
+          ) : null}
+          <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
 
           {/* Sign-out */}
           <button
