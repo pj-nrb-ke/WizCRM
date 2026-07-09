@@ -103,6 +103,36 @@ export function getEventsOnDay<T extends CalendarEventLike>(events: T[], day: Da
   });
 }
 
+export type ConflictEventLike = CalendarEventLike & { id: string };
+
+/** Two timed events clash when they genuinely overlap. Back-to-back is fine. */
+export function eventsOverlap(a: CalendarEventLike, b: CalendarEventLike): boolean {
+  return (
+    new Date(a.startAt) < new Date(b.endAt) && new Date(b.startAt) < new Date(a.endAt)
+  );
+}
+
+/**
+ * Ids of events that overlap at least one other event in the list.
+ *
+ * All-day events are skipped: an all-day expo is a backdrop to the day, not a
+ * clash with every meeting inside it, and flagging them would make the warning
+ * meaningless. Callers should pass only the events the person actually attends.
+ */
+export function findConflictingEventIds<T extends ConflictEventLike>(events: T[]): Set<string> {
+  const timed = events.filter((e) => !e.allDay);
+  const clashing = new Set<string>();
+  for (let i = 0; i < timed.length; i++) {
+    for (let j = i + 1; j < timed.length; j++) {
+      if (eventsOverlap(timed[i], timed[j])) {
+        clashing.add(timed[i].id);
+        clashing.add(timed[j].id);
+      }
+    }
+  }
+  return clashing;
+}
+
 export function buildEventIsoRange(
   startAtInput: string,
   endAtInput: string,

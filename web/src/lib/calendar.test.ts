@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCalendarRange,
   buildEventIsoRange,
+  findConflictingEventIds,
   formatDateInputLocal,
   getEventsOnDay,
   shiftCalendarCursor,
@@ -55,5 +56,62 @@ describe('buildEventIsoRange', () => {
     expect(start.getMinutes()).toBe(0);
     expect(end.getHours()).toBe(23);
     expect(end.getMinutes()).toBe(59);
+  });
+});
+
+describe('findConflictingEventIds', () => {
+  const ev = (id: string, startAt: string, endAt: string, allDay = false) => ({
+    id,
+    startAt,
+    endAt,
+    allDay,
+  });
+
+  it('flags both sides of an overlap', () => {
+    const clashing = findConflictingEventIds([
+      ev('a', '2026-05-05T09:00:00.000Z', '2026-05-05T10:00:00.000Z'),
+      ev('b', '2026-05-05T09:30:00.000Z', '2026-05-05T10:30:00.000Z'),
+    ]);
+
+    expect([...clashing].sort()).toEqual(['a', 'b']);
+  });
+
+  it('treats back-to-back events as free', () => {
+    const clashing = findConflictingEventIds([
+      ev('a', '2026-05-05T09:00:00.000Z', '2026-05-05T10:00:00.000Z'),
+      ev('b', '2026-05-05T10:00:00.000Z', '2026-05-05T11:00:00.000Z'),
+    ]);
+
+    expect(clashing.size).toBe(0);
+  });
+
+  it('flags an event fully contained inside another', () => {
+    const clashing = findConflictingEventIds([
+      ev('outer', '2026-05-05T09:00:00.000Z', '2026-05-05T12:00:00.000Z'),
+      ev('inner', '2026-05-05T10:00:00.000Z', '2026-05-05T11:00:00.000Z'),
+    ]);
+
+    expect([...clashing].sort()).toEqual(['inner', 'outer']);
+  });
+
+  it('ignores all-day events so an expo does not clash with every meeting', () => {
+    const clashing = findConflictingEventIds([
+      ev('expo', '2026-05-05T00:00:00.000Z', '2026-05-05T23:59:59.000Z', true),
+      ev('demo', '2026-05-05T10:00:00.000Z', '2026-05-05T11:00:00.000Z'),
+    ]);
+
+    expect(clashing.size).toBe(0);
+  });
+
+  it('finds every clash when one event overlaps two others', () => {
+    const clashing = findConflictingEventIds([
+      ev('long', '2026-05-05T09:00:00.000Z', '2026-05-05T12:00:00.000Z'),
+      ev('early', '2026-05-05T08:30:00.000Z', '2026-05-05T09:30:00.000Z'),
+      ev('late', '2026-05-05T11:30:00.000Z', '2026-05-05T13:00:00.000Z'),
+      ev('clear', '2026-05-05T14:00:00.000Z', '2026-05-05T15:00:00.000Z'),
+    ]);
+
+    expect([...clashing].sort()).toEqual(['early', 'late', 'long']);
+    expect(clashing.has('clear')).toBe(false);
   });
 });

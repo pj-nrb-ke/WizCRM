@@ -5,6 +5,7 @@ import {
   allDayInputStart,
   buildCalendarRange,
   buildEventIsoRange,
+  findConflictingEventIds,
   formatDateInputLocal,
   getEventsOnDay,
   shiftCalendarCursor,
@@ -121,6 +122,26 @@ export function CalendarPage() {
     () => availability.filter((a) => attendeeIds.includes(a.userId) && a.busy.length > 0),
     [availability, attendeeIds],
   );
+
+  /** What *you* already have in the slot the form is currently pointing at. */
+  const myClashes = useMemo(
+    () => availability.find((a) => a.userId === meId)?.busy ?? [],
+    [availability, meId],
+  );
+
+  /**
+   * Events on the grid that clash with another of your own. A manager's list
+   * includes the whole team, so narrow it to what this person actually attends
+   * before looking for overlaps.
+   */
+  const conflictIds = useMemo(() => {
+    const mine = events.filter(
+      (ev) =>
+        ev.user.id === meId ||
+        ev.attendees?.some((a) => a.userId === meId && a.status !== 'DECLINED'),
+    );
+    return findConflictingEventIds(mine);
+  }, [events, meId]);
 
   const range = useMemo(() => buildCalendarRange(view, cursor), [view, cursor]);
 
@@ -268,16 +289,33 @@ export function CalendarPage() {
     }
   }
 
+  /** Spell out the clash, then let the organiser overrule it — never block the save. */
+  function confirmDespiteClash(): boolean {
+    if (allDay || (myClashes.length === 0 && busyInvitees.length === 0)) return true;
+    const lines: string[] = [];
+    if (myClashes.length) {
+      lines.push(`You already have: ${myClashes.map(busyLabel).join('; ')}`);
+    }
+    if (busyInvitees.length) {
+      lines.push(
+        `Already booked: ${busyInvitees
+          .map((a) => `${a.name} (${a.busy.map(busyLabel).join('; ')})`)
+          .join('\n')}`,
+      );
+    }
+    return window.confirm(`${lines.join('\n\n')}\n\nBook this event anyway?`);
+  }
+
   async function saveEvent(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setError('');
     const isoRange = buildEventIsoRange(startAt, endAt, allDay);
     if (!allDay && isoRange.endAt && new Date(isoRange.endAt) <= new Date(isoRange.startAt)) {
       setError('End time must be after the start time.');
-      setSaving(false);
       return;
     }
+    if (!confirmDespiteClash()) return;
+    setSaving(true);
     const lat = meetingLat.trim() ? Number(meetingLat) : undefined;
     const lng = meetingLng.trim() ? Number(meetingLng) : undefined;
     const body = {
@@ -475,6 +513,12 @@ export function CalendarPage() {
       </div>
 
       {error && !modalOpen ? <div className="alert alert-error">{error}</div> : null}
+      {conflictIds.size ? (
+        <div className="alert alert-error">
+          ⚠ {conflictIds.size === 2 ? 'Two of your events clash' : `${conflictIds.size} of your events clash`}{' '}
+          in this view. Look for the ⚠ marker.
+        </div>
+      ) : null}
       {loading ? <p className="muted">Loading calendar…</p> : null}
 
       <div className={`calendar-grid view-${view}`}>
@@ -517,6 +561,9 @@ export function CalendarPage() {
                         : `${fmtTime(ev.startAt)}–${fmtTime(ev.endAt)}`}
                     </span>
                     <span className="calendar-event-title">
+                      {conflictIds.has(ev.id) ? (
+                        <span title="Clashes with another event in your diary">⚠ </span>
+                      ) : null}
                       {ev.meetingMode && ev.meetingMode !== 'IN_PERSON'
                         ? `${MODE_ICON[ev.meetingMode] ?? ''} `
                         : ''}
@@ -650,6 +697,13 @@ export function CalendarPage() {
                   </>
                 ) : null}
               </p>
+              {myClashes.length ? (
+                <div className="alert alert-error" style={{ marginBottom: 8 }}>
+                  <strong>This clashes with your own diary.</strong> You already have{' '}
+                  {myClashes.map(busyLabel).join('; ')}. You can still book it — you'll be asked to
+                  confirm.
+                </div>
+              ) : null}
               {busyInvitees.length ? (
                 <div className="alert alert-error" style={{ marginBottom: 8 }}>
                   {busyInvitees.length === 1
