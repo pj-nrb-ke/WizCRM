@@ -44,6 +44,7 @@ vi.mock('../src/lib/prisma.js', () => ({
 import {
   createCalendarEvent,
   deleteCalendarEvent,
+  getTeamAvailability,
   listCalendarEvents,
   rsvpCalendarEvent,
   updateCalendarEvent,
@@ -130,6 +131,95 @@ describe('calendar.service', () => {
     expect(update.where).toEqual({ id: 'inv-1' });
     expect(update.data.status).toBe('DECLINED');
     expect(update.data.respondedAt).toBeInstanceOf(Date);
+  });
+
+  describe('getTeamAvailability', () => {
+    const from = new Date('2026-03-02T09:00:00.000Z');
+    const to = new Date('2026-03-02T10:00:00.000Z');
+    const people = [
+      { id: 'user-1', name: 'Organiser' },
+      { id: 'user-2', name: 'Invitee' },
+      { id: 'user-3', name: 'Decliner' },
+    ];
+
+    it('counts the organiser and non-declining invitees as busy', async () => {
+      prismaMocks.userFindMany.mockResolvedValueOnce(people);
+      prismaMocks.calendarEventFindMany.mockResolvedValueOnce([
+        {
+          id: 'evt-9',
+          title: 'Board demo',
+          startAt: from,
+          endAt: to,
+          allDay: false,
+          userId: 'user-1',
+          attendees: [
+            { userId: 'user-2', status: 'ACCEPTED' },
+            { userId: 'user-3', status: 'DECLINED' },
+          ],
+        },
+      ]);
+
+      const rows = await getTeamAvailability('org-1', 'user-1', 'SALES', { from, to });
+      const busyFor = (id: string) => rows.find((r) => r.userId === id)!.busy;
+
+      expect(busyFor('user-1')).toHaveLength(1);
+      expect(busyFor('user-2')).toHaveLength(1);
+      // Turning an invite down frees the slot back up.
+      expect(busyFor('user-3')).toEqual([]);
+    });
+
+    it('hides the title of an event the viewer has nothing to do with', async () => {
+      prismaMocks.userFindMany.mockResolvedValueOnce(people);
+      prismaMocks.calendarEventFindMany.mockResolvedValueOnce([
+        {
+          id: 'evt-9',
+          title: 'Salary review',
+          startAt: from,
+          endAt: to,
+          allDay: false,
+          userId: 'user-1',
+          attendees: [],
+        },
+      ]);
+
+      const rows = await getTeamAvailability('org-1', 'user-3', 'SALES', { from, to });
+
+      expect(rows.find((r) => r.userId === 'user-1')!.busy[0].title).toBe('Busy');
+    });
+
+    it('shows the title to a manager and to the organiser', async () => {
+      const event = {
+        id: 'evt-9',
+        title: 'Salary review',
+        startAt: from,
+        endAt: to,
+        allDay: false,
+        userId: 'user-1',
+        attendees: [],
+      };
+      prismaMocks.userFindMany.mockResolvedValueOnce(people);
+      prismaMocks.calendarEventFindMany.mockResolvedValueOnce([event]);
+      const asManager = await getTeamAvailability('org-1', 'user-3', 'MANAGER', { from, to });
+      expect(asManager.find((r) => r.userId === 'user-1')!.busy[0].title).toBe('Salary review');
+
+      prismaMocks.userFindMany.mockResolvedValueOnce(people);
+      prismaMocks.calendarEventFindMany.mockResolvedValueOnce([event]);
+      const asOrganiser = await getTeamAvailability('org-1', 'user-1', 'SALES', { from, to });
+      expect(asOrganiser.find((r) => r.userId === 'user-1')!.busy[0].title).toBe('Salary review');
+    });
+
+    it('uses a strict overlap and excludes the event being rescheduled', async () => {
+      prismaMocks.userFindMany.mockResolvedValueOnce(people);
+      prismaMocks.calendarEventFindMany.mockResolvedValueOnce([]);
+
+      await getTeamAvailability('org-1', 'user-1', 'SALES', { from, to, excludeEventId: 'evt-9' });
+
+      const where = prismaMocks.calendarEventFindMany.mock.calls[0][0].where;
+      // Back-to-back meetings must not be reported as a clash.
+      expect(where.startAt).toEqual({ lt: to });
+      expect(where.endAt).toEqual({ gt: from });
+      expect(where.id).toEqual({ not: 'evt-9' });
+    });
   });
 
   it('prevents sales user from updating another users event', async () => {
