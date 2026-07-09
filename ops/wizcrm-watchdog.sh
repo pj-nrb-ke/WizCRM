@@ -73,35 +73,45 @@ else
   fi
 fi
 
+# Send over SMTP, the same channel the API itself uses. Brevo's REST endpoint
+# needs an "xkeysib-" key; the deployment only holds an "xsmtpsib-" SMTP key
+# (stored, confusingly, under BREVO_API_KEY — see normalizeBrevoSecrets in the
+# API). Using SMTP means the alert path works with the credentials that exist.
 send_email() {
   local subject="$1" body="$2"
-  local key from to
-  key=$(env_get BREVO_API_KEY)
-  from=$(env_get MAIL_FROM)
-  to=$(env_get WATCHDOG_ALERT_TO)
-  to=${to:-$from}
+  local host port user pass from to msg
 
-  if [[ -z "$key" || -z "$from" || -z "$to" ]]; then
-    log "CANNOT ALERT: BREVO_API_KEY, MAIL_FROM or WATCHDOG_ALERT_TO missing from $ENV_FILE"
+  host=$(env_get SMTP_HOST)
+  port=$(env_get SMTP_PORT); port=${port:-587}
+  user=$(env_get SMTP_USER)
+  pass=$(env_get SMTP_PASS)
+  from=$(env_get MAIL_FROM)
+  to=$(env_get WATCHDOG_ALERT_TO); to=${to:-$from}
+
+  if [[ -z "$host" || -z "$user" || -z "$pass" || -z "$from" || -z "$to" ]]; then
+    log "CANNOT ALERT: SMTP_HOST/SMTP_USER/SMTP_PASS/MAIL_FROM missing from $ENV_FILE"
     return 1
   fi
 
-  local payload
-  payload=$(jq -nc \
-    --arg from "$from" --arg to "$to" --arg subject "$subject" --arg body "$body" \
-    '{sender:{email:$from,name:"WizCRM Watchdog"},to:[{email:$to}],subject:$subject,textContent:$body}')
+  msg=$(mktemp) || return 1
+  chmod 600 "$msg"
+  {
+    printf 'From: WizCRM Watchdog <%s>\n' "$from"
+    printf 'To: <%s>\n' "$to"
+    printf 'Subject: %s\n' "$subject"
+    printf 'Date: %s\n' "$(date -R)"
+    printf 'Content-Type: text/plain; charset=utf-8\n\n'
+    printf '%s\n' "$body"
+  } >"$msg"
 
-  local code
-  code=$(curl -s -o /tmp/wizcrm-watchdog-mail.out -w '%{http_code}' --max-time 20 \
-    -X POST https://api.brevo.com/v3/smtp/email \
-    -H "api-key: $key" -H 'Content-Type: application/json' \
-    -d "$payload")
-
-  if [[ "$code" == "201" || "$code" == "202" ]]; then
-    log "alert email sent to $to (HTTP $code)"
+  if curl -s --max-time 25 --url "smtp://${host}:${port}" --ssl-reqd \
+      --mail-from "$from" --mail-rcpt "$to" \
+      --user "${user}:${pass}" --upload-file "$msg" 2>/tmp/wizcrm-watchdog-mail.err; then
+    log "alert email sent to $to"
   else
-    log "ALERT EMAIL FAILED (HTTP $code): $(head -c 300 /tmp/wizcrm-watchdog-mail.out)"
+    log "ALERT EMAIL FAILED: $(head -c 300 /tmp/wizcrm-watchdog-mail.err)"
   fi
+  rm -f "$msg"
 }
 
 prev_state=$(cat "$STATE_FILE" 2>/dev/null || echo healthy)

@@ -62,11 +62,18 @@ install -m 0700 ops/wizcrm-watchdog.sh /usr/local/bin/wizcrm-watchdog.sh
 ( crontab -l 2>/dev/null; echo '*/5 * * * * /usr/local/bin/wizcrm-watchdog.sh' ) | crontab -
 ```
 
-Requires `curl`, `jq`, `docker`, and in `/opt/wizcrm/api/.env`:
+Requires `curl`, `docker`, and in `/opt/wizcrm/api/.env`:
 
-- `BREVO_API_KEY` — to send mail
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` — the alert is sent over SMTP, the same
+  channel the API uses. Brevo's REST endpoint would need an `xkeysib-` key; this
+  deployment only holds an `xsmtpsib-` SMTP key, stored under the misleading name
+  `BREVO_API_KEY` (the API compensates for the swap in `normalizeBrevoSecrets`).
 - `MAIL_FROM` — a sender verified in Brevo
 - `WATCHDOG_ALERT_TO` — who to wake up (defaults to `MAIL_FROM`)
+
+Alerting is the one part of monitoring that fails silently: a broken alert path
+looks exactly like a healthy system. Re-run the drill in this file after any
+change to mail credentials.
 
 Run it by hand to check wiring; it exits non-zero when a check fails:
 
