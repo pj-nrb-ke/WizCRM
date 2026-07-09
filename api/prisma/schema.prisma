@@ -52,6 +52,7 @@ model User {
   activities          Activity[]
   tasks               Task[]
   calendarEvents      CalendarEvent[]
+  eventInvites        CalendarEventAttendee[] @relation("EventAttendee")
   userReminders       UserReminder[]
   salesOpportunities  SalesOpportunity[] @relation("OpportunityOwner")
   quotations          Quotation[]
@@ -384,6 +385,28 @@ enum MeetingMode {
   OTHER
 }
 
+enum RsvpStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+/** A colleague invited to a shared calendar event. The organiser is CalendarEvent.userId. */
+model CalendarEventAttendee {
+  id          String        @id @default(uuid())
+  eventId     String
+  event       CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation("EventAttendee", fields: [userId], references: [id], onDelete: Cascade)
+  status      RsvpStatus    @default(INVITED)
+  respondedAt DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}
+
 model CalendarEvent {
   id                    String             @id @default(uuid())
   organizationId        String
@@ -414,11 +437,13 @@ model CalendarEvent {
   geofenceOverride      Boolean            @default(false)
   checkOutAt            DateTime?
   attendanceStatus      AttendanceStatus?
+  attendees             CalendarEventAttendee[]
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
   @@index([organizationId, userId, startAt])
   @@index([organizationId, leadId])
+  @@index([organizationId, startAt])
 }
 
 model UserReminder {

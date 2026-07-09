@@ -3,9 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const prismaMocks = vi.hoisted(() => ({
   calendarEventFindMany: vi.fn(),
   calendarEventFindFirst: vi.fn(),
+  calendarEventFindUnique: vi.fn(),
+  calendarEventCreate: vi.fn(),
   calendarEventUpdate: vi.fn(),
   calendarEventDelete: vi.fn(),
   leadFindFirst: vi.fn(),
+  userFindMany: vi.fn(),
+  attendeeFindFirst: vi.fn(),
+  attendeeFindMany: vi.fn(),
+  attendeeUpdate: vi.fn(),
 }));
 
 vi.mock('../src/lib/prisma.js', () => ({
@@ -13,8 +19,18 @@ vi.mock('../src/lib/prisma.js', () => ({
     calendarEvent: {
       findMany: prismaMocks.calendarEventFindMany,
       findFirst: prismaMocks.calendarEventFindFirst,
+      findUnique: prismaMocks.calendarEventFindUnique,
+      create: prismaMocks.calendarEventCreate,
       update: prismaMocks.calendarEventUpdate,
       delete: prismaMocks.calendarEventDelete,
+    },
+    calendarEventAttendee: {
+      findFirst: prismaMocks.attendeeFindFirst,
+      findMany: prismaMocks.attendeeFindMany,
+      update: prismaMocks.attendeeUpdate,
+    },
+    user: {
+      findMany: prismaMocks.userFindMany,
     },
     lead: {
       findFirst: prismaMocks.leadFindFirst,
@@ -26,8 +42,10 @@ vi.mock('../src/lib/prisma.js', () => ({
 }));
 
 import {
+  createCalendarEvent,
   deleteCalendarEvent,
   listCalendarEvents,
+  rsvpCalendarEvent,
   updateCalendarEvent,
 } from '../src/services/calendar.service.js';
 
@@ -39,6 +57,10 @@ describe('calendar.service', () => {
     prismaMocks.calendarEventUpdate.mockResolvedValue({ id: 'evt-1', title: 'Updated' });
     prismaMocks.calendarEventDelete.mockResolvedValue({ id: 'evt-1' });
     prismaMocks.leadFindFirst.mockResolvedValue({ id: 'lead-1', organizationId: 'org-1' });
+    prismaMocks.calendarEventCreate.mockResolvedValue({ id: 'evt-1' });
+    prismaMocks.calendarEventFindUnique.mockResolvedValue({ id: 'evt-1' });
+    prismaMocks.attendeeFindMany.mockResolvedValue([]);
+    prismaMocks.userFindMany.mockResolvedValue([]);
   });
 
   it('normalizes month-style from/to to full-day boundaries', async () => {
@@ -61,7 +83,53 @@ describe('calendar.service', () => {
     expect(end.getDate()).toBe(31);
     expect(end.getHours()).toBe(23);
     expect(end.getMinutes()).toBe(59);
-    expect(where.userId).toBe('user-1');
+    // A sales user sees the events they organise plus the ones they are invited to.
+    expect(where.OR).toEqual([
+      { userId: 'user-1' },
+      { attendees: { some: { userId: 'user-1' } } },
+    ]);
+  });
+
+  it('invites only real org colleagues and never the organiser', async () => {
+    // 'outsider' belongs to another org, so the lookup does not return it.
+    prismaMocks.userFindMany.mockResolvedValueOnce([{ id: 'user-2' }]);
+
+    await createCalendarEvent('org-1', 'user-1', {
+      title: 'Expo prep',
+      startAt: '2026-03-01T09:00:00.000Z',
+      endAt: '2026-03-01T10:00:00.000Z',
+      attendeeIds: ['user-2', 'user-1', 'outsider'],
+    });
+
+    // The organiser is dropped before the org lookup even happens.
+    expect(prismaMocks.userFindMany.mock.calls[0][0].where.id.in).toEqual(['user-2', 'outsider']);
+    const created = prismaMocks.calendarEventCreate.mock.calls[0][0].data;
+    expect(created.attendees.create).toEqual([{ userId: 'user-2' }]);
+  });
+
+  it('refuses an RSVP from someone who was not invited', async () => {
+    prismaMocks.attendeeFindFirst.mockResolvedValueOnce(null);
+
+    const result = await rsvpCalendarEvent('evt-1', 'org-1', 'gatecrasher', 'ACCEPTED');
+
+    expect(result).toBeNull();
+    expect(prismaMocks.attendeeUpdate).not.toHaveBeenCalled();
+  });
+
+  it('records an RSVP against the invite of the replying user', async () => {
+    prismaMocks.attendeeFindFirst.mockResolvedValueOnce({ id: 'inv-1' });
+
+    await rsvpCalendarEvent('evt-1', 'org-1', 'user-2', 'DECLINED');
+
+    expect(prismaMocks.attendeeFindFirst.mock.calls[0][0].where).toEqual({
+      eventId: 'evt-1',
+      userId: 'user-2',
+      event: { organizationId: 'org-1' },
+    });
+    const update = prismaMocks.attendeeUpdate.mock.calls[0][0];
+    expect(update.where).toEqual({ id: 'inv-1' });
+    expect(update.data.status).toBe('DECLINED');
+    expect(update.data.respondedAt).toBeInstanceOf(Date);
   });
 
   it('prevents sales user from updating another users event', async () => {
