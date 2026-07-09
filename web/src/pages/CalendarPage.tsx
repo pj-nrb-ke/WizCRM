@@ -12,6 +12,7 @@ import {
   type CalendarViewMode,
 } from '../lib/calendar';
 import { PageHeader } from '../components/PageHeader';
+import { useAuth } from '../lib/auth';
 
 const EVENT_TYPES = ['MEETING', 'DEMO', 'EXPO', 'PRESENTATION', 'CONFERENCE_CALL', 'CALL', 'OTHER'] as const;
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -25,6 +26,21 @@ const MEETING_MODE_LABELS: Record<string, string> = {
 };
 const MODE_ICON: Record<string, string> = {
   IN_PERSON: '📍', ZOOM: '🎥', TEAMS: '💻', GOOGLE_MEET: '📹', PHONE: '📞', WHATSAPP: '💬', OTHER: '🔗',
+};
+const RSVP_LABELS: Record<string, string> = {
+  INVITED: 'No reply yet', ACCEPTED: 'Going', DECLINED: 'Not going', TENTATIVE: 'Maybe',
+};
+const RSVP_ICON: Record<string, string> = {
+  INVITED: '·', ACCEPTED: '✓', DECLINED: '✕', TENTATIVE: '?',
+};
+
+type OrgUser = { id: string; name: string; email: string; role: string; team: { name: string } | null };
+
+type Attendee = {
+  userId: string;
+  status: string;
+  respondedAt: string | null;
+  user: { id: string; name: string; email: string };
 };
 
 type CalendarEvent = {
@@ -47,9 +63,13 @@ type CalendarEvent = {
   attendanceStatus: string | null;
   user: { id: string; name: string };
   lead: { id: string; name: string; company: string | null } | null;
+  attendees: Attendee[];
 };
 
 export function CalendarPage() {
+  const { user } = useAuth();
+  const meId = user?.id ?? '';
+  const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
   const [view, setView] = useState<CalendarViewMode>('week');
   const [cursor, setCursor] = useState(() => new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -75,6 +95,15 @@ export function CalendarPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
+  const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
+  const [organiser, setOrganiser] = useState<{ id: string; name: string } | null>(null);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [rsvping, setRsvping] = useState(false);
+
+  /** The organiser (or a manager) owns the event; an invitee can only RSVP. */
+  const isOrganiser = !editingId || organiser?.id === meId || (!!organiser && isManager);
+  const myInvite = attendees.find((a) => a.userId === meId) ?? null;
 
   const range = useMemo(() => buildCalendarRange(view, cursor), [view, cursor]);
 
@@ -95,6 +124,12 @@ export function CalendarPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    api<{ users: OrgUser[] }>('/calendar/org-users')
+      .then((d) => setOrgUsers(d.users ?? []))
+      .catch(() => setOrgUsers([]));
+  }, []);
 
   function eventsOnDay(day: Date) {
     const src = typeFilter === 'ALL' ? events : events.filter((e) => e.eventType === typeFilter);
@@ -127,6 +162,9 @@ export function CalendarPage() {
     setCheckInAt(null);
     setCheckOutAt(null);
     setAttendanceStatus(null);
+    setAttendeeIds([]);
+    setAttendees([]);
+    setOrganiser(null);
     setModalOpen(true);
   }
 
@@ -150,7 +188,32 @@ export function CalendarPage() {
     setCheckInAt(ev.checkInAt);
     setCheckOutAt(ev.checkOutAt);
     setAttendanceStatus(ev.attendanceStatus);
+    setAttendees(ev.attendees ?? []);
+    setAttendeeIds((ev.attendees ?? []).map((a) => a.userId));
+    setOrganiser(ev.user);
     setModalOpen(true);
+  }
+
+  function toggleAttendee(id: string) {
+    setAttendeeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function respond(status: 'ACCEPTED' | 'DECLINED' | 'TENTATIVE') {
+    if (!editingId) return;
+    setRsvping(true);
+    setError('');
+    try {
+      const res = await api<{ event: CalendarEvent }>(`/calendar/events/${editingId}/rsvp`, {
+        method: 'POST',
+        body: { status },
+      });
+      setAttendees(res.event.attendees ?? []);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send your reply');
+    } finally {
+      setRsvping(false);
+    }
   }
 
   async function saveEvent(e: React.FormEvent) {
@@ -177,6 +240,7 @@ export function CalendarPage() {
       eventType,
       meetingMode,
       meetingUrl: meetingUrl.trim() || undefined,
+      attendeeIds,
     };
     try {
       if (editingId) {
@@ -406,6 +470,14 @@ export function CalendarPage() {
                         : ''}
                       {ev.title}
                     </span>
+                    {ev.attendees?.length ? (
+                      <span className="calendar-event-lead" title={attendeeSummary(ev)}>
+                        👥 {ev.attendees.length + 1}
+                        {ev.attendees.some((a) => a.userId === meId && a.status === 'INVITED')
+                          ? ' · reply?'
+                          : ''}
+                      </span>
+                    ) : null}
                     {ev.lead ? (
                       <span className="calendar-event-lead">{ev.lead.name}</span>
                     ) : null}
@@ -507,6 +579,97 @@ export function CalendarPage() {
                   {meetingMode === 'PHONE' ? 'Call now' : 'Open join link'}
                 </button>
               ) : null}
+              <h3>
+                Who's coming
+                {attendeeIds.length ? <span className="muted"> · {attendeeIds.length} invited</span> : null}
+              </h3>
+              <p className="muted" style={{ marginTop: 0, fontSize: '0.85rem' }}>
+                Organised by {organiser && organiser.id !== meId ? organiser.name : 'you'}. Invited
+                colleagues see this event on their own calendar and can reply.
+              </p>
+              {isOrganiser ? (
+                <div
+                  style={{
+                    maxHeight: 180,
+                    overflowY: 'auto',
+                    border: '1px solid var(--border, #ddd)',
+                    borderRadius: 8,
+                    padding: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  {orgUsers.filter((u) => u.id !== (organiser?.id ?? meId)).length === 0 ? (
+                    <p className="muted" style={{ margin: 4 }}>
+                      No colleagues to invite yet — add them under Users.
+                    </p>
+                  ) : null}
+                  {orgUsers
+                    .filter((u) => u.id !== (organiser?.id ?? meId))
+                    .map((u) => {
+                      const invite = attendees.find((a) => a.userId === u.id);
+                      return (
+                        <label
+                          key={u.id}
+                          className="checkbox-row"
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={attendeeIds.includes(u.id)}
+                            onChange={() => toggleAttendee(u.id)}
+                          />
+                          <span style={{ flex: 1 }}>
+                            {u.name}
+                            <span className="muted" style={{ fontSize: '0.8rem' }}>
+                              {' '}
+                              {u.team?.name ? `· ${u.team.name}` : `· ${u.role.toLowerCase()}`}
+                            </span>
+                          </span>
+                          {invite ? (
+                            <span
+                              className="muted"
+                              style={{ fontSize: '0.8rem' }}
+                              title={RSVP_LABELS[invite.status]}
+                            >
+                              {RSVP_ICON[invite.status]} {RSVP_LABELS[invite.status]}
+                            </span>
+                          ) : null}
+                        </label>
+                      );
+                    })}
+                </div>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 8px' }}>
+                  {attendees.map((a) => (
+                    <li key={a.userId} className="muted" style={{ fontSize: '0.9rem' }}>
+                      {RSVP_ICON[a.status]} {a.user.name} — {RSVP_LABELS[a.status]}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {editingId && myInvite ? (
+                <div className="calendar-attendance" style={{ marginBottom: 8 }}>
+                  <p className="muted" style={{ marginBottom: 6 }}>
+                    You were invited by {organiser?.name ?? 'a colleague'} —{' '}
+                    <strong>{RSVP_LABELS[myInvite.status]}</strong>
+                  </p>
+                  <div className="form-actions" style={{ gap: 6 }}>
+                    {(['ACCEPTED', 'TENTATIVE', 'DECLINED'] as const).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        className={myInvite.status === s ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                        disabled={rsvping}
+                        onClick={() => void respond(s)}
+                      >
+                        {RSVP_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <h3>Meeting location</h3>
               <label>
                 Address
@@ -572,7 +735,7 @@ export function CalendarPage() {
                 </div>
               ) : null}
               <div className="form-actions calendar-form-actions">
-                {editingId ? (
+                {editingId && isOrganiser ? (
                   <button
                     type="button"
                     className="btn-danger"
@@ -584,11 +747,13 @@ export function CalendarPage() {
                 ) : null}
                 <div className="form-actions-right">
                   <button type="button" className="btn-secondary" onClick={closeModal}>
-                    Cancel
+                    {isOrganiser ? 'Cancel' : 'Close'}
                   </button>
-                  <button type="submit" className="btn-primary" disabled={saving}>
-                    {saving ? 'Saving…' : 'Save event'}
-                  </button>
+                  {isOrganiser ? (
+                    <button type="submit" className="btn-primary" disabled={saving}>
+                      {saving ? 'Saving…' : 'Save event'}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </form>
@@ -601,6 +766,12 @@ export function CalendarPage() {
 
 function sameMonth(a: Date, b: Date) {
   return a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+}
+
+function attendeeSummary(ev: CalendarEvent) {
+  const going = ev.attendees.filter((a) => a.status === 'ACCEPTED').length;
+  const pending = ev.attendees.filter((a) => a.status === 'INVITED').length;
+  return `${ev.user.name} (organiser) · ${going} going · ${pending} awaiting reply`;
 }
 
 function fmtTime(iso: string) {

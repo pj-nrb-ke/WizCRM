@@ -8,6 +8,46 @@ import { getOrgSettings } from './org-settings.service.js';
 type CreateInput = z.infer<typeof createCalendarEventSchema>;
 type UpdateInput = z.infer<typeof updateCalendarEventSchema>;
 
+const eventInclude = {
+  user: { select: { id: true, name: true } },
+  lead: { select: { id: true, name: true, company: true } },
+  attendees: {
+    select: {
+      userId: true,
+      status: true,
+      respondedAt: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  },
+} satisfies Prisma.CalendarEventInclude;
+
+/**
+ * Keep only ids that are real users in this org, minus the organiser —
+ * the organiser is always on the event via CalendarEvent.userId.
+ */
+async function resolveAttendeeIds(
+  organizationId: string,
+  organiserId: string,
+  attendeeIds: string[],
+): Promise<string[]> {
+  const wanted = [...new Set(attendeeIds)].filter((id) => id !== organiserId);
+  if (wanted.length === 0) return [];
+  const users = await prisma.user.findMany({
+    where: { id: { in: wanted }, organizationId },
+    select: { id: true },
+  });
+  return users.map((u) => u.id);
+}
+
+/** Everyone in the org, for the attendee picker. Any signed-in user may read this. */
+export async function listOrgUsers(organizationId: string) {
+  return prisma.user.findMany({
+    where: { organizationId },
+    select: { id: true, name: true, email: true, role: true, team: { select: { name: true } } },
+    orderBy: { name: 'asc' },
+  });
+}
+
 export class GeofenceCheckInError extends Error {
   readonly code = 'GEOFENCE';
   constructor(
@@ -41,15 +81,16 @@ export async function listCalendarEvents(
     organizationId,
     startAt: { lte: end },
     endAt: { gte: start },
-    ...(isManager && query.teamScope ? {} : { userId }),
+    // Managers on a team view see everything; everyone else sees what they
+    // organise plus anything they have been invited to.
+    ...(isManager && query.teamScope
+      ? {}
+      : { OR: [{ userId }, { attendees: { some: { userId } } }] }),
   };
 
   return prisma.calendarEvent.findMany({
     where,
-    include: {
-      user: { select: { id: true, name: true } },
-      lead: { select: { id: true, name: true, company: true } },
-    },
+    include: eventInclude,
     orderBy: { startAt: 'asc' },
   });
 }
@@ -66,10 +107,13 @@ export async function createCalendarEvent(
     if (!lead) return null;
   }
 
+  const attendeeIds = await resolveAttendeeIds(organizationId, userId, input.attendeeIds ?? []);
+
   const event = await prisma.calendarEvent.create({
     data: {
       organizationId,
       userId,
+      attendees: { create: attendeeIds.map((id) => ({ userId: id })) },
       leadId: input.leadId,
       title: input.title,
       notes: input.notes,
@@ -88,10 +132,7 @@ export async function createCalendarEvent(
       meetingMode: input.meetingMode ?? 'IN_PERSON',
       meetingUrl: input.meetingUrl,
     },
-    include: {
-      user: { select: { id: true, name: true } },
-      lead: { select: { id: true, name: true, company: true } },
-    },
+    include: eventInclude,
   });
 
   if (input.leadId) {
@@ -161,14 +202,48 @@ export async function updateCalendarEvent(
   if (input.meetingMode !== undefined) data.meetingMode = input.meetingMode;
   if (input.meetingUrl !== undefined) data.meetingUrl = input.meetingUrl;
 
+  if (input.attendeeIds !== undefined) {
+    // Reconcile against the organiser of the event, not whoever is editing it.
+    const wanted = await resolveAttendeeIds(organizationId, existing.userId, input.attendeeIds);
+    const current = await prisma.calendarEventAttendee.findMany({
+      where: { eventId: id },
+      select: { userId: true },
+    });
+    const currentIds = current.map((a) => a.userId);
+    const removed = currentIds.filter((uid) => !wanted.includes(uid));
+    const added = wanted.filter((uid) => !currentIds.includes(uid));
+    // Untouched attendees keep their RSVP; only the delta moves.
+    data.attendees = {
+      ...(removed.length ? { deleteMany: { userId: { in: removed } } } : {}),
+      ...(added.length ? { create: added.map((uid) => ({ userId: uid })) } : {}),
+    };
+  }
+
   return prisma.calendarEvent.update({
     where: { id },
     data,
-    include: {
-      user: { select: { id: true, name: true } },
-      lead: { select: { id: true, name: true, company: true } },
-    },
+    include: eventInclude,
   });
+}
+
+/** An invited attendee answers their own invite. Organisers are not attendees. */
+export async function rsvpCalendarEvent(
+  id: string,
+  organizationId: string,
+  userId: string,
+  status: 'ACCEPTED' | 'DECLINED' | 'TENTATIVE',
+) {
+  const invite = await prisma.calendarEventAttendee.findFirst({
+    where: { eventId: id, userId, event: { organizationId } },
+  });
+  if (!invite) return null;
+
+  await prisma.calendarEventAttendee.update({
+    where: { id: invite.id },
+    data: { status, respondedAt: new Date() },
+  });
+
+  return prisma.calendarEvent.findUnique({ where: { id }, include: eventInclude });
 }
 
 export async function deleteCalendarEvent(
@@ -246,10 +321,7 @@ export async function checkInCalendarEvent(
       geofenceOverride: allowOverride,
       attendanceStatus: status ?? 'ON_TIME',
     },
-    include: {
-      user: { select: { id: true, name: true } },
-      lead: { select: { id: true, name: true, company: true } },
-    },
+    include: eventInclude,
   });
 }
 
@@ -272,9 +344,6 @@ export async function checkOutCalendarEvent(
       checkOutAt: new Date(),
       ...(input.attendanceStatus ? { attendanceStatus: input.attendanceStatus } : {}),
     },
-    include: {
-      user: { select: { id: true, name: true } },
-      lead: { select: { id: true, name: true, company: true } },
-    },
+    include: eventInclude,
   });
 }

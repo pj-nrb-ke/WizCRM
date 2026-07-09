@@ -3,6 +3,7 @@ import {
   calendarCheckInSchema,
   calendarCheckOutSchema,
   calendarQuerySchema,
+  calendarRsvpSchema,
   createCalendarEventSchema,
   updateCalendarEventSchema,
 } from '@wizcrm/shared';
@@ -12,6 +13,8 @@ import {
   createCalendarEvent,
   deleteCalendarEvent,
   listCalendarEvents,
+  listOrgUsers,
+  rsvpCalendarEvent,
   updateCalendarEvent,
 } from '../services/calendar.service.js';
 import { loadAttendanceReport } from '../services/attendance-report.service.js';
@@ -51,6 +54,25 @@ export const calendarRoutes: FastifyPluginAsync = async (app) => {
     }
     const event = await updateCalendarEvent(id, organizationId, userId, role, parsed.data);
     if (!event) return reply.status(404).send({ error: 'Event not found' });
+    return { event };
+  });
+
+  /** Colleagues you can invite. Read-only, org-scoped, open to any signed-in user. */
+  app.get('/org-users', async (request) => {
+    const { organizationId } = request.user;
+    const users = await listOrgUsers(organizationId);
+    return { users };
+  });
+
+  app.post('/events/:id/rsvp', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const { id } = request.params as { id: string };
+    const parsed = calendarRsvpSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const event = await rsvpCalendarEvent(id, organizationId, userId, parsed.data.status);
+    if (!event) return reply.status(404).send({ error: 'You are not invited to this event' });
     return { event };
   });
 

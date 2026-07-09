@@ -11,6 +11,17 @@ export const MEETING_MODES = [
   'IN_PERSON', 'ZOOM', 'TEAMS', 'GOOGLE_MEET', 'PHONE', 'WHATSAPP', 'OTHER',
 ] as const;
 
+/** Stored on an invite. INVITED means the person has not answered yet. */
+export const RSVP_STATUSES = ['INVITED', 'ACCEPTED', 'DECLINED', 'TENTATIVE'] as const;
+/** What an attendee may set on their own invite. */
+export const RSVP_REPLIES = ['ACCEPTED', 'DECLINED', 'TENTATIVE'] as const;
+
+export const MAX_EVENT_ATTENDEES = 50;
+
+export const calendarRsvpSchema = z.object({
+  status: z.enum(RSVP_REPLIES),
+});
+
 const calendarEventFieldsSchema = z.object({
   title: z.string().min(1).max(300),
   notes: z.string().max(5000).optional(),
@@ -29,6 +40,8 @@ const calendarEventFieldsSchema = z.object({
   eventType: z.enum(CALENDAR_EVENT_TYPES).optional(),
   meetingMode: z.enum(MEETING_MODES).optional(),
   meetingUrl: z.string().max(1000).optional(),
+  /** Colleagues invited to this event (user ids). The organiser is implicit. */
+  attendeeIds: z.array(z.string().uuid()).max(MAX_EVENT_ATTENDEES).optional(),
 });
 
 export const ATTENDANCE_STATUSES = ['ON_TIME', 'LATE', 'NO_SHOW', 'PARTIAL'] as const;
