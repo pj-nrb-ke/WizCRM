@@ -8,6 +8,7 @@ import {
   updateOrganizationSchema,
 } from '@wizcrm/shared';
 import { config } from '../config.js';
+import { getErrorReport } from '../lib/error-recorder.js';
 import { prisma } from '../lib/prisma.js';
 import {
   getOrgSettings,
@@ -42,6 +43,11 @@ function requireManager() {
 
 export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
+
+  /** Recent 5xx failures, for triage after the watchdog has already shouted. */
+  app.get('/errors', { preHandler: requireManager() }, async () => {
+    return getErrorReport();
+  });
 
   app.get('/health', { preHandler: requireManager() }, async (request) => {
     const { organizationId } = request.user;

@@ -27,6 +27,7 @@ import { leadDecisionMakerRoutes } from './routes/lead-decision-makers.js';
 import { africasTalkingVoiceRoutes } from './routes/africastalking-voice.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
+import { recordServerError } from './lib/error-recorder.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -131,7 +132,7 @@ export async function buildApp() {
     );
   });
 
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     const err = error as Error & { statusCode?: number };
     if (err.message === 'AI_UNAVAILABLE') {
       return reply.status(503).send({
@@ -147,6 +148,15 @@ export async function buildApp() {
     }
     const status = err.statusCode ?? 500;
     app.log.error(error);
+    // Keep the real message for triage in-process; the client still gets nothing.
+    if (status >= 500) {
+      recordServerError({
+        method: request.method,
+        url: request.url,
+        statusCode: status,
+        message: err.message || 'Unknown error',
+      });
+    }
     // Don't leak internal error details on 5xx; 4xx messages are intentional and
     // client-facing (validation, not-found, conflict, etc.).
     return reply.status(status).send({
