@@ -4,6 +4,7 @@ import { HunterContactProvider } from '../lead-engine/contacts/hunter-contact.pr
 import { ProspeoContactProvider } from '../lead-engine/contacts/prospeo-contact.provider.js';
 import { TombaContactProvider } from '../lead-engine/contacts/tomba-contact.provider.js';
 import { FirecrawlContactProvider } from '../lead-engine/contacts/firecrawl-contact.provider.js';
+import { LinkedinSearchContactProvider } from '../lead-engine/contacts/linkedin-search-contact.provider.js';
 import { extractDomain } from '../lead-engine/contacts/contact.service.js';
 import type { ClassifiedContact } from '../lead-engine/types.js';
 
@@ -34,11 +35,15 @@ export interface ContactFinderOptions {
 }
 
 const PROVIDERS = [
+  // Free/cheap sources first — they always run and populate decision-maker names
+  // even when the paid contact databases 404 or have no record of a Kenyan SME.
+  new LinkedinSearchContactProvider(),
+  new FirecrawlContactProvider(),
+  // Paid contact databases — fill in emails/phones and any roles still missing.
   new ApolloContactProvider(),
   new HunterContactProvider(),
   new ProspeoContactProvider(),
   new TombaContactProvider(),
-  new FirecrawlContactProvider(),
 ];
 
 function normalizeName(name: string): string {
@@ -116,9 +121,10 @@ async function runWithCache(
   // Cache miss or stale — run waterfall
   const result = await runWaterfall(company, threshold, options.position);
 
-  // Only cache results that have at least some real contact details (email or phone).
-  // Name-only results are not worth caching — the waterfall should retry these fresh.
-  const hasRealContacts = result.contacts.some((c) => c.email || c.phone);
+  // Cache any result that identified a real person (a name, or email/phone) so
+  // re-clicks and teammates reuse it for free. Empty results stay uncached so the
+  // waterfall retries them fresh next time (e.g. after keys/plans are added).
+  const hasRealContacts = result.contacts.some((c) => c.name || c.email || c.phone);
   if (hasRealContacts) {
     await upsertCache(options.organizationId, company, normalizedName, result);
   }
