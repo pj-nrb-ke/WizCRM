@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { config } from '../../config.js';
 import { chatJson, createOpenAIClient, transcribeAudio } from './openai.provider.js';
 import { audioIdFor, hasAudio, putAudio } from './voice-audio.store.js';
 
@@ -232,16 +233,17 @@ export function extensionFor(url: string): string {
  * the first call of the day and nothing on every call after it.
  */
 export async function renderSpeech(text: string): Promise<string | null> {
-  const id = audioIdFor(text, TTS_VOICE);
+  // The format is part of the key: switching it must not replay stale audio.
+  const id = audioIdFor(text, `${TTS_VOICE}:${config.voiceAudioFormat}`);
   if (hasAudio(id)) return id;
 
   const client = createOpenAIClient();
   if (!client) return null;
 
   try {
-    // Raw PCM, not mp3: Africa's Talking fetched our 24 kHz mp3 and played
-    // silence. We resample to 8 kHz mono WAV ourselves, which is what the
-    // phone network actually carries and what every telephony player accepts.
+    // Raw PCM, not mp3: OpenAI's own encodings are 24 kHz, and the phone
+    // network carries 8 kHz. We resample ourselves so the caller's decoder is
+    // never asked to do anything unusual.
     const res = await client.audio.speech.create(
       { model: TTS_MODEL, voice: TTS_VOICE, input: text, response_format: 'pcm' },
       { timeout: TTS_TIMEOUT_MS },
@@ -249,13 +251,29 @@ export async function renderSpeech(text: string): Promise<string | null> {
     const pcm24k = Buffer.from(await res.arrayBuffer());
     if (pcm24k.byteLength < 512) return null;
 
-    const mp3 = await encodeTelephonyMp3(pcm24k);
-    if (!mp3) return null;
-    putAudio(id, mp3);
+    const audio =
+      config.voiceAudioFormat === 'wav'
+        ? pcmToWav(downsampleTo8k(pcm24k))
+        : await encodeTelephonyMp3(pcm24k);
+    if (!audio) return null;
+
+    putAudio(id, audio);
     return id;
   } catch {
     return null;
   }
+}
+
+/**
+ * Render the lines every call begins with, before any call arrives.
+ *
+ * A restart empties the cache, so the first caller waited six to ten seconds
+ * while we synthesised the greeting with the phone line already open. Warming
+ * costs a second at boot and nothing afterwards.
+ */
+export async function prewarmSpeech(lines: string[]): Promise<number> {
+  const results = await Promise.all(lines.map((l) => renderSpeech(l)));
+  return results.filter(Boolean).length;
 }
 
 export async function nextReply(history: Turn[]): Promise<AgentReply> {

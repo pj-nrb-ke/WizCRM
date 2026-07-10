@@ -98,6 +98,12 @@ export const config = {
   voiceTts: (process.env.VOICE_TTS ?? 'say') as 'say' | 'play' | 'probe',
   /** Log the full Africa's Talking callback payload. Off by default: it carries caller numbers. */
   voiceDebug: process.env.VOICE_DEBUG === '1',
+  /**
+   * Container for Jane's speech. Both are 8 kHz mono.
+   *   mp3 — plays, but 8 kHz mp3 is MPEG-2.5 and decoders render it with artefacts.
+   *   wav — uncompressed PCM, nothing to decode badly.
+   */
+  voiceAudioFormat: (process.env.VOICE_AUDIO_FORMAT ?? 'mp3') as 'mp3' | 'wav',
   /** Public base URL of THIS api, used to build the AT voice callback URL. */
   apiPublicUrl: process.env.API_PUBLIC_URL ?? 'https://api.wizcrm.app',
 };
