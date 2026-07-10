@@ -56,6 +56,18 @@ hours; no weekend sends unless enabled.
 **13:00 — Optional midday nudge** (off by default)
 Only to people with zero movement on today's tasks. One nudge, gentle tone.
 
+**Mid/late afternoon — Daily scrum (Phase 4, §4.9)**
+Confirmed with PJ: scrums come **after** the morning tasks are already out,
+not before — the plan drives the day, the scrum reviews it. Booked as a
+**recurring daily CalendarEvent** (reusing the calendar module shipped
+tonight: `CalendarRecurrence.DAILY`, attendees = the roster, RSVP already
+built). VSM does not "schedule" the scrum itself; the CEO/admin sets it up
+once as a standing meeting, and each day's run just looks it up. If someone
+can't attend (ad-hoc customer call, unplanned meeting), they explain in a
+chat message rather than going silent — see §4.9's absence handling, and
+note this is explicitly **not** the same as the silence pattern in §4.6:
+an explained absence is a normal, expected thing.
+
 **17:30 — End-of-day collection**
 Reads task states + thread replies. People with open items get a single
 "anything blocking you?" prompt. Replies feed tomorrow's plan.
@@ -174,6 +186,11 @@ Current Task = title/dueAt only. VSM needs:
   evidence; it never sends warnings, never says anything that reads as a
   performance judgment, and never contacts anyone above the CEO. Any
   consequence is a human decision made by the CEO outside the system.
+- **An explained absence is not silence.** Missing the scrum with a chat
+  message ("on an ad-hoc call with Acme, will catch up on notes after") does
+  not count toward the staged silence escalation above — it's the opposite
+  of the problem that escalation exists to catch. The VSM records it in the
+  scrum summary and moves on.
 
 ### 4.7 Escalation to CEO
 Escalation record: reason, evidence, suggested action, status
@@ -197,64 +214,101 @@ the same problem.
 - VSM Performance page (§4.2a).
 - Configuration audit trail (§4.2b).
 
-### 4.9 Meeting presence — scrums and Zoom (its own tier of work)
+### 4.9 The Meeting Room — scrums held inside WizCRM (decision made)
 
-This is the one request that is **not a natural extension** of the task/email
-loop above — it's a live-audio subsystem, and worth being honest about that
-up front rather than discovering it mid-build. Recommend treating it as
-**Phase 4, with its own short spec**, after the core loop (Phases 0–2) has
-proven itself. Two reasons: (1) it depends on Wanjiru already knowing the
-team, the pipeline, and the plan — a meeting bot with no context is just a
-transcript; (2) it reuses infrastructure we are *simultaneously* proving out
-for Jane (the AI BDR) on ElevenLabs — streaming speech, real-time
-transcription, turn-taking — so building it after that work has been
-verified against a live call is far less risky than building it in parallel.
+PJ raised two options: bolt onto Zoom, or build a native Meeting Room inside
+WizCRM (a chat screen everyone joins; type or talk, speech is transcribed
+into the chat; Wanjiru participates by chatting, with TTS layered on later).
 
-**What "attend a scrum" actually requires, broken into stages of ambition:**
+**My view: build the native Meeting Room. Not a close call, and it's the
+more ambitious-sounding option that is actually the safer engineering bet.**
+Four reasons:
 
-*Stage A — Listen and summarise (lowest risk, real value fast)*
-A meeting bot joins the Zoom call as a silent participant, transcribes the
-discussion, and produces a written summary + extracted action items in
-WizCRM after the meeting — attached to the relevant leads/tasks automatically
-where mentioned. **No live audio response.** This alone is worth shipping on
-its own: automatic scrum minutes, action items that turn into real Tasks
-without anyone typing them up.
+1. **It sidesteps everything we fought today.** Today's entire mess —
+   telephony sample rates, AT's Voice XML turn-based dead air, a recording
+   pipeline that 404s — exists because phone audio is a narrow, unforgiving
+   format carried over a network we don't control. A browser microphone
+   talking to our own server over WebRTC has none of that: browsers handle
+   arbitrary sample rates and codecs natively, there's no 8kHz telephony
+   decoder to please, and there's no third-party recording URL that might
+   not exist. This is a *fundamentally easier* audio problem than the one
+   we spent all day on.
+2. **Everything really is in one place**, which was the point — action
+   items attach directly to leads and tasks with no cross-system linking,
+   because it's all the same database.
+3. **It costs less and depends on less.** A Zoom integration means either a
+   per-minute meeting-bot vendor (Recall.ai and similar charge per meeting
+   minute) or building against Zoom's own bot SDK (OAuth app review, scope
+   approval, a second platform to keep working). A native room needs one
+   real-time audio SDK, embedded, that your team never sees.
+4. **Wanjiru's text participation is nearly free to build.** Once speech is
+   flowing into the room as chat messages, her replying is just another
+   message in a shared thread — the *exact same mechanism* already planned
+   for two-way task threads (§4.4/Phase 2). It's not new technology, it's
+   the same pattern applied to a live multi-person room instead of a
+   per-task thread.
 
-*Stage B — Respond in chat during the meeting*
-The bot posts to the meeting chat (or a WizCRM-side live view PJ/CEO can
-watch during the call) when it has something concrete to add — e.g. "Note:
-that lead's last activity was 11 days ago" — grounded in real data, not
-generic commentary. Text output, so it inherits none of the audio fragility
-from today's phone-call debugging.
+**What it does not replace:** Zoom (or whatever you use) stays for meetings
+with customers and partners outside WizCRM. The Meeting Room is specifically
+for internal scrums — which is exactly what was asked for.
 
-*Stage C — Speak in the meeting (highest ambition, highest cost/fragility)*
-The bot has a synthesised voice in the call and can be addressed directly
-("Wanjiru, what's the status on X?"). This needs real-time turn-detection
-(don't interrupt a human mid-sentence), low-latency streaming TTS, and the
-same barge-in handling the ElevenLabs work already targets for Jane — so it
-is a genuine reuse of that platform once proven, not a new one.
+**Build in the three stages you described, which map cleanly onto the room
+concept rather than a Zoom bot:**
 
-**On "WizCRM open in the background so VSM can attend through WizCRM":**
-refining this — WizCRM itself does not need to be open for Wanjiru to be in
-the meeting. The clean architecture is a **meeting bot** (via a service like
-Recall.ai, or Zoom's own meeting-bot SDK) that joins the Zoom call directly
-as a named participant ("Wanjiru — WizCRM"), independent of anyone's browser
-tab. This is more reliable than capturing audio from a machine that happens
-to have both Zoom and WizCRM open (that approach breaks if the laptop sleeps,
-the tab is backgrounded, or the wrong person is running it), and it means
-Wanjiru can join a scrum even if PJ isn't the one who scheduled it.
+*Stage A — the room itself: live chat + transcription*
+Everyone joins the Meeting Room (linked from the scrum's calendar event).
+Type, or talk and have it transcribed into the chat in real time. This
+**is** the "silent minutes" feature — there's no separate silent-bot stage
+to build, because a transcript is what the room produces by existing.
+*Accept:* a scrum happening in the room produces an accurate live transcript
+and a post-meeting summary with action items linked as real Tasks.
 
-**Consent & KDPA:** exactly the disclosure principle already in place for
-Jane on the phone (§ AI-BDR docs) — the meeting invite states a recording
-AI participant will attend, and the bot announces itself on joining. Non-
-negotiable given Kenya's Data Protection Act, doubly so here since it's
-recording colleagues, not prospects.
+*Stage B — Wanjiru participates by chatting*
+She reads the live transcript like any participant and posts to the room
+when she has something grounded to add — "Note: that lead's last activity
+was 11 days ago" — using the same evidence-only rule from §4.3. Exactly what
+PJ asked for: chat first, no voice yet.
 
-**Data model addition:** `MeetingSession` (date, participants, transcript,
-summary, zoomMeetingId) and `MeetingActionItem` (meetingId, description,
-assigneeId?, linkedTaskId?, dueDate?, status) — action items promote into
-real Tasks the same way rule-layer candidates do, so they inherit the same
-grounding and CEO-visibility guarantees as everything else in this spec.
+*Stage C — TTS, once ElevenLabs is proven for Jane*
+Wanjiru's replies get spoken aloud in the room. This is **much simpler than
+today's phone problem**: it's audio playing in a browser tab, not audio
+being decoded by a phone network's finicky player — a standard `<audio>`
+element handles any format we hand it. Reuses the ElevenLabs voice once it's
+verified for Jane, so no separate voice pipeline gets built.
+
+**The one real engineering question: which real-time audio SDK.** Not
+"should we build WebRTC from scratch" — nobody should — but which proven,
+embeddable SDK carries the actual audio:
+
+| Option | Trade-off |
+|---|---|
+| **Daily.co (hosted)** — recommended to *start* | Embeds in an afternoon, zero ops, generous free tier, pay-per-participant-minute as you grow. Fastest way to prove the concept works before committing to running media infrastructure. |
+| **LiveKit (self-hosted)** | Open source, no per-minute fee, keeps the last piece of the stack in-house too — consistent with keeping infra local rather than layering on vendors. Real ops work: TURN/STUN, open UDP ports on the VPS, a systemd service to run and watch. Worth migrating to *after* the Meeting Room has proven itself and usage justifies owning the media layer. |
+
+Recommendation: **ship on Daily.co first, revisit self-hosting once the room
+is in daily use.** Validate the idea cheaply before taking on new server
+infrastructure — the same "prove it, then own it" instinct behind starting
+Jane in `draft` mode.
+
+**Absence handling (§3, §4.6):** a `absenceReason` chat message posted
+against the scrum's calendar event (or in the room itself, day-of) — VSM
+reads it, records it in the scrum summary, and does **not** treat it as
+silence. This also means the daily-scrum RSVP/decline flow on the existing
+calendar attendee should support attaching a short reason.
+
+**Consent & KDPA:** the room states plainly, every time someone joins, that
+the session is transcribed and an AI participant is present — same
+disclosure principle as Jane on the phone. Non-negotiable, doubly so here
+since it's recording colleagues.
+
+**Data model:** `MeetingRoomSession` (calendarEventId, startedAt, endedAt,
+participants[], summary) — reuses the CalendarEvent already booked as the
+scrum, adding a **`SCRUM`** value to `CalendarEventType` so the daily VSM run
+can look up "today's scrum" cleanly; `MeetingRoomMessage` (sessionId,
+authorUserId | isVsm, kind(TEXT/TRANSCRIBED/ABSENCE_REASON), body, at);
+`MeetingActionItem` (sessionId, description, assigneeId?, linkedTaskId?,
+dueDate?, status) — promotes into a real Task the same way rule-layer
+candidates do, inheriting the same grounding and CEO-visibility.
 
 ## 5. Guardrails & principles
 
@@ -299,11 +353,13 @@ VsmEscalation: orgId · kind · severity · evidence(json) · suggestedAction
 Notification: userId · kind · title · body · linkPath · readAt?   (web+mobile feed)
 User (extend): isVirtual boolean (the VSM account)
 
--- Phase 4 (meeting presence, §4.9) — separate from the core loop:
-MeetingSession: orgId · zoomMeetingId · scheduledFor · participants[]
-                transcript · summary · status
-MeetingActionItem: meetingId · description · assigneeId? · linkedTaskId?
-                   dueDate? · status
+-- Phase 4 (Meeting Room, §4.9) — separate from the core loop:
+CalendarEventType (extend): + SCRUM                       -- reuses tonight's calendar module
+CalendarEventAttendee (extend): absenceReason?             -- explained-absence, not silence
+MeetingRoomSession: calendarEventId · startedAt · endedAt · participants[] · summary
+MeetingRoomMessage: sessionId · authorUserId? · isVsm · kind(TEXT/TRANSCRIBED/ABSENCE_REASON)
+                    body · at
+MeetingActionItem: sessionId · description · assigneeId? · linkedTaskId? · dueDate? · status
 ```
 
 Scheduler: system cron on the VPS hitting an internal endpoint (same pattern as
@@ -322,7 +378,9 @@ backup/watchdog) — no new runtime dependency; every run idempotent per
 | Approval-UX pattern | Desk/next-action patterns on the web app |
 | Cron pattern | watchdog/backup crons on the VPS |
 | Admin-only settings pattern | existing admin-guarded routes/nav (§4.2b reuses this) |
-| Streaming voice (Phase 4, §4.9) | the ElevenLabs Agents integration being verified for Jane right now — same platform, once proven on a phone call |
+| Scrum booking (Phase 4, §4.9) | the calendar module shipped tonight — recurring events, attendees, RSVP, conflict detection — the scrum is just a `SCRUM`-tagged recurring `CalendarEvent` |
+| Two-way chat pattern (Phase 4, §4.9) | the same TaskUpdate thread mechanism from Phase 2, applied to a live multi-party room instead of a single task |
+| Streaming voice (Phase 4 Stage C, §4.9) | the ElevenLabs Agents integration being verified for Jane right now — same platform, once proven on a phone call, played through a normal browser `<audio>` element instead of AT's telephony player |
 
 ## 8. Phasing
 
@@ -347,14 +405,17 @@ Mobile push (FCM + token registry + local-build config), weekly review, Swahili
 touches, `auto` mode unlock, VSM Performance page (§4.2a), optional WizFlow
 hand-off for non-sales tasks (deferred integration per earlier decision).
 
-**Phase 4 — Meeting presence (§4.9)**
-Own short spec once scoped. Ships in the three stages described in §4.9:
-(A) silent bot → transcript + summary + action items (ship this alone first —
-real value, lowest risk); (B) grounded text contributions during the call;
-(C) live spoken participation, built on the ElevenLabs platform once it is
-proven for Jane. *Accept for Stage A:* a scrum produces an accurate written
-summary and every stated action item lands as a linked Task within minutes
-of the meeting ending.
+**Phase 4 — The Meeting Room (§4.9)**
+Native in-WizCRM room for daily scrums, built on an embedded real-time audio
+SDK (Daily.co to start; self-host LiveKit later if it earns its keep).
+Three stages: (A) the room itself — live transcription + chat + post-meeting
+summary and Tasks, which *is* the "silent minutes" value, no separate stage
+needed; (B) Wanjiru chats in the room, grounded, evidence-only; (C) her
+replies are spoken aloud, built on the ElevenLabs platform once proven for
+Jane. *Accept for Stage A:* a scrum held in the room produces an accurate
+transcript and every stated action item lands as a linked Task within
+minutes of the meeting ending; an absence with a stated reason is recorded
+without triggering silence-escalation.
 
 ## 9. Risks & honest notes
 
@@ -371,13 +432,13 @@ of the meeting ending.
   up gradually, correct SPF/DKIM already verified for the sending domain.
 - **No reply-by-email in MVP** — deep links instead. Say it in the emails so
   nobody replies into a void.
-- **Meeting presence is the highest-risk feature in this spec, technically
-  and socially.** Technically: live meeting audio is a different subsystem
-  from anything else here, with its own cost (a per-minute meeting-bot
-  service) and failure modes. Socially: a bot that speaks up in a human scrum
-  can easily feel intrusive or comic if it gets timing or tone wrong — Stage A
-  (silent transcription + summary) de-risks this by proving the value before
-  anyone has to get used to a synthetic voice interrupting a meeting.
+- **The Meeting Room is still the biggest single piece of new work in this
+  spec**, even built natively — real-time multi-party audio, presence, and a
+  live transcript are genuine new infrastructure, just a *safer* kind than
+  telephony (see §4.9). Socially, a voice chiming into a human scrum can feel
+  intrusive if timing or tone is off — Stage A→B→C exists specifically so the
+  room proves its value as a transcript-and-chat tool before anyone has to
+  get used to a synthetic voice speaking up.
 
 ## 10. Success metrics (after 4 weeks of Phase 1–2)
 
@@ -415,10 +476,13 @@ Refined from PJ's requests, plus items I'm adding:
    immediate page, so the CEO isn't interrupted by a single quiet afternoon,
    and escalations de-duplicate so the same silent rep doesn't spam the inbox
    daily.
-4. **Scrums with CEO + Wanjiru attending, via Zoom** (§4.9) — scoped into
-   three stages of ambition (listen+summarise → grounded chat → live voice),
-   recommended as its own **Phase 4** after the core loop and the ElevenLabs
-   voice platform are both proven, rather than built alongside Phases 0–2.
+4. **Scrums with CEO + Wanjiru attending** (§4.9) — decided as a **native
+   in-WizCRM Meeting Room** rather than a Zoom integration (PJ's preferred
+   option, and my recommendation too — see §4.9 for the four reasons, chief
+   among them that browser audio is a fundamentally easier problem than the
+   telephony audio we spent today fighting). Scoped into the same three
+   stages of ambition (room+transcript → grounded chat → spoken TTS), still
+   its own **Phase 4** after the core loop and ElevenLabs are both proven.
 5. **My addition — guardrail: never a disciplinary tool.** Given point 3
    above puts the CEO in the loop on staff silence, it's worth stating
    explicitly that the VSM surfaces patterns and never issues anything that
@@ -429,17 +493,36 @@ Refined from PJ's requests, plus items I'm adding:
    *what* and *when* (e.g. "task cap raised 5→7"), the same way lead/
    opportunity history already works. Governance without a paper trail is
    just a permission check nobody can verify later.
-7. **My addition — meeting bot is an explicit external cost.** Live meeting
-   presence (Stage A onward) needs a per-minute meeting-bot service
-   (Recall.ai or similar) in addition to ElevenLabs — worth pricing out before
-   committing to Phase 4, separately from the ElevenLabs pilot cost.
+7. **My addition — real-time audio SDK, not a meeting-bot vendor.** Since
+   the Meeting Room is native, the external cost is an embeddable audio SDK
+   rather than a per-minute Zoom-bot service. Recommendation: **start on
+   Daily.co** (hosted, embeds fast, generous free tier) to prove the room
+   works, then evaluate **self-hosting LiveKit** (open source, no per-minute
+   fee) once usage justifies owning the media layer — the same "prove it
+   cheaply, then own it" instinct as launching Jane in `draft` mode.
+8. **My addition — explained absence ≠ silence.** Since scrums now
+   explicitly allow a stated-reason absence (§3/§4.9), the spec now says so
+   directly in §4.6: an ad-hoc customer call with a chat note is the opposite
+   of the problem silence-escalation exists to catch, and must never trigger
+   it.
 
-### Open decisions for this round
-8. Approve the Phase 4 (meeting presence) scoping as-is, or is it more
-   urgent than Phases 0–3 — i.e. should scrums come *before* the daily
-   task loop rather than after?
-9. Meeting-bot vendor preference, or should I research options (Recall.ai
-   vs Zoom's native meeting SDK vs alternatives) before deciding?
-10. Should Stage A (silent transcription + summary) alone be pulled forward
-    as a small standalone feature, independent of the rest of VSM? It has
-    real value on its own and no dependency on the daily-planning loop.
+### Resolved this round
+9. ~~Should scrums come before or after the daily task loop?~~ **After** —
+   confirmed by PJ. Tasks go out first at 07:30; the scrum reviews the day
+   later, booked as a recurring calendar event.
+10. ~~Meeting-bot vendor?~~ **No vendor — native Meeting Room**, decided
+    above. The only remaining choice is the audio SDK (Daily.co to start;
+    see point 7), which I'm treating as settled unless PJ wants to weigh in.
+11. ~~Pull Stage A forward as standalone?~~ **Moot** — building natively means
+    Stage A (transcript + chat) *is* the Meeting Room's foundation, not a
+    separable bolt-on. There's nothing to pull forward; it's simply where
+    Phase 4 starts.
+
+### Still open
+12. Any objection to starting the Meeting Room's audio layer on Daily.co
+    (hosted) rather than going straight to self-hosted LiveKit? Given the
+    day's telephony debugging, I'd rather prove the concept on a managed
+    service before taking on new server infrastructure to operate.
+13. Should the Meeting Room be scoped as a genuinely separate module (its own
+    short spec, like AI-VOICE-ELEVENLABS.md) once Phase 4 is ready to start,
+    given how much new ground it covers versus the rest of VSM?
