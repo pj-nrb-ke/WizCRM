@@ -96,6 +96,8 @@ export const config = {
    * Defaults to the safe option: a robotic Jane beats a silent one.
    */
   voiceTts: (process.env.VOICE_TTS ?? 'say') as 'say' | 'play' | 'probe',
+  /** Log the full Africa's Talking callback payload. Off by default: it carries caller numbers. */
+  voiceDebug: process.env.VOICE_DEBUG === '1',
   /** Public base URL of THIS api, used to build the AT voice callback URL. */
   apiPublicUrl: process.env.API_PUBLIC_URL ?? 'https://api.wizcrm.app',
 };
