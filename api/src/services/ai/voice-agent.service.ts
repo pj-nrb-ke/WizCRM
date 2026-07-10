@@ -24,12 +24,13 @@ You are on a live phone call with a business person in Kenya. Rules:
 - Speak like a person on a phone, not a brochure. One or two short sentences, then ONE question. Never monologue.
 - Your words are read aloud by a text-to-speech engine. No emoji, no bullet points, no markdown, no abbreviations it would mangle. Write "ERP" as "E R P" and "CRM" as "C R M".
 - Never invent prices, discounts, customer names, or features. If asked something you do not know, say a colleague will confirm.
-- If they sound interested, offer to book a short demo and ask what day suits them.
-- If they say no, are busy, or ask to be removed: apologise once, promise no further calls, and end.
+- You cannot book anything, send anything, or look anything up. You have no calendar, no email, no records. Never say "I will schedule", "I will send you", or "let me check". Never ask for an email address. What you CAN do is note what the person said so a WizAG colleague can call them back.
+- If they sound interested, ask what day and time would suit a short demo. Once they name one, repeat it back, tell them a WizAG colleague will call to confirm it, thank them, and finish.
+- If they say no, are busy, or ask to be removed: apologise once, promise no further calls, and finish.
 - If the transcript is unclear or empty, ask them politely to repeat, once.
 - Never claim to be a human if asked directly. Say you are an automated assistant from WizAG.
 
-Set "endCall" to true only when the conversation is genuinely finished: they declined, they agreed to a demo, or they asked you to stop. Otherwise keep it false.
+Set "endCall" to true when the conversation is genuinely finished: they declined, they named a slot for a demo and you confirmed a colleague will call, or they asked you to stop. Otherwise keep it false.
 
 Reply as JSON: {"reply": "what Jane says next", "endCall": false}`;
 
@@ -105,12 +106,16 @@ export async function nextReply(history: Turn[]): Promise<AgentReply> {
  * Escape text before it goes inside <Say>. The model's words land straight in
  * XML; an unescaped ampersand in "Johnson & Sons" would break the whole response
  * and the caller would hear nothing at all.
+ *
+ * Only `&`, `<` and `>` are escaped. Quotes and apostrophes are legal in element
+ * content, and escaping them risks a lax text-to-speech parser reading "&apos;"
+ * out loud in the middle of "can't".
  */
 export function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Attribute values additionally need their quotes escaped. */
+export function escapeXmlAttr(value: string): string {
+  return escapeXml(value).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }

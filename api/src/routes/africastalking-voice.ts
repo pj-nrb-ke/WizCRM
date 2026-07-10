@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { config } from '../config.js';
 import {
   escapeXml,
+  escapeXmlAttr,
   nextReply,
   transcribeRecordingUrl,
   type Turn,
@@ -67,7 +68,7 @@ function say(text: string): string {
 
 /** Speak, then listen. AT posts the recording back to us and the loop continues. */
 function sayThenRecord(text: string, callbackUrl: string): string {
-  return `<Record ${RECORD_ATTRS} callbackUrl="${escapeXml(callbackUrl)}">${say(text)}</Record>`;
+  return `<Record ${RECORD_ATTRS} callbackUrl="${escapeXmlAttr(callbackUrl)}">${say(text)}</Record>`;
 }
 
 /**
