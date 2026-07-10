@@ -4,6 +4,7 @@ import {
   escapeXml,
   escapeXmlAttr,
   nextReply,
+  prewarmSpeech,
   renderSpeech,
   transcribeRecordingUrl,
   type Turn,
@@ -93,8 +94,17 @@ async function say(text: string, isGreeting = false): Promise<string> {
 
   const id = await renderSpeech(text);
   if (!id) return sayTag(text);
-  return `<Play url="${escapeXmlAttr(`${config.apiPublicUrl}/voice/audio/${id}.mp3`)}"/>`;
+  const ext = config.voiceAudioFormat;
+  return `<Play url="${escapeXmlAttr(`${config.apiPublicUrl}/voice/audio/${id}.${ext}`)}"/>`;
 }
+
+/** The lines every call opens with, plus the two we fall back on. */
+const STOCK_LINES = [
+  GREETING,
+  OPENER,
+  "Sorry, I didn't catch that. Could you say it once more?",
+  "Sorry, I'm still not hearing you clearly. A colleague from Wiz A G will call you back. Goodbye.",
+];
 
 /**
  * Speak, then listen.
@@ -262,16 +272,22 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
    * no credentials. The id is a hash of the text, so it reveals nothing and
    * guessing one yields, at worst, a sentence about C R M software.
    */
-  app.get('/voice/audio/:id.mp3', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const audio = getAudio(id.replace(/\.mp3$/, ''));
+  app.get('/voice/audio/:file', async (request, reply) => {
+    const { file } = request.params as { file: string };
+    const id = file.replace(/\.(mp3|wav)$/, '');
+    const audio = getAudio(id);
     if (!audio) return reply.status(404).send({ error: 'Not found' });
     // No Accept-Ranges: we do not honour Range requests, and advertising support
     // we do not have invites a player to ask for a 206 and get a 200 instead.
     return reply
-      .type('audio/mpeg')
+      .type(file.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg')
       .header('Content-Length', String(audio.byteLength))
       .header('Cache-Control', 'public, max-age=600')
       .send(audio);
   });
+
+  // Render the opening lines before the first caller arrives, not while they wait.
+  void prewarmSpeech(STOCK_LINES).then((n) =>
+    app.log.info({ at_voice: 'prewarm', lines: n, format: config.voiceAudioFormat }, 'Voice lines warmed'),
+  );
 }
