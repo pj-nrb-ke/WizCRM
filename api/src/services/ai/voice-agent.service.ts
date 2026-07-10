@@ -153,29 +153,63 @@ export const FALLBACK_REPLY: AgentReply = {
 
 /**
  * Download the caller's recording and transcribe it.
- * Returns an empty string when the audio is unusable — the caller said nothing,
- * or the fetch failed. An empty string is a valid outcome, not an error.
+ *
+ * Reports *why* it failed, not just that it did. An empty transcript is a
+ * legitimate outcome — the caller stayed silent — and is indistinguishable from
+ * a broken download unless we say which happened. A silent failure on a phone
+ * call is the hardest kind to chase.
  */
-export async function transcribeRecordingUrl(url: string): Promise<string> {
+export type TranscribeResult = {
+  text: string;
+  reason:
+    | 'ok'
+    | 'no_client'
+    | 'fetch_failed'
+    | 'http_error'
+    | 'too_small'
+    | 'whisper_failed'
+    | 'empty_transcript';
+  status?: number;
+  bytes?: number;
+  contentType?: string;
+  detail?: string;
+};
+
+export async function transcribeRecordingUrl(url: string): Promise<TranscribeResult> {
   const client = createOpenAIClient();
-  if (!client) return '';
+  if (!client) return { text: '', reason: 'no_client' };
 
   let res: Response;
   try {
     res = await fetch(url, { signal: AbortSignal.timeout(RECORDING_FETCH_TIMEOUT_MS) });
-  } catch {
-    return '';
+  } catch (e) {
+    return { text: '', reason: 'fetch_failed', detail: e instanceof Error ? e.message : String(e) };
   }
-  if (!res.ok) return '';
+  if (!res.ok) return { text: '', reason: 'http_error', status: res.status };
 
+  const contentType = res.headers.get('content-type') ?? undefined;
   const buf = Buffer.from(await res.arrayBuffer());
   // A near-empty file means the caller stayed silent; skip the Whisper call.
-  if (buf.byteLength < 1024) return '';
+  if (buf.byteLength < 1024) {
+    return { text: '', reason: 'too_small', bytes: buf.byteLength, contentType, status: res.status };
+  }
 
   try {
-    return await transcribeAudio(client, buf.toString('base64'), extensionFor(url));
-  } catch {
-    return '';
+    const text = (await transcribeAudio(client, buf.toString('base64'), extensionFor(url))).trim();
+    return {
+      text,
+      reason: text ? 'ok' : 'empty_transcript',
+      bytes: buf.byteLength,
+      contentType,
+    };
+  } catch (e) {
+    return {
+      text: '',
+      reason: 'whisper_failed',
+      bytes: buf.byteLength,
+      contentType,
+      detail: e instanceof Error ? e.message.slice(0, 200) : String(e),
+    };
   }
 }
 
