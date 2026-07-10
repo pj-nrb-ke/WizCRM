@@ -310,12 +310,11 @@ LiveKit Cloud's free tier**, and move to self-hosted LiveKit on the VPS
 later purely as an infra decision (no code change) once usage justifies
 owning the media layer.
 
-**Worth noting, not acting on:** LiveKit also bridges SIP, meaning Jane's
-phone-call path (currently ElevenLabs + an AT SIP trunk) and Wanjiru's
-Meeting Room could eventually sit on one real-time backbone instead of two.
-Not a reason to touch the ElevenLabs work now — it's deployed and just
-waiting on PJ's account — but worth having in mind as a future
-consolidation rather than running two voice platforms indefinitely.
+**Decided, not just noted (2026-07-10):** PJ chose to put Jane on LiveKit
+too, not only Wanjiru — one real-time platform, one Agents worker, two
+personas dispatched differently (SIP call vs. WebRTC room). Full plan in
+`docs/AI-VOICE-LIVEKIT.md`. The ElevenLabs code from PR #41 is left
+deployed and dormant rather than removed.
 
 **Absence handling (§3, §4.6):** a `absenceReason` chat message posted
 against the scrum's calendar event (or in the room itself, day-of) — VSM
