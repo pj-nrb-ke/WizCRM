@@ -26,6 +26,11 @@ const OPENER =
   "We help Kenyan businesses run on Sage Evolution E R P and Wiz C R M, so your team isn't " +
   'chasing leads and quotations on paper. Tell me, are you using a C R M at the moment?';
 
+/** The menu variant of the opener, for VOICE_MODE=dtmf. */
+const OPENER_DTMF =
+  'We help Kenyan businesses run on Sage Evolution E R P and Wiz C R M. ' +
+  'To book a quick demo with our team, press 1. If you are not interested, press 2.';
+
 /**
  * No beep — a person does not chirp at you before listening.
  * `timeout` is the silence AT waits through before deciding you have finished;
@@ -175,6 +180,46 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
     const callbackUrl =
       `${config.apiPublicUrl}/webhooks/africastalking/voice` +
       (config.atVoiceCallbackSecret ? `?k=${encodeURIComponent(config.atVoiceCallbackSecret)}` : '');
+
+    // ── DTMF mode: the proven flow. No recordings involved, so it cannot be
+    // taken down by AT's broken recordingUrl. ─────────────────────────────────
+    if (config.voiceMode === 'dtmf') {
+      if (body.dtmfDigits != null && body.dtmfDigits !== '') {
+        const digit = body.dtmfDigits.trim();
+        app.log.info(
+          { at_voice: 'dtmf', digit, caller: body.callerNumber, session: sessionId },
+          'AT voice DTMF captured',
+        );
+        if (digit === '1') {
+          return voiceXml(
+            sayTag(
+              'Great choice! Someone from our team will reach out shortly to schedule your demo. ' +
+                'Thank you, and have a great day.',
+            ),
+          );
+        }
+        if (digit === '2') {
+          return voiceXml(
+            sayTag('No problem at all. We will not contact you again. Goodbye.'),
+          );
+        }
+        return voiceXml(
+          `<GetDigits timeout="15" finishOnKey="#" numDigits="1" callbackUrl="${escapeXmlAttr(callbackUrl)}">` +
+            sayTag('Sorry, I did not catch that. Press 1 to book a demo, or 2 if you are not interested.') +
+            '</GetDigits>',
+        );
+      }
+
+      app.log.info(
+        { at_voice: 'connect', session: sessionId, caller: body.callerNumber, direction: body.direction },
+        'AT voice call connected (dtmf mode)',
+      );
+      return voiceXml(
+        `<GetDigits timeout="20" finishOnKey="#" numDigits="1" callbackUrl="${escapeXmlAttr(callbackUrl)}">` +
+          sayTag(`${GREETING} ${OPENER_DTMF}`) +
+          '</GetDigits>',
+      );
+    }
 
     const session = getSession(sessionId);
 
