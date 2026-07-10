@@ -4,9 +4,12 @@
   "workspaces": [
     "shared",
     "api",
-    "web"
+    "web",
+    "agent"
   ],
   "scripts": {
+    "agent:dev": "npm run dev -w agent",
+    "agent:build": "npm run build -w agent",
     "test": "npm run test --workspaces --if-present && npm test --prefix mobile",
     "test:deep": "powershell -ExecutionPolicy Bypass -File scripts/test-deep.ps1",
     "test:deep:local": "powershell -ExecutionPolicy Bypass -File scripts/test-deep.ps1 -SkipProduction",

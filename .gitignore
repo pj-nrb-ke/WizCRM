@@ -50,6 +50,7 @@ api/uploads/
 # Build
 shared/dist/
 api/dist/
+agent/dist/
 WizCRM-lite.apk
 WizCRM-lite-debug.apk
 WizCRM-production.apk
