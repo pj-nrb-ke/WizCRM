@@ -9,11 +9,17 @@ import { JANE_GREETING, JANE_INSTRUCTIONS } from './personas/jane.js';
  * whole point of putting both on LiveKit is that this is the only worker
  * either of them ever needs.
  *
- * VERIFIED against the installed @livekit/agents / agents-plugin-openai /
- * agents-plugin-silero type definitions (v1.x) before writing a line of
- * this — not guessed from docs. Runtime behaviour is still unverified until
- * it's run against a live LiveKit project (see docs/AI-VOICE-LIVEKIT.md §5
- * step 2: Agents Playground first, phone call last).
+ * VERIFIED against the installed @livekit/agents / agents-plugin-openai type
+ * definitions (v1.x) before writing a line of this — not guessed from docs.
+ *
+ * Runs on OpenAI's Realtime API (gpt-realtime-mini) as a single audio-in/
+ * audio-out model, not a separate STT -> LLM -> TTS chain. The first live
+ * test (recording analysed with ffmpeg silencedetect, not just listened to)
+ * measured six gaps of 6-20 seconds per call — the cost of three sequential,
+ * un-overlapped network round-trips per turn. A single realtime connection
+ * removes that handoff entirely. Cost is comparable, not a step up:
+ * gpt-realtime-mini runs ~$0.06-0.15/min in production versus ~$0.04-0.07/min
+ * blended for the three-call pipeline it replaces.
  */
 
 type PersonaMetadata = { persona?: 'jane' | 'wanjiru' };
@@ -36,18 +42,31 @@ export default defineAgent({
     }
 
     const session = new AgentSession({
-      stt: new openai.STT({ model: 'whisper-1' }),
-      llm: new openai.LLM({ model: 'gpt-4o-mini', temperature: 0.7 }),
-      tts: new openai.TTS({ voice: 'nova' }),
+      llm: new openai.realtime.RealtimeModel({
+        model: 'gpt-realtime-mini',
+        voice: 'sage',
+        // Model-based end-of-turn detection rather than a fixed silence
+        // timer: it can tell "I'm done talking" from "I'm mid-thought" by
+        // meaning, not just a pause length. 'medium' balances not cutting
+        // the caller off against not adding dead air — tune from real calls.
+        turnDetection: { type: 'semantic_vad', eagerness: 'medium' },
+      }),
+      // No separate stt/tts: the realtime model handles audio both ways.
     });
 
     const agent = new Agent({ instructions: JANE_INSTRUCTIONS });
 
     await session.start({ agent, room: ctx.room });
 
-    // The first thing the caller hears — same KDPA-disclosure opener used
-    // in every voice path built today.
-    session.say(JANE_GREETING);
+    // session.say() requires a standalone TTS and throws when there is only
+    // a RealtimeModel — checked against the actual say() implementation, not
+    // assumed. generateReply() goes through the model itself instead. The
+    // greeting carries the KDPA recording/automation disclosure, so it must
+    // be said verbatim, not paraphrased — told to explicitly, not left to
+    // the model's judgement the way a normal reply would be.
+    session.generateReply({
+      instructions: `Say exactly this, word for word, with nothing added or changed: "${JANE_GREETING}"`,
+    });
   },
 });
 
