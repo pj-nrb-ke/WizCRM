@@ -1,24 +1,84 @@
 import type { FastifyInstance } from 'fastify';
 import { config } from '../config.js';
+import {
+  escapeXml,
+  nextReply,
+  transcribeRecordingUrl,
+  type Turn,
+} from '../services/ai/voice-agent.service.js';
 
 /** Wrap inner actions in a valid Africa's Talking Voice XML response. */
 function voiceXml(inner: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<Response>${inner}</Response>`;
 }
 
-// Spelled out phonetically so the TTS reads the acronyms clearly.
-const MENU_PROMPT =
-  'Hello! This is the Wiz A G assistant. We help Kenyan businesses run on Sage Evolution ' +
-  'E R P and Wiz C R M. To book a quick demo with our team, press 1. If you are not ' +
-  'interested, press 2.';
+// Kenya's Data Protection Act requires telling people they are being recorded,
+// and saying who is calling. Both belong in the first breath, not the small print.
+const GREETING =
+  'Hello! This is Jane calling from Wiz A G. I am an automated assistant, and this call is ' +
+  'recorded so we can serve you better.';
+
+const OPENER =
+  'We help Kenyan businesses run on Sage Evolution E R P and Wiz C R M, so your team can track ' +
+  'leads and quotations without the paperwork. Does your business use a C R M today?';
+
+/** Long enough for a considered answer, short enough that nobody rambles into a timeout. */
+const RECORD_ATTRS = 'finishOnKey="#" maxLength="15" trimSilence="true" playBeep="true"';
+
+/** A caller who has said this much has either bought in or bailed out. */
+const MAX_TURNS = 6;
+
+/** Two unusable recordings in a row means the line is bad. Stop wasting their time. */
+const MAX_FAILURES = 2;
+
+const SESSION_TTL_MS = 30 * 60_000;
+
+type Session = { turns: Turn[]; failures: number; lastSeen: number };
 
 /**
- * Africa's Talking Voice IVR spike — AI BDR Phase B (DTMF menu).
+ * In-memory, single-instance, lost on restart — and that is fine. A call lasts a
+ * minute; a deploy drops at most one in flight. Persisting it would buy nothing
+ * and cost a write on every syllable.
+ */
+const sessions = new Map<string, Session>();
+
+function pruneSessions(now: number): void {
+  for (const [id, s] of sessions) {
+    if (now - s.lastSeen > SESSION_TTL_MS) sessions.delete(id);
+  }
+}
+
+function getSession(sessionId: string): Session {
+  const now = Date.now();
+  pruneSessions(now);
+  const existing = sessions.get(sessionId);
+  if (existing) {
+    existing.lastSeen = now;
+    return existing;
+  }
+  const fresh: Session = { turns: [], failures: 0, lastSeen: now };
+  sessions.set(sessionId, fresh);
+  return fresh;
+}
+
+function say(text: string): string {
+  return `<Say voice="woman">${escapeXml(text)}</Say>`;
+}
+
+/** Speak, then listen. AT posts the recording back to us and the loop continues. */
+function sayThenRecord(text: string, callbackUrl: string): string {
+  return `<Record ${RECORD_ATTRS} callbackUrl="${escapeXml(callbackUrl)}">${say(text)}</Record>`;
+}
+
+/**
+ * Africa's Talking Voice — conversational AI BDR (Phase C).
  *
- * Public endpoint: AT POSTs `application/x-www-form-urlencoded` here whenever a call
- * connects, when digits are entered, and when the call ends. Stateless — returns a
- * menu, captures the pressed digit, logs it. No auth token, no DB writes.
- * See docs/AI-BDR-SPEC.md (§7) and docs/AI-BDR-BUILD-01.md.
+ * AT POSTs `application/x-www-form-urlencoded` here when a call connects, each
+ * time a recording finishes, and when the call ends. We transcribe what the
+ * caller said, ask the model what Jane says next, and answer with speech.
+ *
+ * AT holds the phone line open while this handler runs, so nothing here may
+ * hang: every outbound step is time-boxed and every failure path still speaks.
  */
 export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<void> {
   app.post('/webhooks/africastalking/voice', async (request, reply) => {
@@ -33,12 +93,22 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
     const body = (request.body ?? {}) as Record<string, string>;
     reply.type('application/xml');
 
-    // Terminal notification when the call ends — log cost/duration, no action.
+    const sessionId = body.sessionId ?? 'unknown';
+
+    // Terminal notification — log cost/duration and let the session go.
     if (body.isActive === '0') {
+      const s = sessions.get(sessionId);
       app.log.info(
-        { at_voice: 'ended', session: body.sessionId, durationSec: body.durationInSeconds, cost: body.amount },
+        {
+          at_voice: 'ended',
+          session: sessionId,
+          durationSec: body.durationInSeconds,
+          cost: body.amount,
+          turns: s ? s.turns.length : 0,
+        },
         'AT voice call ended',
       );
+      sessions.delete(sessionId);
       return voiceXml('');
     }
 
@@ -46,39 +116,69 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
       `${config.apiPublicUrl}/webhooks/africastalking/voice` +
       (config.atVoiceCallbackSecret ? `?k=${encodeURIComponent(config.atVoiceCallbackSecret)}` : '');
 
-    // Returning from a GetDigits prompt — branch on what the prospect pressed.
-    if (body.dtmfDigits != null && body.dtmfDigits !== '') {
-      const digit = body.dtmfDigits.trim();
-      app.log.info({ at_voice: 'dtmf', digit, caller: body.callerNumber }, 'AT voice DTMF captured');
+    const session = getSession(sessionId);
 
-      if (digit === '1') {
+    // ── The caller has spoken: transcribe, think, reply ──────────────────────
+    if (body.recordingUrl) {
+      const started = Date.now();
+      const heard = await transcribeRecordingUrl(body.recordingUrl);
+      const transcribeMs = Date.now() - started;
+
+      if (!heard) {
+        session.failures += 1;
+        app.log.warn(
+          { at_voice: 'no_speech', session: sessionId, failures: session.failures, transcribeMs },
+          'AT voice recording had no usable speech',
+        );
+        if (session.failures >= MAX_FAILURES) {
+          sessions.delete(sessionId);
+          return voiceXml(
+            say(
+              'I am still having trouble hearing you. A colleague from Wiz A G will call you back. Goodbye.',
+            ),
+          );
+        }
         return voiceXml(
-          '<Say voice="woman">Great choice! Our team will reach out shortly to schedule your demo. ' +
-            'Thank you, and have a great day.</Say>',
+          sayThenRecord('Sorry, I did not catch that. Could you say it once more?', callbackUrl),
         );
       }
-      if (digit === '2') {
-        return voiceXml(
-          '<Say voice="woman">No problem at all. We will not contact you again. Goodbye.</Say>',
-        );
-      }
-      // Unrecognised key — re-prompt once.
-      return voiceXml(
-        `<GetDigits timeout="15" finishOnKey="#" numDigits="1" callbackUrl="${callbackUrl}">` +
-          '<Say voice="woman">Sorry, I did not catch that. Press 1 to book a demo, or 2 if you are not interested.</Say>' +
-          '</GetDigits>',
+
+      session.failures = 0;
+      session.turns.push({ role: 'user', content: heard });
+
+      const thinkStarted = Date.now();
+      const { reply: janeSays, endCall } = await nextReply(session.turns);
+      session.turns.push({ role: 'assistant', content: janeSays });
+
+      app.log.info(
+        {
+          at_voice: 'turn',
+          session: sessionId,
+          caller: body.callerNumber,
+          heard,
+          janeSays,
+          endCall,
+          transcribeMs,
+          thinkMs: Date.now() - thinkStarted,
+          turn: Math.ceil(session.turns.length / 2),
+        },
+        'AT voice turn',
       );
+
+      // Wrap up if the model says we are done, or the caller has given us enough.
+      if (endCall || session.turns.length >= MAX_TURNS * 2) {
+        sessions.delete(sessionId);
+        return voiceXml(say(janeSays));
+      }
+      return voiceXml(sayThenRecord(janeSays, callbackUrl));
     }
 
-    // Initial connect — greet + menu.
+    // ── Initial connect: introduce Jane, disclose recording, then listen ─────
     app.log.info(
-      { at_voice: 'connect', caller: body.callerNumber, direction: body.direction },
+      { at_voice: 'connect', session: sessionId, caller: body.callerNumber, direction: body.direction },
       'AT voice call connected',
     );
-    return voiceXml(
-      `<GetDigits timeout="20" finishOnKey="#" numDigits="1" callbackUrl="${callbackUrl}">` +
-        `<Say voice="woman">${MENU_PROMPT}</Say>` +
-        '</GetDigits>',
-    );
+    session.turns.push({ role: 'assistant', content: `${GREETING} ${OPENER}` });
+    return voiceXml(say(GREETING) + sayThenRecord(OPENER, callbackUrl));
   });
 }
