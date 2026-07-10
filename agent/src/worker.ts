@@ -47,9 +47,13 @@ export default defineAgent({
         voice: 'sage',
         // Model-based end-of-turn detection rather than a fixed silence
         // timer: it can tell "I'm done talking" from "I'm mid-thought" by
-        // meaning, not just a pause length. 'medium' balances not cutting
-        // the caller off against not adding dead air — tune from real calls.
-        turnDetection: { type: 'semantic_vad', eagerness: 'medium' },
+        // meaning, not just a pause length. A real test call showed the
+        // delay growing with utterance length under 'medium' — the model
+        // needed more confidence before committing to "their turn is over"
+        // on longer, more complex speech. 'high' commits to that call sooner,
+        // trading a small risk of jumping in on a mid-thought pause for less
+        // dead air on longer turns — tune again from the next real call.
+        turnDetection: { type: 'semantic_vad', eagerness: 'high' },
       }),
       // No separate stt/tts: the realtime model handles audio both ways.
     });
