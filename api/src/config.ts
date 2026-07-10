@@ -106,6 +106,16 @@ export const config = {
    *           which currently 404 (see docs/africastalking-recording-404.md).
    */
   voiceMode: (process.env.VOICE_MODE ?? 'dtmf') as 'dtmf' | 'convo',
+
+  // ElevenLabs Agents — the streaming voice platform for conversational Jane.
+  // AT's turn-based XML tops out at 3-4s of dead air per turn and its recording
+  // pipeline 404s; ElevenLabs carries the audio itself over SIP/Twilio.
+  elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? '',
+  elevenLabsAgentId: process.env.ELEVENLABS_AGENT_ID ?? '',
+  /** The ElevenLabs phone-number id (SIP trunk or Twilio import), not the E.164 number. */
+  elevenLabsPhoneNumberId: process.env.ELEVENLABS_PHONE_NUMBER_ID ?? '',
+  /** HMAC secret for the post-call webhook. Shown once when the webhook is created. */
+  elevenLabsWebhookSecret: process.env.ELEVENLABS_WEBHOOK_SECRET ?? '',
   /** Log the full Africa's Talking callback payload. Off by default: it carries caller numbers. */
   voiceDebug: process.env.VOICE_DEBUG === '1',
   /**

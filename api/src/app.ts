@@ -17,6 +17,7 @@ import { emailRoutes } from './routes/email.js';
 import { opportunityRoutes } from './routes/opportunities.js';
 import { calendarRoutes } from './routes/calendar.js';
 import { expoRoutes } from './routes/expos.js';
+import { elevenLabsVoiceRoutes } from './routes/elevenlabs-voice.js';
 import { integrationRoutes } from './routes/integrations.js';
 import { quotationRoutes } from './routes/quotations.js';
 import { leadThreadRoutes } from './routes/lead-thread.js';
@@ -106,6 +107,7 @@ export async function buildApp() {
 
   // Africa's Talking Voice IVR (AI BDR spike) — public, AT posts urlencoded here
   await app.register(africasTalkingVoiceRoutes);
+  await app.register(elevenLabsVoiceRoutes);
 
   // Brevo transactional webhooks — no JWT, secured by shared secret header
   app.post('/webhooks/brevo', async (request, reply) => {
