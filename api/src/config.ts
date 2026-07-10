@@ -91,8 +91,10 @@ export const config = {
    * How Jane's speech reaches the caller.
    *   say   — Africa's Talking own TTS. Robotic, but proven to work.
    *   play  — our synthesised voice, served as an 8 kHz mono mp3.
-   *   probe — Play for the greeting only, Say for everything else, so a failing
-   *           <Play> costs one silent line instead of the whole call.
+   *   probe — Play for the greeting, Say for the rest. NOT a safe fallback: a
+   *           <Play> that fails to decode aborts the remaining actions in the
+   *           same response, so the <Say> after it never speaks either. Useful
+   *           only to answer "does this audio format play at all?".
    * Defaults to the safe option: a robotic Jane beats a silent one.
    */
   voiceTts: (process.env.VOICE_TTS ?? 'say') as 'say' | 'play' | 'probe',
