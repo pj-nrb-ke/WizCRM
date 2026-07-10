@@ -22,6 +22,54 @@ export const TTS_VOICE = 'nova';
 const TTS_MODEL = 'tts-1';
 const TTS_TIMEOUT_MS = 8000;
 
+/** OpenAI returns raw PCM at this rate; the phone network speaks 8 kHz. */
+const OPENAI_PCM_RATE = 24000;
+export const TELEPHONY_RATE = 8000;
+const DECIMATION = OPENAI_PCM_RATE / TELEPHONY_RATE; // 3
+
+/**
+ * Drop 24 kHz mono PCM to 8 kHz by averaging each group of three samples.
+ *
+ * The averaging is a crude low-pass filter. Plain decimation would alias the
+ * 4–12 kHz band down into the speech range and make Jane sound gritty; three-tap
+ * averaging costs nothing and removes most of it. Speech at 8 kHz is what every
+ * telephone in the world already sounds like, so nothing is lost.
+ */
+export function downsampleTo8k(pcm: Buffer): Buffer {
+  const inSamples = Math.floor(pcm.length / 2);
+  const outSamples = Math.floor(inSamples / DECIMATION);
+  const out = Buffer.alloc(outSamples * 2);
+  for (let i = 0; i < outSamples; i++) {
+    const base = i * DECIMATION;
+    const sum =
+      pcm.readInt16LE(base * 2) +
+      pcm.readInt16LE((base + 1) * 2) +
+      pcm.readInt16LE((base + 2) * 2);
+    out.writeInt16LE(Math.round(sum / DECIMATION), i * 2);
+  }
+  return out;
+}
+
+/** Wrap 16-bit mono PCM in a canonical 44-byte WAV header. */
+export function pcmToWav(pcm: Buffer, sampleRate = TELEPHONY_RATE): Buffer {
+  const header = Buffer.alloc(44);
+  const byteRate = sampleRate * 2; // mono, 16-bit
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + pcm.length, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16); // PCM chunk size
+  header.writeUInt16LE(1, 20); // format: PCM
+  header.writeUInt16LE(1, 22); // channels: mono
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(2, 32); // block align
+  header.writeUInt16LE(16, 34); // bits per sample
+  header.write('data', 36);
+  header.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([header, pcm]);
+}
+
 const SYSTEM_PROMPT = `You are Jane, a warm and direct sales representative for WizAG, a Kenyan company in Nairobi.
 
 WizAG sells:
@@ -107,13 +155,16 @@ export async function renderSpeech(text: string): Promise<string | null> {
   if (!client) return null;
 
   try {
+    // Raw PCM, not mp3: Africa's Talking fetched our 24 kHz mp3 and played
+    // silence. We resample to 8 kHz mono WAV ourselves, which is what the
+    // phone network actually carries and what every telephony player accepts.
     const res = await client.audio.speech.create(
-      { model: TTS_MODEL, voice: TTS_VOICE, input: text, response_format: 'mp3' },
+      { model: TTS_MODEL, voice: TTS_VOICE, input: text, response_format: 'pcm' },
       { timeout: TTS_TIMEOUT_MS },
     );
-    const audio = Buffer.from(await res.arrayBuffer());
-    if (audio.byteLength < 256) return null;
-    putAudio(id, audio);
+    const pcm24k = Buffer.from(await res.arrayBuffer());
+    if (pcm24k.byteLength < 512) return null;
+    putAudio(id, pcmToWav(downsampleTo8k(pcm24k)));
     return id;
   } catch {
     return null;
