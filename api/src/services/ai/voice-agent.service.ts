@@ -63,18 +63,16 @@ export function downsampleTo8k(pcm: Buffer): Buffer {
  */
 export function encodeTelephonyMp3(pcm24k: Buffer): Promise<Buffer | null> {
   return new Promise((resolve) => {
+    // These exact arguments produce the only file Africa's Talking has ever
+    // played. 64 kbps and a soxr band-limit filter both made it fall silent
+    // again, so its decoder is narrower than the mp3 spec. Change nothing here
+    // without a live call to prove it, and change one thing at a time.
     const ff = spawn('ffmpeg', [
       '-hide_banner', '-loglevel', 'error',
       '-f', 's16le', '-ar', String(OPENAI_PCM_RATE), '-ac', '1', '-i', 'pipe:0',
-      // Band-limit to the telephone passband *before* resampling. Content above
-      // 4 kHz cannot survive an 8 kHz sample rate; left in, it folds back over
-      // the speech as the crackle the caller hears. soxr resamples cleanly.
-      '-af', 'highpass=f=90,lowpass=f=3400,aresample=resampler=soxr:precision=28',
       '-ar', String(TELEPHONY_RATE), '-ac', '1',
-      // 64k, not 32k: at 8 kHz mono this is generous, and mp3 artefacts at low
-      // bitrates are exactly the gritty edge we are chasing. The file is ~50 KB.
-      // Constant bitrate — some telephony decoders will not seek a VBR header.
-      '-b:a', '64k', '-write_xing', '0',
+      // Constant bitrate: some telephony decoders will not seek a VBR header.
+      '-b:a', '32k', '-write_xing', '0',
       '-f', 'mp3', 'pipe:1',
     ]);
 

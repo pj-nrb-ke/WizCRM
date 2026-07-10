@@ -98,6 +98,14 @@ export const config = {
    * Defaults to the safe option: a robotic Jane beats a silent one.
    */
   voiceTts: (process.env.VOICE_TTS ?? 'say') as 'say' | 'play' | 'probe',
+  /**
+   * Call flow.
+   *   dtmf  — press-1-to-book menu. Needs no recordings, so it works while
+   *           AT's recordingUrl is broken. The proven default.
+   *   convo — conversational Jane. Requires AT to serve call recordings,
+   *           which currently 404 (see docs/africastalking-recording-404.md).
+   */
+  voiceMode: (process.env.VOICE_MODE ?? 'dtmf') as 'dtmf' | 'convo',
   /** Log the full Africa's Talking callback payload. Off by default: it carries caller numbers. */
   voiceDebug: process.env.VOICE_DEBUG === '1',
   /**
