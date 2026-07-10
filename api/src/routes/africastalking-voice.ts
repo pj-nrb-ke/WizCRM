@@ -78,13 +78,19 @@ function getSession(sessionId: string): Session {
 async function say(text: string): Promise<string> {
   const id = await renderSpeech(text);
   if (!id) return `<Say voice="woman">${escapeXml(text)}</Say>`;
-  return `<Play url="${escapeXmlAttr(`${config.apiPublicUrl}/voice/audio/${id}.mp3`)}"/>`;
+  return `<Play url="${escapeXmlAttr(`${config.apiPublicUrl}/voice/audio/${id}.wav`)}"/>`;
 }
 
-/** Speak, then listen. AT posts the recording back to us and the loop continues. */
+/**
+ * Speak, then listen.
+ *
+ * The prompt is a *sibling* of <Record>, not a child. Nesting <Play> inside
+ * <Record> silently did nothing — AT never even fetched the audio — whereas a
+ * nested <Say> works. Emitting them in sequence sidesteps the question.
+ */
 async function sayThenRecord(text: string, callbackUrl: string): Promise<string> {
   const speech = await say(text);
-  return `<Record ${RECORD_ATTRS} callbackUrl="${escapeXmlAttr(callbackUrl)}">${speech}</Record>`;
+  return `${speech}<Record ${RECORD_ATTRS} callbackUrl="${escapeXmlAttr(callbackUrl)}"/>`;
 }
 
 /**
@@ -210,12 +216,14 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
    * no credentials. The id is a hash of the text, so it reveals nothing and
    * guessing one yields, at worst, a sentence about C R M software.
    */
-  app.get('/voice/audio/:id.mp3', async (request, reply) => {
+  app.get('/voice/audio/:id.wav', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const audio = getAudio(id.replace(/\.mp3$/, ''));
+    const audio = getAudio(id.replace(/\.wav$/, ''));
     if (!audio) return reply.status(404).send({ error: 'Not found' });
     return reply
-      .type('audio/mpeg')
+      .type('audio/wav')
+      .header('Content-Length', String(audio.byteLength))
+      .header('Accept-Ranges', 'bytes')
       .header('Cache-Control', 'public, max-age=600')
       .send(audio);
   });
