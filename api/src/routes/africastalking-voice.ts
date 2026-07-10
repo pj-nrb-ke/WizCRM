@@ -99,13 +99,18 @@ async function say(text: string, isGreeting = false): Promise<string> {
 /**
  * Speak, then listen.
  *
- * The prompt is a *sibling* of <Record>, not a child. Nesting <Play> inside
- * <Record> silently did nothing — AT never even fetched the audio — whereas a
- * nested <Say> works. Emitting them in sequence sidesteps the question.
+ * The prompt MUST be nested inside <Record>. A <Record> with children is a
+ * *partial* recording: it plays the prompt, captures the answer, and POSTs a
+ * recordingUrl to callbackUrl. A childless <Record> is a *terminal* recording —
+ * it records the rest of the call and posts nothing, so the conversation dies
+ * with the caller talking into the void.
+ *
+ * Nesting was never the reason <Play> failed; the audio format was. AT aborted
+ * on the first unplayable file and so never fetched the nested one.
  */
 async function sayThenRecord(text: string, callbackUrl: string): Promise<string> {
   const speech = await say(text);
-  return `${speech}<Record ${RECORD_ATTRS} callbackUrl="${escapeXmlAttr(callbackUrl)}"/>`;
+  return `<Record ${RECORD_ATTRS} callbackUrl="${escapeXmlAttr(callbackUrl)}">${speech}</Record>`;
 }
 
 /**
