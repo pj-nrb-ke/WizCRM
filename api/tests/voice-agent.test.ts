@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escapeXml, extensionFor } from '../src/services/ai/voice-agent.service.js';
+import { escapeXml, escapeXmlAttr, extensionFor } from '../src/services/ai/voice-agent.service.js';
 
 describe('escapeXml', () => {
   it('escapes an ampersand, which would otherwise break the whole response', () => {
@@ -11,8 +11,8 @@ describe('escapeXml', () => {
     expect(escapeXml('<Hangup/>')).toBe('&lt;Hangup/&gt;');
   });
 
-  it('escapes quotes and apostrophes', () => {
-    expect(escapeXml(`it's "fine"`)).toBe('it&apos;s &quot;fine&quot;');
+  it('leaves apostrophes alone so TTS never reads "&apos;" aloud inside "can\'t"', () => {
+    expect(escapeXml(`I can't provide pricing`)).toBe(`I can't provide pricing`);
   });
 
   it('leaves ordinary speech untouched', () => {
@@ -22,6 +22,16 @@ describe('escapeXml', () => {
 
   it('escapes every occurrence, not just the first', () => {
     expect(escapeXml('a & b & c')).toBe('a &amp; b &amp; c');
+  });
+});
+
+describe('escapeXmlAttr', () => {
+  it('escapes quotes, which would otherwise terminate the attribute early', () => {
+    expect(escapeXmlAttr(`https://x/y?a="1"`)).toBe('https://x/y?a=&quot;1&quot;');
+  });
+
+  it('still escapes the markup characters', () => {
+    expect(escapeXmlAttr('a&b<c')).toBe('a&amp;b&lt;c');
   });
 });
 
