@@ -164,13 +164,32 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
     // ── The caller has spoken: transcribe, think, reply ──────────────────────
     if (body.recordingUrl) {
       const started = Date.now();
-      const heard = await transcribeRecordingUrl(body.recordingUrl);
+      let result = await transcribeRecordingUrl(body.recordingUrl);
+
+      // AT hands us the URL the moment it stops recording; the file itself can
+      // take a beat to land. One short retry costs less than losing the turn.
+      if (result.reason === 'http_error' || result.reason === 'too_small') {
+        await new Promise((r) => setTimeout(r, 700));
+        result = await transcribeRecordingUrl(body.recordingUrl);
+      }
+      const heard = result.text;
       const transcribeMs = Date.now() - started;
 
       if (!heard) {
         session.failures += 1;
         app.log.warn(
-          { at_voice: 'no_speech', session: sessionId, failures: session.failures, transcribeMs },
+          {
+            at_voice: 'no_speech',
+            session: sessionId,
+            failures: session.failures,
+            transcribeMs,
+            reason: result.reason,
+            status: result.status,
+            bytes: result.bytes,
+            contentType: result.contentType,
+            detail: result.detail,
+            recordingUrl: body.recordingUrl,
+          },
           'AT voice recording had no usable speech',
         );
         if (session.failures >= MAX_FAILURES) {
