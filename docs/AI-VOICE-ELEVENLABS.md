@@ -1,6 +1,16 @@
 # Conversational Jane on ElevenLabs Agents
 
-Why we moved: Africa's Talking Voice XML is turn-based (3–4 s of dead air per
+> **SUPERSEDED (2026-07-10).** PJ decided to run both Jane and Wanjiru (VSM)
+> on **LiveKit** instead — see `docs/AI-VOICE-LIVEKIT.md` for the current
+> plan. The code below (PR #41: `elevenlabs.service.ts`,
+> `elevenlabs-voice.ts`) is left deployed and dormant (`VOICE_MODE=dtmf` is
+> what's actually live in prod) rather than deleted — it's a working
+> reference for the webhook-signature and lead-matching pattern the LiveKit
+> webhook reuses. Kept for history/reference; do not build further against
+> this doc.
+
+Why we moved (from AT to ElevenLabs, the first pivot): Africa's Talking
+Voice XML is turn-based (3–4 s of dead air per
 turn, no interrupting the agent), and its recording retrieval 404s on an
 internal host (`docs/africastalking-recording-404.md`), so the agent can never
 hear the caller. ElevenLabs Agents streams both directions itself — sub-second
