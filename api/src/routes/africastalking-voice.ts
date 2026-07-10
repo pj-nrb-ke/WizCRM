@@ -4,9 +4,11 @@ import {
   escapeXml,
   escapeXmlAttr,
   nextReply,
+  renderSpeech,
   transcribeRecordingUrl,
   type Turn,
 } from '../services/ai/voice-agent.service.js';
+import { getAudio } from '../services/ai/voice-audio.store.js';
 
 /** Wrap inner actions in a valid Africa's Talking Voice XML response. */
 function voiceXml(inner: string): string {
@@ -16,15 +18,21 @@ function voiceXml(inner: string): string {
 // Kenya's Data Protection Act requires telling people they are being recorded,
 // and saying who is calling. Both belong in the first breath, not the small print.
 const GREETING =
-  'Hello! This is Jane calling from Wiz A G. I am an automated assistant, and this call is ' +
-  'recorded so we can serve you better.';
+  "Hi there, this is Jane from Wiz A G. Just so you know, I'm an automated assistant and this " +
+  "call is recorded. I'll keep it short.";
 
 const OPENER =
-  'We help Kenyan businesses run on Sage Evolution E R P and Wiz C R M, so your team can track ' +
-  'leads and quotations without the paperwork. Does your business use a C R M today?';
+  "We help Kenyan businesses run on Sage Evolution E R P and Wiz C R M, so your team isn't " +
+  'chasing leads and quotations on paper. Tell me, are you using a C R M at the moment?';
 
-/** Long enough for a considered answer, short enough that nobody rambles into a timeout. */
-const RECORD_ATTRS = 'finishOnKey="#" maxLength="15" trimSilence="true" playBeep="true"';
+/**
+ * No beep — a person does not chirp at you before listening.
+ * `timeout` is the silence AT waits through before deciding you have finished;
+ * the default left a long dead pause after every sentence. Three seconds is
+ * about the length of a natural thinking pause, and no longer.
+ */
+const RECORD_ATTRS =
+  'finishOnKey="#" maxLength="10" timeout="3" trimSilence="true" playBeep="false"';
 
 /** A caller who has said this much has either bought in or bailed out. */
 const MAX_TURNS = 6;
@@ -62,13 +70,21 @@ function getSession(sessionId: string): Session {
   return fresh;
 }
 
-function say(text: string): string {
-  return `<Say voice="woman">${escapeXml(text)}</Say>`;
+/**
+ * Speak a line. Prefers our own synthesised voice, played back by URL; falls
+ * back to AT's built-in <Say> if synthesis is unavailable. A robotic Jane beats
+ * a silent one.
+ */
+async function say(text: string): Promise<string> {
+  const id = await renderSpeech(text);
+  if (!id) return `<Say voice="woman">${escapeXml(text)}</Say>`;
+  return `<Play url="${escapeXmlAttr(`${config.apiPublicUrl}/voice/audio/${id}.mp3`)}"/>`;
 }
 
 /** Speak, then listen. AT posts the recording back to us and the loop continues. */
-function sayThenRecord(text: string, callbackUrl: string): string {
-  return `<Record ${RECORD_ATTRS} callbackUrl="${escapeXmlAttr(callbackUrl)}">${say(text)}</Record>`;
+async function sayThenRecord(text: string, callbackUrl: string): Promise<string> {
+  const speech = await say(text);
+  return `<Record ${RECORD_ATTRS} callbackUrl="${escapeXmlAttr(callbackUrl)}">${speech}</Record>`;
 }
 
 /**
@@ -134,13 +150,13 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
         if (session.failures >= MAX_FAILURES) {
           sessions.delete(sessionId);
           return voiceXml(
-            say(
-              'I am still having trouble hearing you. A colleague from Wiz A G will call you back. Goodbye.',
+            await say(
+              "Sorry, I'm still not hearing you clearly. A colleague from Wiz A G will call you back. Goodbye.",
             ),
           );
         }
         return voiceXml(
-          sayThenRecord('Sorry, I did not catch that. Could you say it once more?', callbackUrl),
+          await sayThenRecord("Sorry, I didn't catch that. Could you say it once more?", callbackUrl),
         );
       }
 
@@ -169,9 +185,9 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
       // Wrap up if the model says we are done, or the caller has given us enough.
       if (endCall || session.turns.length >= MAX_TURNS * 2) {
         sessions.delete(sessionId);
-        return voiceXml(say(janeSays));
+        return voiceXml(await say(janeSays));
       }
-      return voiceXml(sayThenRecord(janeSays, callbackUrl));
+      return voiceXml(await sayThenRecord(janeSays, callbackUrl));
     }
 
     // ── Initial connect: introduce Jane, disclose recording, then listen ─────
@@ -180,6 +196,27 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
       'AT voice call connected',
     );
     session.turns.push({ role: 'assistant', content: `${GREETING} ${OPENER}` });
-    return voiceXml(say(GREETING) + sayThenRecord(OPENER, callbackUrl));
+    const [greeting, opener] = await Promise.all([
+      say(GREETING),
+      sayThenRecord(OPENER, callbackUrl),
+    ]);
+    return voiceXml(greeting + opener);
+  });
+
+  /**
+   * Serves a line of Jane's synthesised speech to Africa's Talking.
+   *
+   * Public and unauthenticated because AT fetches it from its own servers with
+   * no credentials. The id is a hash of the text, so it reveals nothing and
+   * guessing one yields, at worst, a sentence about C R M software.
+   */
+  app.get('/voice/audio/:id.mp3', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const audio = getAudio(id.replace(/\.mp3$/, ''));
+    if (!audio) return reply.status(404).send({ error: 'Not found' });
+    return reply
+      .type('audio/mpeg')
+      .header('Cache-Control', 'public, max-age=600')
+      .send(audio);
   });
 }

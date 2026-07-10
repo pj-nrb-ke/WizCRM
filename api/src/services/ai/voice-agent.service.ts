@@ -1,4 +1,5 @@
 import { chatJson, createOpenAIClient, transcribeAudio } from './openai.provider.js';
+import { audioIdFor, hasAudio, putAudio } from './voice-audio.store.js';
 
 /**
  * "Jane", the WizAG voice agent — AI BDR Phase C.
@@ -14,6 +15,13 @@ export type Turn = { role: 'assistant' | 'user'; content: string };
 /** AT waits on our response. Past this, it gives up and the caller hears silence. */
 const RECORDING_FETCH_TIMEOUT_MS = 8000;
 
+/** Warm and unhurried. AT's own <Say> engine is the robot we are replacing. */
+export const TTS_VOICE = 'nova';
+
+/** tts-1, not tts-1-hd: on a phone line the extra fidelity is inaudible and costs a second. */
+const TTS_MODEL = 'tts-1';
+const TTS_TIMEOUT_MS = 8000;
+
 const SYSTEM_PROMPT = `You are Jane, a warm and direct sales representative for WizAG, a Kenyan company in Nairobi.
 
 WizAG sells:
@@ -22,7 +30,9 @@ WizAG sells:
 
 You are on a live phone call with a business person in Kenya. Rules:
 - Speak like a person on a phone, not a brochure. One or two short sentences, then ONE question. Never monologue.
-- Your words are read aloud by a text-to-speech engine. No emoji, no bullet points, no markdown, no abbreviations it would mangle. Write "ERP" as "E R P" and "CRM" as "C R M".
+- Sound human. Use contractions — "you're", "I'd", "that's". Open by acknowledging what they just said, briefly and specifically, before you say anything else. "Right, so everything's in spreadsheets." Vary how you phrase things; never reuse the same opener twice in one call.
+- Do not narrate yourself, list features, or say "As an AI". No filler like "Certainly!" or "Great question".
+- Your words are read aloud by a text-to-speech engine. No emoji, no bullet points, no markdown, no asterisks, no numbered lists. Space out acronyms so they are read as letters: write "C R M", "E R P", "Wiz A G".
 - Never invent prices, discounts, customer names, or features. If asked something you do not know, say a colleague will confirm.
 - You cannot book anything, send anything, or look anything up. You have no calendar, no email, no records. Never say "I will schedule", "I will send you", or "let me check". Never ask for an email address. What you CAN do is note what the person said so a WizAG colleague can call them back.
 - If they sound interested, ask what day and time would suit a short demo. Once they name one, repeat it back, tell them a WizAG colleague will call to confirm it, thank them, and finish.
@@ -80,6 +90,36 @@ export function extensionFor(url: string): string {
   return /^[a-z0-9]{2,4}$/.test(ext) ? ext : 'wav';
 }
 
+/**
+ * Render a line of Jane's speech and return the id it is cached under, so the
+ * caller can build a <Play> URL. Returns null when synthesis is unavailable or
+ * slow — the route then falls back to Africa's Talking' own <Say> engine, which
+ * sounds worse but keeps the call alive. Never let the voice kill the call.
+ *
+ * Identical text is only ever synthesised once: the greeting costs a second on
+ * the first call of the day and nothing on every call after it.
+ */
+export async function renderSpeech(text: string): Promise<string | null> {
+  const id = audioIdFor(text, TTS_VOICE);
+  if (hasAudio(id)) return id;
+
+  const client = createOpenAIClient();
+  if (!client) return null;
+
+  try {
+    const res = await client.audio.speech.create(
+      { model: TTS_MODEL, voice: TTS_VOICE, input: text, response_format: 'mp3' },
+      { timeout: TTS_TIMEOUT_MS },
+    );
+    const audio = Buffer.from(await res.arrayBuffer());
+    if (audio.byteLength < 256) return null;
+    putAudio(id, audio);
+    return id;
+  } catch {
+    return null;
+  }
+}
+
 export async function nextReply(history: Turn[]): Promise<AgentReply> {
   const client = createOpenAIClient();
   if (!client) return FALLBACK_REPLY;
@@ -93,6 +133,8 @@ export async function nextReply(history: Turn[]): Promise<AgentReply> {
       client,
       SYSTEM_PROMPT,
       `Conversation so far:\n\n${transcript}\n\nWhat does Jane say next?`,
+      // Two sentences fit in far less than this; the cap is a latency guard, not a style one.
+      { maxTokens: 140, temperature: 0.7 },
     );
     const reply = typeof out.reply === 'string' ? out.reply.trim() : '';
     if (!reply) return FALLBACK_REPLY;
