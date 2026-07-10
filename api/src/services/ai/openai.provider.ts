@@ -14,6 +14,7 @@ export async function chatJson<T>(
   client: OpenAI,
   system: string,
   user: string,
+  opts: { maxTokens?: number; temperature?: number } = {},
 ): Promise<T> {
   const res = await client.chat.completions.create({
     model: config.openaiModel,
@@ -22,7 +23,10 @@ export async function chatJson<T>(
       { role: 'user', content: user },
     ],
     response_format: { type: 'json_object' },
-    temperature: 0.3,
+    temperature: opts.temperature ?? 0.3,
+    // On a live phone call the caller is listening to silence while we think,
+    // so a caller-facing prompt caps its own reply length.
+    ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
   });
   const text = res.choices[0]?.message?.content;
   if (!text) throw new Error('Empty LLM response');
