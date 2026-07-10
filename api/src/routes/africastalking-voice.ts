@@ -75,10 +75,25 @@ function getSession(sessionId: string): Session {
  * back to AT's built-in <Say> if synthesis is unavailable. A robotic Jane beats
  * a silent one.
  */
-async function say(text: string): Promise<string> {
+function sayTag(text: string): string {
+  return `<Say voice="woman">${escapeXml(text)}</Say>`;
+}
+
+/**
+ * Speak a line, either through our synthesised voice or AT's own.
+ *
+ * `isGreeting` exists for VOICE_TTS=probe: the greeting is the one line we can
+ * afford to lose while testing whether <Play> works on this account, because
+ * everything after it still speaks through <Say> and the call survives.
+ */
+async function say(text: string, isGreeting = false): Promise<string> {
+  const mode = config.voiceTts;
+  const usePlay = mode === 'play' || (mode === 'probe' && isGreeting);
+  if (!usePlay) return sayTag(text);
+
   const id = await renderSpeech(text);
-  if (!id) return `<Say voice="woman">${escapeXml(text)}</Say>`;
-  return `<Play url="${escapeXmlAttr(`${config.apiPublicUrl}/voice/audio/${id}.wav`)}"/>`;
+  if (!id) return sayTag(text);
+  return `<Play url="${escapeXmlAttr(`${config.apiPublicUrl}/voice/audio/${id}.mp3`)}"/>`;
 }
 
 /**
@@ -203,7 +218,7 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
     );
     session.turns.push({ role: 'assistant', content: `${GREETING} ${OPENER}` });
     const [greeting, opener] = await Promise.all([
-      say(GREETING),
+      say(GREETING, true),
       sayThenRecord(OPENER, callbackUrl),
     ]);
     return voiceXml(greeting + opener);
@@ -216,14 +231,15 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
    * no credentials. The id is a hash of the text, so it reveals nothing and
    * guessing one yields, at worst, a sentence about C R M software.
    */
-  app.get('/voice/audio/:id.wav', async (request, reply) => {
+  app.get('/voice/audio/:id.mp3', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const audio = getAudio(id.replace(/\.wav$/, ''));
+    const audio = getAudio(id.replace(/\.mp3$/, ''));
     if (!audio) return reply.status(404).send({ error: 'Not found' });
+    // No Accept-Ranges: we do not honour Range requests, and advertising support
+    // we do not have invites a player to ask for a 206 and get a 200 instead.
     return reply
-      .type('audio/wav')
+      .type('audio/mpeg')
       .header('Content-Length', String(audio.byteLength))
-      .header('Accept-Ranges', 'bytes')
       .header('Cache-Control', 'public, max-age=600')
       .send(audio);
   });

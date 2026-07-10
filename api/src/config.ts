@@ -87,6 +87,15 @@ export const config = {
   atVoiceEnabled: Boolean(process.env.AT_API_KEY && process.env.AT_USERNAME && process.env.AT_VOICE_NUMBER),
   /** Optional shared secret; if set, the voice callback requires ?k=<secret>. */
   atVoiceCallbackSecret: process.env.AT_VOICE_CALLBACK_SECRET ?? '',
+  /**
+   * How Jane's speech reaches the caller.
+   *   say   — Africa's Talking own TTS. Robotic, but proven to work.
+   *   play  — our synthesised voice, served as an 8 kHz mono mp3.
+   *   probe — Play for the greeting only, Say for everything else, so a failing
+   *           <Play> costs one silent line instead of the whole call.
+   * Defaults to the safe option: a robotic Jane beats a silent one.
+   */
+  voiceTts: (process.env.VOICE_TTS ?? 'say') as 'say' | 'play' | 'probe',
   /** Public base URL of THIS api, used to build the AT voice callback URL. */
   apiPublicUrl: process.env.API_PUBLIC_URL ?? 'https://api.wizcrm.app',
 };

@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { chatJson, createOpenAIClient, transcribeAudio } from './openai.provider.js';
 import { audioIdFor, hasAudio, putAudio } from './voice-audio.store.js';
 
@@ -48,6 +49,55 @@ export function downsampleTo8k(pcm: Buffer): Buffer {
     out.writeInt16LE(Math.round(sum / DECIMATION), i * 2);
   }
   return out;
+}
+
+/**
+ * Encode 24 kHz mono PCM as an 8 kHz mono MP3 — the format Africa's Talking
+ * uses for its own call recordings, and the only one we have reason to believe
+ * its player accepts. It fetched both a 24 kHz mp3 and an 8 kHz WAV happily and
+ * played silence for each.
+ *
+ * Resolves null when ffmpeg is missing or misbehaves, which makes the caller
+ * fall back to <Say>. Never let the voice kill the call.
+ */
+export function encodeTelephonyMp3(pcm24k: Buffer): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    const ff = spawn('ffmpeg', [
+      '-hide_banner', '-loglevel', 'error',
+      '-f', 's16le', '-ar', String(OPENAI_PCM_RATE), '-ac', '1', '-i', 'pipe:0',
+      '-ar', String(TELEPHONY_RATE), '-ac', '1',
+      // Constant bitrate: some telephony decoders will not seek a VBR header.
+      '-b:a', '32k', '-write_xing', '0',
+      '-f', 'mp3', 'pipe:1',
+    ]);
+
+    const chunks: Buffer[] = [];
+    let settled = false;
+    const done = (value: Buffer | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    const timer = setTimeout(() => {
+      ff.kill('SIGKILL');
+      done(null);
+    }, TTS_TIMEOUT_MS);
+
+    ff.stdout.on('data', (c: Buffer) => chunks.push(c));
+    ff.on('error', () => {
+      clearTimeout(timer);
+      done(null);
+    });
+    ff.on('close', (code) => {
+      clearTimeout(timer);
+      const out = Buffer.concat(chunks);
+      done(code === 0 && out.byteLength > 256 ? out : null);
+    });
+
+    ff.stdin.on('error', () => undefined); // ffmpeg died early; 'close' handles it
+    ff.stdin.end(pcm24k);
+  });
 }
 
 /** Wrap 16-bit mono PCM in a canonical 44-byte WAV header. */
@@ -164,7 +214,10 @@ export async function renderSpeech(text: string): Promise<string | null> {
     );
     const pcm24k = Buffer.from(await res.arrayBuffer());
     if (pcm24k.byteLength < 512) return null;
-    putAudio(id, pcmToWav(downsampleTo8k(pcm24k)));
+
+    const mp3 = await encodeTelephonyMp3(pcm24k);
+    if (!mp3) return null;
+    putAudio(id, mp3);
     return id;
   } catch {
     return null;
