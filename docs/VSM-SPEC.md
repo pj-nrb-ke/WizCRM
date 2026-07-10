@@ -276,19 +276,46 @@ being decoded by a phone network's finicky player — a standard `<audio>`
 element handles any format we hand it. Reuses the ElevenLabs voice once it's
 verified for Jane, so no separate voice pipeline gets built.
 
-**The one real engineering question: which real-time audio SDK.** Not
-"should we build WebRTC from scratch" — nobody should — but which proven,
-embeddable SDK carries the actual audio:
+**The real-time audio SDK: LiveKit** (PJ's research, and it upgrades the
+earlier plan rather than just confirming it). Open source, Apache 2.0,
+self-hostable — and LiveKit also runs its own hosted offering (**LiveKit
+Cloud**) on the *identical* server, API and SDK as the self-hosted version.
+That means "start hosted, own it later" is **one integration, not two** —
+switching from Cloud to a self-hosted server on the VPS is a URL change,
+not a rewrite. (Free "Build" tier confirmed: 5,000 WebRTC minutes + 1,000 AI
+Agent minutes/month, no card required — comfortably covers building and
+testing the Meeting Room.)
 
-| Option | Trade-off |
-|---|---|
-| **Daily.co (hosted)** — recommended to *start* | Embeds in an afternoon, zero ops, generous free tier, pay-per-participant-minute as you grow. Fastest way to prove the concept works before committing to running media infrastructure. |
-| **LiveKit (self-hosted)** | Open source, no per-minute fee, keeps the last piece of the stack in-house too — consistent with keeping infra local rather than layering on vendors. Real ops work: TURN/STUN, open UDP ports on the VPS, a systemd service to run and watch. Worth migrating to *after* the Meeting Room has proven itself and usage justifies owning the media layer. |
+The bigger win is **LiveKit Agents** — a framework built specifically for
+"an AI joins a real-time room and talks," which is exactly Stage B/C. It
+streams STT → LLM → TTS as one pipeline and ships its own turn-detection
+model that predicts when someone has *actually* finished speaking (not just
+gone silent), plus built-in barge-in: if someone interrupts Wanjiru mid-
+sentence, her speech is cancelled and the turn rolled back automatically.
+That is precisely the hand-built turn-taking engineering this spec would
+otherwise have required, solved by the platform instead of by us — the
+right lesson to take from today's telephony debugging, not the wrong one.
 
-Recommendation: **ship on Daily.co first, revisit self-hosting once the room
-is in daily use.** Validate the idea cheaply before taking on new server
-infrastructure — the same "prove it, then own it" instinct behind starting
-Jane in `draft` mode.
+**Options considered and set aside** (full comparison run by PJ):
+OpenVidu (built on LiveKit's own protocol, adds a meetings/webinar
+management layer we don't need for internal scrums); Jitsi (mature for
+general conferencing, not built with an AI-participant pipeline in mind);
+mediasoup (the toolkit you'd use to *build* a LiveKit — no Agents
+framework, no turn-detection, real engineering burden for no gain here);
+Janus (solid, SIP-capable, but no Agents-equivalent, and LiveKit already
+covers SIP).
+
+Recommendation: **build against LiveKit's SDK from day one, running on
+LiveKit Cloud's free tier**, and move to self-hosted LiveKit on the VPS
+later purely as an infra decision (no code change) once usage justifies
+owning the media layer.
+
+**Worth noting, not acting on:** LiveKit also bridges SIP, meaning Jane's
+phone-call path (currently ElevenLabs + an AT SIP trunk) and Wanjiru's
+Meeting Room could eventually sit on one real-time backbone instead of two.
+Not a reason to touch the ElevenLabs work now — it's deployed and just
+waiting on PJ's account — but worth having in mind as a future
+consolidation rather than running two voice platforms indefinitely.
 
 **Absence handling (§3, §4.6):** a `absenceReason` chat message posted
 against the scrum's calendar event (or in the room itself, day-of) — VSM
@@ -380,7 +407,8 @@ backup/watchdog) — no new runtime dependency; every run idempotent per
 | Admin-only settings pattern | existing admin-guarded routes/nav (§4.2b reuses this) |
 | Scrum booking (Phase 4, §4.9) | the calendar module shipped tonight — recurring events, attendees, RSVP, conflict detection — the scrum is just a `SCRUM`-tagged recurring `CalendarEvent` |
 | Two-way chat pattern (Phase 4, §4.9) | the same TaskUpdate thread mechanism from Phase 2, applied to a live multi-party room instead of a single task |
-| Streaming voice (Phase 4 Stage C, §4.9) | the ElevenLabs Agents integration being verified for Jane right now — same platform, once proven on a phone call, played through a normal browser `<audio>` element instead of AT's telephony player |
+| Streaming voice (Phase 4 Stage C, §4.9) | the ElevenLabs Agents integration being verified for Jane right now, played through a normal browser `<audio>` element — or LiveKit Agents' own TTS integration, once Phase 4 is scoped and both are compared |
+| Real-time media (Phase 4, §4.9) | LiveKit — self-hosted server + LiveKit Cloud (hosted), and LiveKit Agents for the STT→LLM→TTS pipeline with turn-detection and barge-in built in |
 
 ## 8. Phasing
 
@@ -406,13 +434,17 @@ touches, `auto` mode unlock, VSM Performance page (§4.2a), optional WizFlow
 hand-off for non-sales tasks (deferred integration per earlier decision).
 
 **Phase 4 — The Meeting Room (§4.9)**
-Native in-WizCRM room for daily scrums, built on an embedded real-time audio
-SDK (Daily.co to start; self-host LiveKit later if it earns its keep).
+Native in-WizCRM room for daily scrums, built on **LiveKit** (Cloud free tier
+to start; self-host on the VPS later — same SDK either way). Wanjiru's
+listen/respond loop for Stage B/C rides on **LiveKit Agents**, which supplies
+STT→LLM→TTS streaming, turn-detection and barge-in out of the box, so this
+phase does not require hand-building real-time conversation engineering.
 Three stages: (A) the room itself — live transcription + chat + post-meeting
 summary and Tasks, which *is* the "silent minutes" value, no separate stage
 needed; (B) Wanjiru chats in the room, grounded, evidence-only; (C) her
 replies are spoken aloud, built on the ElevenLabs platform once proven for
-Jane. *Accept for Stage A:* a scrum held in the room produces an accurate
+Jane (or LiveKit Agents' own TTS integration — worth comparing once Phase 4
+starts). *Accept for Stage A:* a scrum held in the room produces an accurate
 transcript and every stated action item lands as a linked Task within
 minutes of the meeting ending; an absence with a stated reason is recorded
 without triggering silence-escalation.
@@ -493,13 +525,16 @@ Refined from PJ's requests, plus items I'm adding:
    *what* and *when* (e.g. "task cap raised 5→7"), the same way lead/
    opportunity history already works. Governance without a paper trail is
    just a permission check nobody can verify later.
-7. **My addition — real-time audio SDK, not a meeting-bot vendor.** Since
-   the Meeting Room is native, the external cost is an embeddable audio SDK
-   rather than a per-minute Zoom-bot service. Recommendation: **start on
-   Daily.co** (hosted, embeds fast, generous free tier) to prove the room
-   works, then evaluate **self-hosting LiveKit** (open source, no per-minute
-   fee) once usage justifies owning the media layer — the same "prove it
-   cheaply, then own it" instinct as launching Jane in `draft` mode.
+7. **Real-time audio SDK — decided: LiveKit** (PJ's research, comparing
+   LiveKit, OpenVidu, Jitsi, mediasoup, Janus; full reasoning in §4.9). Open
+   source, Apache 2.0, and its own hosted **LiveKit Cloud** runs the identical
+   server/API/SDK as self-hosting — free tier confirmed (5,000 WebRTC +
+   1,000 AI Agent minutes/month) — so "start hosted, own it later" is one
+   integration, not the two-SDK migration my earlier Daily.co plan implied.
+   **LiveKit Agents** additionally supplies the STT→LLM→TTS pipeline,
+   turn-detection and barge-in that Stage B/C would otherwise require
+   building by hand — this is the single biggest improvement to the plan
+   from this round.
 8. **My addition — explained absence ≠ silence.** Since scrums now
    explicitly allow a stated-reason absence (§3/§4.9), the spec now says so
    directly in §4.6: an ad-hoc customer call with a chat note is the opposite
@@ -510,19 +545,21 @@ Refined from PJ's requests, plus items I'm adding:
 9. ~~Should scrums come before or after the daily task loop?~~ **After** —
    confirmed by PJ. Tasks go out first at 07:30; the scrum reviews the day
    later, booked as a recurring calendar event.
-10. ~~Meeting-bot vendor?~~ **No vendor — native Meeting Room**, decided
-    above. The only remaining choice is the audio SDK (Daily.co to start;
-    see point 7), which I'm treating as settled unless PJ wants to weigh in.
+10. ~~Meeting-bot vendor?~~ **No vendor — native Meeting Room on LiveKit**,
+    decided above (point 7), superseding the earlier Daily.co suggestion.
 11. ~~Pull Stage A forward as standalone?~~ **Moot** — building natively means
     Stage A (transcript + chat) *is* the Meeting Room's foundation, not a
     separable bolt-on. There's nothing to pull forward; it's simply where
     Phase 4 starts.
+12. ~~Daily.co vs LiveKit?~~ **LiveKit**, on its own Cloud free tier to start
+    (point 7) — resolved by PJ's research, which improved on the original
+    two-vendor plan.
 
 ### Still open
-12. Any objection to starting the Meeting Room's audio layer on Daily.co
-    (hosted) rather than going straight to self-hosted LiveKit? Given the
-    day's telephony debugging, I'd rather prove the concept on a managed
-    service before taking on new server infrastructure to operate.
 13. Should the Meeting Room be scoped as a genuinely separate module (its own
     short spec, like AI-VOICE-ELEVENLABS.md) once Phase 4 is ready to start,
     given how much new ground it covers versus the rest of VSM?
+14. Worth a future look, not now: LiveKit also bridges SIP, so Jane's phone
+    path and Wanjiru's Meeting Room could eventually converge on one
+    real-time platform instead of two. Flagged in §4.9 — no action needed
+    while the ElevenLabs integration is still unverified.
