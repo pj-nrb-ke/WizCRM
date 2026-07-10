@@ -136,6 +136,13 @@ export async function africasTalkingVoiceRoutes(app: FastifyInstance): Promise<v
     const body = (request.body ?? {}) as Record<string, string>;
     reply.type('application/xml');
 
+    // AT's recordingUrl points at at-internal.com and 404s. Log the whole
+    // payload so we can see every field they actually send, rather than the
+    // handful the docs mention.
+    if (config.voiceDebug) {
+      app.log.info({ at_voice: 'raw_callback', body }, 'AT voice raw callback body');
+    }
+
     const sessionId = body.sessionId ?? 'unknown';
 
     // Terminal notification — log cost/duration and let the session go.
