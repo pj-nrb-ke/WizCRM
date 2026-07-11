@@ -29,16 +29,25 @@ async function main() {
 
   // Check for an existing inbound webhook on this domain first — the API
   // allows up to 20 webhooks total; re-running this script shouldn't create
-  // duplicates.
+  // duplicates. Quirk (confirmed live, not documented): GET /v3/webhooks
+  // returns 400 "document_not_found" instead of an empty array when the
+  // account has zero webhooks of the requested type — treat that as "none".
   const listRes = await fetch('https://api.brevo.com/v3/webhooks?type=inbound', {
     headers: { 'api-key': config.brevoRestApiKey, accept: 'application/json' },
   });
-  if (!listRes.ok) {
-    console.error(`FAIL: could not list existing webhooks (${listRes.status}): ${await listRes.text()}`);
-    process.exit(1);
+  let existingWebhooks: { id: number; domain?: string; url: string }[] = [];
+  if (listRes.ok) {
+    const body = (await listRes.json()) as { webhooks?: typeof existingWebhooks };
+    existingWebhooks = body.webhooks ?? [];
+  } else {
+    const errBody = await listRes.json().catch(() => ({}) as { code?: string });
+    if (listRes.status !== 400 || errBody.code !== 'document_not_found') {
+      console.error(`FAIL: could not list existing webhooks (${listRes.status}): ${JSON.stringify(errBody)}`);
+      process.exit(1);
+    }
+    // 400 document_not_found with zero webhooks of this type — fall through with an empty list.
   }
-  const existing = (await listRes.json()) as { webhooks?: { id: number; domain?: string; url: string }[] };
-  const match = existing.webhooks?.find((w) => w.domain === config.brevoInboundDomain);
+  const match = existingWebhooks.find((w) => w.domain === config.brevoInboundDomain);
 
   if (match) {
     if (match.url === url) {
