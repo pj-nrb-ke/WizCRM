@@ -3,6 +3,8 @@ import { generateMorningPlan } from './vsm-planning.service.js';
 import { prisma } from '../lib/prisma.js';
 import { config } from '../config.js';
 import { EmailUnavailableError, sendTransactionalEmail } from './brevo-mail.js';
+import { checkHighValueStalled, updateSilenceStreak } from './vsm-escalation.service.js';
+import { getOrgSettings } from './org-settings.service.js';
 
 const APP_URL = (process.env.APP_URL ?? 'https://app.wizcrm.app').replace(/\/$/, '');
 
@@ -246,6 +248,9 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
   const todayStart = todayDateOnly();
   const now = new Date();
 
+  const settings = await getOrgSettings(organizationId);
+  const stalledCount = await checkHighValueStalled(organizationId, settings.staleLeadDays ?? 7);
+
   const roster = await prisma.user.findMany({
     where: { organizationId, isVirtual: false, teamMemberProfile: { managedByVsm: true } },
     select: { id: true, name: true, email: true },
@@ -262,13 +267,16 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
         where: { userId: person.id, createdAt: { gte: todayStart, lte: now }, task: { organizationId } },
       }),
     ]);
+    const hadMovementToday = completedToday > 0 || updatesToday > 0;
     perPerson.push({
       userId: person.id,
       userName: person.name,
       completedToday,
       stillOpen: stillOpenTasks.length,
-      hadMovementToday: completedToday > 0 || updatesToday > 0,
+      hadMovementToday,
     });
+
+    await updateSilenceStreak(organizationId, person.id, person.name, hadMovementToday);
 
     if (stillOpenTasks.length > 0) {
       const user = await prisma.user.findUnique({ where: { id: person.id }, select: { email: true, name: true } });
@@ -291,7 +299,7 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
       date: todayDateOnly(),
       kind: 'EOD',
       status: 'SENT',
-      contextSnapshot: { peopleConsidered: roster.length },
+      contextSnapshot: { peopleConsidered: roster.length, stalledHighValueLeads: stalledCount },
       planJson: { perPerson } as unknown as object,
       sentAt: new Date(),
     },
@@ -300,7 +308,13 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
   const digestText = perPerson
     .map((p) => `- ${p.userName}: ${p.completedToday} done today, ${p.stillOpen} still open${p.hadMovementToday ? '' : ' (no movement today)'}`)
     .join('\n');
-  await notifyCeos(organizationId, vsmConfig, `${vsmConfig.personaName}'s evening digest`, digestText || 'No managed staff with activity today.');
+  const riskLine = stalledCount > 0 ? `\n\n⚠ ${stalledCount} HOT lead${stalledCount === 1 ? '' : 's'} stalled — see the Escalations inbox.` : '';
+  await notifyCeos(
+    organizationId,
+    vsmConfig,
+    `${vsmConfig.personaName}'s evening digest`,
+    (digestText || 'No managed staff with activity today.') + riskLine,
+  );
 
   return run;
 }

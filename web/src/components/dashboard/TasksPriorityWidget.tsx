@@ -11,6 +11,7 @@ export type TaskItem = {
 type Props = {
   tasks: TaskItem[];
   loading?: boolean;
+  onSelect?: (taskId: string) => void;
 };
 
 function isOverdue(dueAt: string | null): boolean {
@@ -36,7 +37,7 @@ function formatDue(dueAt: string | null): string {
   return `Due ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 }
 
-export function TasksPriorityWidget({ tasks, loading }: Props) {
+export function TasksPriorityWidget({ tasks, loading, onSelect }: Props) {
   const open = tasks.filter((t) => !t.completedAt);
   const overdue = open.filter((t) => isOverdue(t.dueAt));
   const dueToday = open.filter((t) => isDueToday(t.dueAt));
@@ -93,7 +94,9 @@ export function TasksPriorityWidget({ tasks, loading }: Props) {
             return (
               <li
                 key={task.id}
-                className={`flex gap-3 rounded-xl border p-3 transition-colors ${
+                onClick={() => onSelect?.(task.id)}
+                role={onSelect ? 'button' : undefined}
+                className={`flex gap-3 rounded-xl border p-3 transition-colors ${onSelect ? 'cursor-pointer' : ''} ${
                   over
                     ? 'border-red-100 bg-red-50/40 hover:bg-red-50/60'
                     : today

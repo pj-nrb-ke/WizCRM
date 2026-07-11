@@ -37,41 +37,44 @@ model Team {
 }
 
 model User {
-  id                 String                  @id @default(uuid())
-  organizationId     String
-  organization       Organization            @relation(fields: [organizationId], references: [id])
-  teamId             String?
-  team               Team?                   @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  email              String                  @unique
-  passwordHash       String
-  name               String
-  role               UserRole                @default(SALES)
-  isVirtual          Boolean                 @default(false)
-  failedLoginCount   Int                     @default(0)
-  lockoutUntil       DateTime?
-  createdAt          DateTime                @default(now())
-  ownedLeads         Lead[]                  @relation("LeadOwner")
-  activities         Activity[]
-  tasks              Task[]
-  calendarEvents     CalendarEvent[]
-  eventInvites       CalendarEventAttendee[] @relation("EventAttendee")
-  userReminders      UserReminder[]
-  salesOpportunities SalesOpportunity[]      @relation("OpportunityOwner")
-  quotations         Quotation[]
-  aiAuditLogs        AiAuditLog[]
-  stageChanges       StageChange[]
-  leadMessages       LeadMessage[]
-  leadAttachments    LeadAttachment[]
-  ownedCampaigns     Campaign[]              @relation("CampaignOwner")
-  emailTemplates     EmailTemplate[]         @relation("EmailTemplateCreator")
-  suppressionEntries SuppressionList[]       @relation("SuppressionAddedBy")
-  productDocuments   ProductDocument[]
-  teamMemberProfile  TeamMemberProfile?
-  vsmConfigChanges   VsmConfigChange[]
-  vsmRunsApproved    VsmRun[]                @relation("VsmRunApprovedBy")
-  taskUpdates        TaskUpdate[]
-  inboundEmails      InboundEmail[]
-  notifications      Notification[]
+  id                      String                  @id @default(uuid())
+  organizationId          String
+  organization            Organization            @relation(fields: [organizationId], references: [id])
+  teamId                  String?
+  team                    Team?                   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  email                   String                  @unique
+  passwordHash            String
+  name                    String
+  role                    UserRole                @default(SALES)
+  isVirtual               Boolean                 @default(false)
+  failedLoginCount        Int                     @default(0)
+  lockoutUntil            DateTime?
+  createdAt               DateTime                @default(now())
+  ownedLeads              Lead[]                  @relation("LeadOwner")
+  activities              Activity[]
+  tasks                   Task[]
+  calendarEvents          CalendarEvent[]
+  eventInvites            CalendarEventAttendee[] @relation("EventAttendee")
+  userReminders           UserReminder[]
+  salesOpportunities      SalesOpportunity[]      @relation("OpportunityOwner")
+  quotations              Quotation[]
+  aiAuditLogs             AiAuditLog[]
+  stageChanges            StageChange[]
+  leadMessages            LeadMessage[]
+  leadAttachments         LeadAttachment[]
+  ownedCampaigns          Campaign[]              @relation("CampaignOwner")
+  emailTemplates          EmailTemplate[]         @relation("EmailTemplateCreator")
+  suppressionEntries      SuppressionList[]       @relation("SuppressionAddedBy")
+  productDocuments        ProductDocument[]
+  teamMemberProfile       TeamMemberProfile?
+  vsmConfigChanges        VsmConfigChange[]
+  vsmRunsApproved         VsmRun[]                @relation("VsmRunApprovedBy")
+  taskUpdates             TaskUpdate[]
+  inboundEmails           InboundEmail[]
+  escalationsAsSubject    VsmEscalation[]         @relation("EscalationSubject")
+  escalationsAcknowledged VsmEscalation[]         @relation("EscalationAcknowledgedBy")
+  escalationsResolved     VsmEscalation[]         @relation("EscalationResolvedBy")
+  notifications           Notification[]
 
   @@index([organizationId])
   @@index([teamId])
@@ -631,6 +634,55 @@ model InboundEmail {
   @@index([matchedTaskId])
 }
 
+// ─── Escalations (VSM-SPEC §4.7) — Phase 2 ─────────────────────────────────
+// Never a disciplinary tool (§5 guardrail): flags patterns with evidence,
+// the CEO decides what happens next. De-duplicated by design — the same
+// underlying issue accumulates evidence on one OPEN row instead of spawning
+// a fresh one every day, so the inbox doesn't turn into daily spam.
+
+enum EscalationKind {
+  REP_UNRESPONSIVE
+  HIGH_VALUE_STALLED
+  STAFF_FLAGGED
+  TARGET_TRAJECTORY
+  MEETING_ACTION_OVERDUE
+}
+
+enum EscalationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum EscalationStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model VsmEscalation {
+  id                 String             @id @default(uuid())
+  organizationId     String
+  kind               EscalationKind
+  severity           EscalationSeverity @default(WARNING)
+  subjectUserId      String?
+  subjectUser        User?              @relation("EscalationSubject", fields: [subjectUserId], references: [id], onDelete: SetNull)
+  evidence           Json
+  suggestedAction    String?
+  status             EscalationStatus   @default(OPEN)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  acknowledgedAt     DateTime?
+  acknowledgedBy     String?
+  acknowledgedByUser User?              @relation("EscalationAcknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
+  resolvedAt         DateTime?
+  resolvedBy         String?
+  resolvedByUser     User?              @relation("EscalationResolvedBy", fields: [resolvedBy], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([organizationId, kind, subjectUserId])
+}
+
 // ─── Virtual Sales Manager (VSM) — Phase 0 ─────────────────────────────────
 
 model TeamMemberProfile {
@@ -645,6 +697,11 @@ model TeamMemberProfile {
   workEnd          String?
   pushOptIn        Boolean  @default(false)
   managedByVsm     Boolean  @default(true)
+  /// Consecutive working days with zero task movement (VSM-SPEC §4.6) —
+  /// reset to 0 the moment they complete or update anything; reaching the
+  /// escalation threshold in vsm-escalation.service.ts fires a de-duplicated
+  /// VsmEscalation instead of paging the CEO every single quiet afternoon.
+  silentStreak     Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { createTaskSchema, createTaskUpdateSchema, normalizeLeadTags, updateTaskSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
+import { flagTaskForHelp } from '../services/vsm-escalation.service.js';
 
 export const taskRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -38,6 +39,22 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       },
     });
     return reply.status(201).send({ task });
+  });
+
+  // Single-task detail — owner or any manager/admin in the org (same access
+  // rule as the thread below, since the drawer shows both together).
+  app.get('/:id', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const { id } = request.params as { id: string };
+    const task = await prisma.task.findFirst({
+      where: { id, organizationId },
+      include: { lead: { select: { id: true, name: true, company: true } }, user: { select: { id: true, name: true } } },
+    });
+    if (!task) return reply.status(404).send({ error: 'Task not found' });
+    if (task.userId !== userId && role === 'SALES') {
+      return reply.status(403).send({ error: 'Not your task' });
+    }
+    return { task };
   });
 
   app.patch('/:id', async (request, reply) => {
@@ -104,5 +121,28 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       include: { user: { select: { id: true, name: true } } },
     });
     return reply.status(201).send({ update });
+  });
+
+  // "Need management help" (VSM-SPEC §4.7) — the one escalation trigger a
+  // person raises themselves rather than a rule computing it.
+  app.post('/:id/flag', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const { id } = request.params as { id: string };
+    const body = (request.body ?? {}) as { note?: string };
+    const task = await prisma.task.findFirst({ where: { id, organizationId } });
+    if (!task) return reply.status(404).send({ error: 'Task not found' });
+    if (task.userId !== userId && role === 'SALES') {
+      return reply.status(403).send({ error: 'Not your task' });
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    const escalation = await flagTaskForHelp(
+      organizationId,
+      id,
+      userId,
+      user?.name ?? 'Unknown',
+      task.title,
+      typeof body.note === 'string' ? body.note.slice(0, 1000) : null,
+    );
+    return reply.status(201).send({ escalation });
   });
 };

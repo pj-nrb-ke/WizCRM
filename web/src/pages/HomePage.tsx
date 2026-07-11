@@ -19,6 +19,7 @@ import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
 import { MetricDrilldown, type DrilldownLead, type DrilldownTask } from '../components/MetricDrilldown';
 import { LeadDrawer } from '../components/LeadDrawer';
+import { TaskDrawer } from '../components/TaskDrawer';
 
 import { ExecutiveHero } from '../components/dashboard/ExecutiveHero';
 import { PremiumKpiCard } from '../components/dashboard/PremiumKpiCard';
@@ -157,6 +158,7 @@ export function HomePage() {
   const [drillTasks, setDrillTasks] = useState<DrilldownTask[]>([]);
   const [drillLoading, setDrillLoading] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Personal data
   useEffect(() => {
@@ -531,7 +533,7 @@ export function HomePage() {
       <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr)' }}>
         <ActivityTimeline items={activities} loading={activitiesLoading} />
         <UpcomingMeetings events={events} loading={personalLoading} />
-        <TasksPriorityWidget tasks={tasks} loading={personalLoading} />
+        <TasksPriorityWidget tasks={tasks} loading={personalLoading} onSelect={setSelectedTaskId} />
       </div>
 
       {/* ── Admin system status (compact) ── */}
@@ -606,6 +608,26 @@ export function HomePage() {
         onClose={() => setSelectedLeadId(null)}
         onUpdated={() => {
           api<TeamsResponse>('/teams').then(setTeamsData).catch(() => {});
+        }}
+      />
+
+      <TaskDrawer
+        taskId={selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        onUpdated={() => {
+          api<PersonalDashboardTasksResponse>('/tasks')
+            .then((tasksRes) =>
+              setTasks(
+                (tasksRes.tasks ?? []).map((t) => ({
+                  id: t.id,
+                  title: (t as any).title ?? undefined,
+                  dueAt: t.dueAt,
+                  completedAt: t.completedAt,
+                  leadName: (t as any).leadName ?? undefined,
+                })),
+              ),
+            )
+            .catch(() => {});
         }}
       />
     </div>

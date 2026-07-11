@@ -307,6 +307,45 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
     return { emails };
   });
 
+  // ─── Escalations (VSM-SPEC §4.7) — CEO inbox ──────────────────────────────
+
+  app.get('/escalations', { preHandler: await requireAdminOrCeo() }, async (request) => {
+    const { status } = request.query as { status?: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' };
+    const escalations = await prisma.vsmEscalation.findMany({
+      where: { organizationId: request.user.organizationId, status: status ?? undefined },
+      orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
+      take: 100,
+      include: {
+        subjectUser: { select: { id: true, name: true } },
+        acknowledgedByUser: { select: { id: true, name: true } },
+        resolvedByUser: { select: { id: true, name: true } },
+      },
+    });
+    return { escalations };
+  });
+
+  app.post('/escalations/:id/acknowledge', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.vsmEscalation.findFirst({ where: { id, organizationId: request.user.organizationId } });
+    if (!existing) return reply.status(404).send({ error: 'Escalation not found' });
+    const escalation = await prisma.vsmEscalation.update({
+      where: { id },
+      data: { status: 'ACKNOWLEDGED', acknowledgedBy: request.user.sub, acknowledgedAt: new Date() },
+    });
+    return { escalation };
+  });
+
+  app.post('/escalations/:id/resolve', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.vsmEscalation.findFirst({ where: { id, organizationId: request.user.organizationId } });
+    if (!existing) return reply.status(404).send({ error: 'Escalation not found' });
+    const escalation = await prisma.vsmEscalation.update({
+      where: { id },
+      data: { status: 'RESOLVED', resolvedBy: request.user.sub, resolvedAt: new Date() },
+    });
+    return { escalation };
+  });
+
   // ─── Notifications (in-app feed) ──────────────────────────────────────────
 
   app.get('/notifications', async (request) => {
