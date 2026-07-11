@@ -29,6 +29,16 @@ interface VsmRun {
     perPerson?: { userId: string; userName: string; completedToday: number; stillOpen: number; hadMovementToday: boolean }[];
     rawCandidateCount?: number;
     dailyFocusCap?: number;
+    reps?: {
+      userId: string;
+      userName: string;
+      tasksCompletedThisWeek: number;
+      tasksCompletedLastWeek: number;
+      trend: 'up' | 'down' | 'flat';
+      pacingLabel: string;
+      achievementPct: number | null;
+      observation: string;
+    }[];
   };
   approvedAt: string | null;
   sentAt: string | null;
@@ -76,6 +86,7 @@ function StatusBadge({ status }: { status: VsmRun['status'] }) {
 export function VsmRunsPage() {
   const [morningRuns, setMorningRuns] = useState<VsmRun[]>([]);
   const [eodRuns, setEodRuns] = useState<VsmRun[]>([]);
+  const [weeklyRuns, setWeeklyRuns] = useState<VsmRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -87,10 +98,12 @@ export function VsmRunsPage() {
     Promise.all([
       api<{ runs: VsmRun[] }>('/vsm/runs?kind=MORNING'),
       api<{ runs: VsmRun[] }>('/vsm/runs?kind=EOD'),
+      api<{ runs: VsmRun[] }>('/vsm/runs?kind=WEEKLY'),
     ])
-      .then(([m, e]) => {
+      .then(([m, e, w]) => {
         setMorningRuns(m.runs);
         setEodRuns(e.runs);
+        setWeeklyRuns(w.runs);
       })
       .catch(() => setError('Failed to load VSM runs.'))
       .finally(() => setLoading(false));
@@ -119,6 +132,19 @@ export function VsmRunsPage() {
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to trigger evening digest.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function triggerWeekly() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api('/vsm/runs/weekly', { method: 'POST' });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to trigger weekly review.');
     } finally {
       setBusy(false);
     }
@@ -210,6 +236,9 @@ export function VsmRunsPage() {
           </button>
           <button onClick={triggerEod} disabled={busy} style={secondaryBtn}>
             Run evening digest now
+          </button>
+          <button onClick={triggerWeekly} disabled={busy} style={secondaryBtn}>
+            Run weekly review now
           </button>
         </div>
       </div>
@@ -314,6 +343,33 @@ export function VsmRunsPage() {
                   {run.planJson.perPerson.map((p) => (
                     <div key={p.userId} style={{ fontSize: 12, color: '#64748b' }}>
                       {p.userName}: {p.completedToday} done, {p.stillOpen} still open{p.hadMovementToday ? '' : ' — no movement today'}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Weekly reviews">
+        {weeklyRuns.length === 0 && <div style={{ color: '#94a3b8', fontSize: 14 }}>No weekly reviews yet.</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {weeklyRuns.map((run) => (
+            <div key={run.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{new Date(run.date).toLocaleDateString()}</div>
+                <StatusBadge status={run.status} />
+              </div>
+              {run.planJson.reps && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {run.planJson.reps.map((r) => (
+                    <div key={r.userId} style={{ fontSize: 12, color: '#64748b' }}>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{r.userName}</span>
+                      {' — '}
+                      {r.tasksCompletedThisWeek} tasks done ({r.tasksCompletedLastWeek} last week, trend {r.trend}), {r.pacingLabel}
+                      {r.achievementPct !== null ? ` (${r.achievementPct}%)` : ''}
+                      <div style={{ color: '#94a3b8' }}>{r.observation}</div>
                     </div>
                   ))}
                 </div>

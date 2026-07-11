@@ -5,6 +5,8 @@ import { config } from '../config.js';
 import { EmailUnavailableError, sendTransactionalEmail } from './brevo-mail.js';
 import { checkHighValueStalled, updateSilenceStreak } from './vsm-escalation.service.js';
 import { getOrgSettings } from './org-settings.service.js';
+import { isStaleLead, resolveStaleLeadDays } from './stale-lead.service.js';
+import { eodCheckIn, morningGreeting, signOff } from './vsm-i18n.js';
 
 const APP_URL = (process.env.APP_URL ?? 'https://app.wizcrm.app').replace(/\/$/, '');
 
@@ -34,7 +36,12 @@ function todayDateOnly() {
  * time can't respect the per-org runMorningAt/workingDays config anyway.
  * Cron is expected to poll frequently (e.g. every 15 min); this gate is what
  * actually decides whether it's time yet. */
-function isScheduledTimeReached(timezone: string, targetHHMM: string, workingDays: number[]): boolean {
+export function isScheduledTimeReached(
+  timezone: string,
+  targetHHMM: string,
+  workingDays: number[],
+  requiredWeekday?: number,
+): boolean {
   const now = new Date();
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
@@ -47,7 +54,13 @@ function isScheduledTimeReached(timezone: string, targetHHMM: string, workingDay
   const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
   const weekdayShort = parts.find((p) => p.type === 'weekday')?.value ?? '';
   const dayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekdayShort);
-  if (workingDays.length > 0 && !workingDays.includes(dayIndex)) return false;
+  // Weekly review (§3) is fixed to Friday regardless of the org's
+  // Mon-Fri-style workingDays config, which governs the daily rhythm only.
+  if (requiredWeekday !== undefined) {
+    if (dayIndex !== requiredWeekday) return false;
+  } else if (workingDays.length > 0 && !workingDays.includes(dayIndex)) {
+    return false;
+  }
 
   const [targetHour, targetMinute] = targetHHMM.split(':').map(Number);
   return hour > targetHour || (hour === targetHour && minute >= targetMinute);
@@ -101,13 +114,20 @@ export async function getOrCreateMorningRun(organizationId: string, opts: { from
   return run;
 }
 
+/** Stamps `edited: true` onto contextSnapshot — the cheap signal
+ * vsm-performance.service.ts reads for plan-edit rate (§4.2a) and the
+ * draft → auto eligibility check (§4.2b), without a separate table. */
 export async function updateMorningRunPlan(runId: string, people: PersonPlan[]) {
   const run = await prisma.vsmRun.findUnique({ where: { id: runId } });
   if (!run) throw new Error('RUN_NOT_FOUND');
   if (run.status !== 'DRAFT') throw new Error('RUN_NOT_EDITABLE');
   const current = run.planJson as unknown as { generatedAt: string; taskCapPerDay: number; people: PersonPlan[] };
   const updated = { ...current, people };
-  return prisma.vsmRun.update({ where: { id: runId }, data: { planJson: updated as unknown as object } });
+  const contextSnapshot = { ...(run.contextSnapshot as object), edited: true };
+  return prisma.vsmRun.update({
+    where: { id: runId },
+    data: { planJson: updated as unknown as object, contextSnapshot },
+  });
 }
 
 /** Creates the real Tasks, sends one digest email per person, and — since a
@@ -174,12 +194,12 @@ export async function sendMorningRun(runId: string, approvedByUserId: string | n
           .map((c: PlanItem) => `<li>${escapeHtml(c.title)} — ${escapeHtml(c.reason)} <em>(carried over)</em></li>`)
           .join('');
         const html =
-          `<p>Good morning ${escapeHtml(user.name)} — ${createdTasks.length} thing${createdTasks.length === 1 ? '' : 's'} today:</p>` +
+          `<p>${escapeHtml(morningGreeting(vsmConfig.language, user.name))} — ${createdTasks.length} thing${createdTasks.length === 1 ? '' : 's'} today:</p>` +
           `<ul>${lines}${carryoverLines}</ul>` +
           `<p><a href="${APP_URL}">Open in WizCRM</a></p>` +
-          `<p style="color:#94a3b8;font-size:12px">Sent automatically by ${escapeHtml(vsmConfig.personaName)}.</p>`;
+          `<p style="color:#94a3b8;font-size:12px">${escapeHtml(signOff(vsmConfig.language, vsmConfig.personaName))}</p>`;
         const text =
-          `Good morning ${user.name} — ${createdTasks.length} thing${createdTasks.length === 1 ? '' : 's'} today:\n\n` +
+          `${morningGreeting(vsmConfig.language, user.name)} — ${createdTasks.length} thing${createdTasks.length === 1 ? '' : 's'} today:\n\n` +
           createdTasks.map((t) => `- ${t.title} — ${t.reason}`).join('\n') +
           (person.carryover.length ? `\n\nStill open from before:\n${person.carryover.map((c) => `- ${c.title} — ${c.reason}`).join('\n')}` : '') +
           `\n\nOpen in WizCRM: ${APP_URL}`;
@@ -251,6 +271,15 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
   const settings = await getOrgSettings(organizationId);
   const stalledCount = await checkHighValueStalled(organizationId, settings.staleLeadDays ?? 7);
 
+  // Recorded purely as a baseline for vsm-performance.service.ts's stale-lead
+  // reduction metric (§4.2a) — cheaper than a dedicated history table.
+  const staleLeadDays = await resolveStaleLeadDays(organizationId);
+  const activeLeads = await prisma.lead.findMany({
+    where: { organizationId, stage: { notIn: ['WON', 'LOST'] } },
+    select: { lastActivityAt: true, createdAt: true },
+  });
+  const staleLeadCount = activeLeads.filter((l) => isStaleLead(l.lastActivityAt, l.createdAt, staleLeadDays)).length;
+
   const roster = await prisma.user.findMany({
     where: { organizationId, isVirtual: false, teamMemberProfile: { managedByVsm: true } },
     select: { id: true, name: true, email: true },
@@ -276,16 +305,20 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
       hadMovementToday,
     });
 
-    await updateSilenceStreak(organizationId, person.id, person.name, hadMovementToday, { name: vsmConfig.personaName });
+    await updateSilenceStreak(organizationId, person.id, person.name, hadMovementToday, {
+      name: vsmConfig.personaName,
+      language: vsmConfig.language,
+    });
 
     if (stillOpenTasks.length > 0) {
       const user = await prisma.user.findUnique({ where: { id: person.id }, select: { email: true, name: true } });
       if (user) {
-        const text = `Hi ${user.name} — you have ${stillOpenTasks.length} open item${stillOpenTasks.length === 1 ? '' : 's'}. Anything blocking you? Reply to let ${vsmConfig.personaName} know.`;
+        const checkIn = eodCheckIn(vsmConfig.language);
+        const text = `Hi ${user.name} — you have ${stillOpenTasks.length} open item${stillOpenTasks.length === 1 ? '' : 's'}. ${checkIn} Reply to let ${vsmConfig.personaName} know.`;
         await safeSend({
           toEmail: user.email,
           toName: user.name,
-          subject: 'Anything blocking you?',
+          subject: checkIn,
           text: `${text}\n\nOpen in WizCRM: ${APP_URL}`,
           html: `<p>${escapeHtml(text)}</p><p><a href="${APP_URL}">Open in WizCRM</a></p>`,
         });
@@ -299,7 +332,7 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
       date: todayDateOnly(),
       kind: 'EOD',
       status: 'SENT',
-      contextSnapshot: { peopleConsidered: roster.length, stalledHighValueLeads: stalledCount },
+      contextSnapshot: { peopleConsidered: roster.length, stalledHighValueLeads: stalledCount, staleLeadCount },
       planJson: { perPerson } as unknown as object,
       sentAt: new Date(),
     },

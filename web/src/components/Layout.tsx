@@ -337,6 +337,7 @@ export function Layout() {
               <NavItem to="/settings/vsm" icon="ai" label="VSM (Wanjiru)" expanded={expanded} />
               <NavItem to="/settings/vsm-runs" icon="dashboard" label="Morning Plan" expanded={expanded} />
               <NavItem to="/settings/escalations" icon="audit" label="Escalations" expanded={expanded} />
+              <NavItem to="/settings/vsm-performance" icon="reports" label="VSM Performance" expanded={expanded} />
               <NavItem to="/settings/inbound-emails" icon="audit" label="Inbound Email" expanded={expanded} />
               <NavItem to="/platform" icon="ai" label="AI & platform" expanded={expanded} />
               <NavItem to="/connection" icon="mobile" label="Mobile connection" expanded={expanded} />

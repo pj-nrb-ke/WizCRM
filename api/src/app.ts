@@ -31,6 +31,7 @@ import { notificationRoutes } from './routes/notifications.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { processBrevoInboundPayload } from './services/inbound-email.service.js';
 import { getOrCreateEodRun, getOrCreateMorningRun } from './services/vsm-execution.service.js';
+import { getOrCreateWeeklyRun } from './services/vsm-weekly.service.js';
 import { prisma } from './lib/prisma.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 import { recordServerError } from './lib/error-recorder.js';
@@ -152,8 +153,8 @@ export async function buildApp() {
     if (!config.vsmCronSecret || secret !== config.vsmCronSecret) {
       return reply.status(404).send();
     }
-    if (job !== 'morning' && job !== 'eod') {
-      return reply.status(400).send({ error: 'job must be "morning" or "eod"' });
+    if (job !== 'morning' && job !== 'eod' && job !== 'weekly') {
+      return reply.status(400).send({ error: 'job must be "morning", "eod", or "weekly"' });
     }
     const enabledConfigs = await prisma.vsmConfig.findMany({ where: { enabled: true }, select: { organizationId: true } });
     const results = [];
@@ -162,7 +163,9 @@ export async function buildApp() {
         const run =
           job === 'morning'
             ? await getOrCreateMorningRun(cfg.organizationId, { fromCron: true })
-            : await getOrCreateEodRun(cfg.organizationId, { fromCron: true });
+            : job === 'eod'
+              ? await getOrCreateEodRun(cfg.organizationId, { fromCron: true })
+              : await getOrCreateWeeklyRun(cfg.organizationId, { fromCron: true });
         if (!run) {
           results.push({ organizationId: cfg.organizationId, skipped: 'not yet scheduled time' });
         } else {

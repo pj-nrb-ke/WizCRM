@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 
 interface VsmConfig {
@@ -29,6 +30,13 @@ interface RosterUser {
   name: string;
   email: string;
   role: string;
+}
+
+interface AutoModeEligibility {
+  eligible: boolean;
+  uneditedCount: number;
+  totalCount: number;
+  reason: string;
 }
 
 interface ConfigChange {
@@ -84,17 +92,20 @@ export function VsmConfigPage() {
   const [provisioning, setProvisioning] = useState(false);
   const [dryRunning, setDryRunning] = useState(false);
   const [dryRun, setDryRun] = useState<MorningPlanPreview | null>(null);
+  const [eligibility, setEligibility] = useState<AutoModeEligibility | null>(null);
 
   useEffect(() => {
     Promise.all([
       api<{ config: VsmConfig }>('/vsm/config'),
       api<{ roster: RosterUser[] }>('/vsm/roster'),
       api<{ changes: ConfigChange[] }>('/vsm/config/changes'),
+      api<{ eligibility: AutoModeEligibility }>('/vsm/auto-mode-eligibility'),
     ])
-      .then(([c, r, ch]) => {
+      .then(([c, r, ch, el]) => {
         setCfg(c.config);
         setRoster(r.roster);
         setChanges(ch.changes);
+        setEligibility(el.eligibility);
       })
       .catch(() => setError('Failed to load VSM configuration.'))
       .finally(() => setLoading(false));
@@ -294,8 +305,15 @@ export function VsmConfigPage() {
           <Field label="Autonomy">
             <select style={inputStyle} value={cfg.autonomy} onChange={(e) => update({ autonomy: e.target.value as 'DRAFT' | 'AUTO' })}>
               <option value="DRAFT">Draft — CEO approves each morning plan</option>
-              <option value="AUTO">Auto — sends immediately</option>
+              <option value="AUTO" disabled={!eligibility?.eligible}>
+                Auto — sends immediately{eligibility?.eligible ? '' : ' (not yet earned)'}
+              </option>
             </select>
+            {eligibility && !eligibility.eligible && cfg.autonomy === 'DRAFT' && (
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                {eligibility.reason} See <Link to="/settings/vsm-performance" style={{ color: '#1A56DB' }}>VSM Performance</Link>.
+              </div>
+            )}
           </Field>
           <Field label="Enabled">
             <select style={inputStyle} value={cfg.enabled ? '1' : '0'} onChange={(e) => update({ enabled: e.target.value === '1' })}>

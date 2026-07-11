@@ -1,6 +1,7 @@
 import type { EscalationKind, EscalationSeverity } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { EmailUnavailableError, sendTransactionalEmail } from './brevo-mail.js';
+import { eodCheckIn } from './vsm-i18n.js';
 
 const APP_URL = (process.env.APP_URL ?? 'https://app.wizcrm.app').replace(/\/$/, '');
 
@@ -81,7 +82,7 @@ export async function updateSilenceStreak(
   userId: string,
   userName: string,
   hadMovementToday: boolean,
-  persona: { name: string },
+  persona: { name: string; language?: string },
 ): Promise<{ streak: number; nudged: boolean; escalated: boolean }> {
   const profile = await prisma.teamMemberProfile.findUnique({ where: { userId } });
   const nextStreak = hadMovementToday ? 0 : (profile?.silentStreak ?? 0) + 1;
@@ -89,7 +90,7 @@ export async function updateSilenceStreak(
   await prisma.teamMemberProfile.updateMany({ where: { userId }, data: { silentStreak: nextStreak } });
 
   if (nextStreak === SILENCE_NUDGE_THRESHOLD) {
-    await sendSilenceNudge(organizationId, userId, userName, persona.name);
+    await sendSilenceNudge(organizationId, userId, userName, persona.name, persona.language ?? 'en');
     return { streak: nextStreak, nudged: true, escalated: false };
   }
 
@@ -111,25 +112,26 @@ export async function updateSilenceStreak(
 /** Day 2 of the staged silence ladder (§4.6) — a gentle, named nudge direct
  * from the VSM to the person, no CEO involvement yet. In-app notification +
  * email, same channels as the rest of the module. */
-async function sendSilenceNudge(organizationId: string, userId: string, userName: string, personaName: string) {
+async function sendSilenceNudge(organizationId: string, userId: string, userName: string, personaName: string, language: string) {
+  const checkIn = eodCheckIn(language);
   await prisma.notification.create({
     data: {
       organizationId,
       userId,
       kind: 'vsm_silence_nudge',
       title: `${personaName} checked in on your open tasks`,
-      body: 'Anything blocking you? Reply on a task to let them know.',
+      body: `${checkIn} Reply on a task to let them know.`,
       linkPath: '/',
     },
   });
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
   if (!user) return;
-  const text = `Hi ${userName}, following up on yesterday's tasks — anything blocking you? Reply on any task in WizCRM and ${personaName} will see it.`;
+  const text = `Hi ${userName}, following up on yesterday's tasks — ${checkIn.toLowerCase()} Reply on any task in WizCRM and ${personaName} will see it.`;
   await safeSend({
     toEmail: user.email,
     toName: user.name,
-    subject: 'Anything blocking you?',
+    subject: checkIn,
     text: `${text}\n\nOpen in WizCRM: ${APP_URL}`,
     html: `<p>${text}</p><p><a href="${APP_URL}">Open in WizCRM</a></p>`,
   });

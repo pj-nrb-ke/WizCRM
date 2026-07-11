@@ -10,6 +10,8 @@ import {
   sendMorningRun,
   updateMorningRunPlan,
 } from '../services/vsm-execution.service.js';
+import { getOrCreateWeeklyRun } from '../services/vsm-weekly.service.js';
+import { computeAutoModeEligibility, computeVsmPerformance } from '../services/vsm-performance.service.js';
 
 /**
  * Admin/CEO governance guard (VSM-SPEC §4.2b): roster, VSM config, and KPIs
@@ -142,6 +144,20 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
       data: parsed.data,
     });
     return { config: updated };
+  });
+
+  // ─── VSM Performance page (§4.2a) — actual vs. target, and the evidence
+  // base for the draft → auto decision (§4.2b) ──────────────────────────────
+
+  app.get('/performance', { preHandler: await requireAdminOrCeo() }, async (request) => {
+    const cfg = await getOrCreateVsmConfig(request.user.organizationId);
+    const performance = await computeVsmPerformance(request.user.organizationId);
+    return { performance, kpiTargets: cfg.kpiTargets };
+  });
+
+  app.get('/auto-mode-eligibility', { preHandler: await requireAdminOrCeo() }, async (request) => {
+    const eligibility = await computeAutoModeEligibility(request.user.organizationId);
+    return { eligibility };
   });
 
   app.get('/config/changes', { preHandler: await requireAdminOrCeo() }, async (request) => {
@@ -278,6 +294,18 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
+  app.post('/runs/weekly', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    try {
+      const run = await getOrCreateWeeklyRun(request.user.organizationId);
+      return reply.status(201).send({ run });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'VSM_NOT_ENABLED') {
+        return reply.status(400).send({ error: 'Enable VSM in configuration before running the weekly review.' });
+      }
+      throw err;
+    }
+  });
+
   // ─── Inbound email (two-way channel on reply.wizag.co.ke) ────────────────
   // Unmatched rows have no organizationId (we don't know the org until a
   // match is found), so this can't be org-scoped like everything else here —
@@ -344,29 +372,5 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
       data: { status: 'RESOLVED', resolvedBy: request.user.sub, resolvedAt: new Date() },
     });
     return { escalation };
-  });
-
-  // ─── Notifications (in-app feed) ──────────────────────────────────────────
-
-  app.get('/notifications', async (request) => {
-    const notifications = await prisma.notification.findMany({
-      where: { organizationId: request.user.organizationId, userId: request.user.sub },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-    return { notifications };
-  });
-
-  app.post('/notifications/:id/read', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const existing = await prisma.notification.findFirst({
-      where: { id, organizationId: request.user.organizationId, userId: request.user.sub },
-    });
-    if (!existing) return reply.status(404).send({ error: 'Notification not found' });
-    const notification = await prisma.notification.update({
-      where: { id },
-      data: { readAt: new Date() },
-    });
-    return { notification };
   });
 };

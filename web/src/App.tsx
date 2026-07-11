@@ -39,6 +39,7 @@ import { VsmConfigPage } from './pages/VsmConfigPage';
 import { InboundEmailsPage } from './pages/InboundEmailsPage';
 import { VsmRunsPage } from './pages/VsmRunsPage';
 import { EscalationsPage } from './pages/EscalationsPage';
+import { VsmPerformancePage } from './pages/VsmPerformancePage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -177,6 +178,14 @@ export default function App() {
               element={
                 <AdminOnly>
                   <EscalationsPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/settings/vsm-performance"
+              element={
+                <AdminOnly>
+                  <VsmPerformancePage />
                 </AdminOnly>
               }
             />

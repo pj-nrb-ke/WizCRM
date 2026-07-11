@@ -728,6 +728,9 @@ model VsmConfig {
   runMiddayAt        String            @default("13:00")
   runEveningAt       String            @default("17:30")
   runDigestAt        String            @default("18:00")
+  /// Phase 3 weekly review (VSM-SPEC §3/§8) — fixed to Friday, only the
+  /// time-of-day is configurable, matching the other run-time fields.
+  runWeeklyAt        String            @default("16:00")
   autonomy           VsmAutonomy       @default(DRAFT)
   /// Org-wide ceiling on NEW tasks created in one morning run — the "focus"
   /// knob (PJ, 2026-07-11): pick the top N across the whole team, not N per
