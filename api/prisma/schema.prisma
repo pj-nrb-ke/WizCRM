@@ -69,6 +69,7 @@ model User {
   teamMemberProfile  TeamMemberProfile?
   vsmConfigChanges   VsmConfigChange[]
   taskUpdates        TaskUpdate[]
+  inboundEmails      InboundEmail[]
   notifications      Notification[]
 
   @@index([organizationId])
@@ -557,23 +558,24 @@ model UserReminder {
 }
 
 model Task {
-  id             String        @id @default(uuid())
+  id             String         @id @default(uuid())
   organizationId String
-  tags           String[]      @default([])
+  tags           String[]       @default([])
   leadId         String?
-  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lead           Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
   userId         String
-  user           User          @relation(fields: [userId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
   title          String
   description    String?
-  source         TaskSource    @default(USER)
+  source         TaskSource     @default(USER)
   reason         String?
   evidence       Json?
   priority       TaskPriority?
   dueAt          DateTime?
   completedAt    DateTime?
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime       @default(now())
   updates        TaskUpdate[]
+  inboundEmails  InboundEmail[]
 
   @@index([userId, dueAt])
   @@index([organizationId])
@@ -601,6 +603,31 @@ model TaskUpdate {
   createdAt DateTime @default(now())
 
   @@index([taskId, createdAt])
+}
+
+// ─── Inbound email (two-way channel on wizag.co.ke) ────────────────────────
+// Brevo's inbound-parse webhook posts every email sent to *@reply.wizag.co.ke
+// here. A reply to a task-thread email lands on a task-<id>@reply.wizag.co.ke
+// address and becomes a TaskUpdate; anything else is logged unmatched — a
+// foundation for other inbound flows (e.g. marketing replies), not just VSM.
+model InboundEmail {
+  id              String   @id @default(uuid())
+  organizationId  String?
+  fromEmail       String
+  fromName        String?
+  toEmail         String
+  subject         String?
+  bodyText        String?
+  rawPayload      Json
+  matchedTaskId   String?
+  matchedTask     Task?    @relation(fields: [matchedTaskId], references: [id], onDelete: SetNull)
+  matchedUserId   String?
+  matchedUser     User?    @relation(fields: [matchedUserId], references: [id], onDelete: SetNull)
+  createdUpdateId String?
+  receivedAt      DateTime @default(now())
+
+  @@index([toEmail])
+  @@index([matchedTaskId])
 }
 
 // ─── Virtual Sales Manager (VSM) — Phase 0 ─────────────────────────────────

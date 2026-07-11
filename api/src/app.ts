@@ -28,6 +28,7 @@ import { leadDecisionMakerRoutes } from './routes/lead-decision-makers.js';
 import { africasTalkingVoiceRoutes } from './routes/africastalking-voice.js';
 import { vsmRoutes } from './routes/vsm.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
+import { processBrevoInboundPayload } from './services/inbound-email.service.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 import { recordServerError } from './lib/error-recorder.js';
 
@@ -121,6 +122,21 @@ export async function buildApp() {
       }
     }
     const result = await handleBrevoEvent(request.body as import('./services/lead-engine/webhook.service.js').BrevoWebhookEvent);
+    return reply.send(result);
+  });
+
+  // Brevo inbound email (two-way channel on reply.wizag.co.ke) — no JWT.
+  // Brevo's inbound webhooks don't support a custom auth header, so the
+  // secret lives in the path instead; unknown/missing secret is a 404, not a
+  // 401, so the real path isn't distinguishable from a random guess.
+  app.post('/webhooks/brevo-inbound/:secret', async (request, reply) => {
+    const { secret } = request.params as { secret: string };
+    if (!config.brevoInboundWebhookSecret || secret !== config.brevoInboundWebhookSecret) {
+      return reply.status(404).send();
+    }
+    const result = await processBrevoInboundPayload(
+      request.body as import('./services/inbound-email.service.js').BrevoInboundPayload,
+    );
     return reply.send(result);
   });
 

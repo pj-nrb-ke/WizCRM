@@ -54,6 +54,17 @@ export const config = {
   // Brevo webhook shared secret — set in Brevo dashboard as custom header X-WizCRM-Webhook-Key
   brevoWebhookSecret: process.env.BREVO_WEBHOOK_SECRET ?? '',
 
+  // Brevo inbound email (two-way channel on reply.wizag.co.ke). Distinct from
+  // BREVO_API_KEY, which is actually the SMTP password (see credential-swap
+  // note) — this must be a real v3 REST API key, from Brevo > SMTP & API > API
+  // Keys, used only to register the inbound webhook via the API (no dashboard
+  // UI exists for that). The webhook URL itself carries its own secret in the
+  // path since Brevo's inbound webhooks don't support a custom auth header.
+  brevoRestApiKey: process.env.BREVO_REST_API_KEY ?? '',
+  brevoInboundWebhookSecret: process.env.BREVO_INBOUND_WEBHOOK_SECRET ?? '',
+  /** The receiving subdomain — MX records point *@this to Brevo's inbound parser. */
+  brevoInboundDomain: process.env.BREVO_INBOUND_DOMAIN ?? 'reply.wizag.co.ke',
+
   // Heat Map signal discovery
   googleCustomSearchKey: process.env.GOOGLE_CUSTOM_SEARCH_KEY ?? process.env.GOOGLE_PLACES_API_KEY ?? '',
   googleCustomSearchEngineId: process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID ?? '',
