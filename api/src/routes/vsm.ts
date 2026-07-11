@@ -247,6 +247,35 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
+  // ─── Inbound email (two-way channel on reply.wizag.co.ke) ────────────────
+  // Unmatched rows have no organizationId (we don't know the org until a
+  // match is found), so this can't be org-scoped like everything else here —
+  // gated to admin/CEO instead, matching the sensitivity of reading raw mail.
+
+  app.get('/inbound-emails', { preHandler: await requireAdminOrCeo() }, async (request) => {
+    const { filter } = request.query as { filter?: 'matched' | 'unmatched' };
+    const where =
+      filter === 'matched' ? { matchedTaskId: { not: null } } : filter === 'unmatched' ? { matchedTaskId: null } : {};
+    const emails = await prisma.inboundEmail.findMany({
+      where,
+      orderBy: { receivedAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        fromEmail: true,
+        fromName: true,
+        toEmail: true,
+        subject: true,
+        bodyText: true,
+        matchedTaskId: true,
+        matchedUserId: true,
+        matchedUser: { select: { name: true, email: true } },
+        receivedAt: true,
+      },
+    });
+    return { emails };
+  });
+
   // ─── Notifications (in-app feed) ──────────────────────────────────────────
 
   app.get('/notifications', async (request) => {
