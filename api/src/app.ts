@@ -157,8 +157,15 @@ export async function buildApp() {
     const results = [];
     for (const cfg of enabledConfigs) {
       try {
-        const run = job === 'morning' ? await getOrCreateMorningRun(cfg.organizationId) : await getOrCreateEodRun(cfg.organizationId);
-        results.push({ organizationId: cfg.organizationId, runId: run.id, status: run.status });
+        const run =
+          job === 'morning'
+            ? await getOrCreateMorningRun(cfg.organizationId, { fromCron: true })
+            : await getOrCreateEodRun(cfg.organizationId, { fromCron: true });
+        if (!run) {
+          results.push({ organizationId: cfg.organizationId, skipped: 'not yet scheduled time' });
+        } else {
+          results.push({ organizationId: cfg.organizationId, runId: run.id, status: run.status });
+        }
       } catch (err) {
         results.push({ organizationId: cfg.organizationId, error: err instanceof Error ? err.message : String(err) });
       }

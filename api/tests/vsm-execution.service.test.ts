@@ -116,6 +116,31 @@ describe('vsm-execution.service', () => {
       expect(run).toEqual({ id: 'run-2', status: 'DRAFT', planJson: SAMPLE_PLAN });
     });
 
+    it('a cron-triggered call skips (returns null, no side effects) on a day not in workingDays', async () => {
+      const notToday = ((new Date().getDay() + 1) % 7); // guaranteed to differ from today
+      prismaMocks.vsmConfigFindUnique.mockResolvedValue({ ...VSM_CONFIG, workingDays: [notToday], runMorningAt: '00:00' });
+      prismaMocks.vsmRunFindUnique.mockResolvedValue(null);
+
+      const run = await getOrCreateMorningRun('org-1', { fromCron: true });
+
+      expect(run).toBeNull();
+      expect(generateMorningPlanMock).not.toHaveBeenCalled();
+      expect(prismaMocks.vsmRunCreate).not.toHaveBeenCalled();
+    });
+
+    it('a manual (non-cron) call ignores workingDays/time entirely', async () => {
+      const notToday = ((new Date().getDay() + 1) % 7);
+      prismaMocks.vsmConfigFindUnique.mockResolvedValue({ ...VSM_CONFIG, workingDays: [notToday], runMorningAt: '23:59' });
+      prismaMocks.vsmRunFindUnique.mockResolvedValue(null);
+      generateMorningPlanMock.mockResolvedValue(SAMPLE_PLAN);
+      prismaMocks.vsmRunCreate.mockResolvedValue({ id: 'run-manual', status: 'DRAFT', planJson: SAMPLE_PLAN });
+
+      const run = await getOrCreateMorningRun('org-1');
+
+      expect(run).toEqual({ id: 'run-manual', status: 'DRAFT', planJson: SAMPLE_PLAN });
+      expect(generateMorningPlanMock).toHaveBeenCalledTimes(1);
+    });
+
     it('throws VSM_NOT_ENABLED when the org has not turned VSM on', async () => {
       prismaMocks.vsmConfigFindUnique.mockResolvedValue({ ...VSM_CONFIG, enabled: false });
       await expect(getOrCreateMorningRun('org-1')).rejects.toThrow('VSM_NOT_ENABLED');

@@ -26,6 +26,31 @@ function todayDateOnly() {
   return d;
 }
 
+/** Reads current time/day in the org's own configured timezone via Intl,
+ * rather than a fixed VPS-local crontab time — the VPS is on Europe/Berlin,
+ * which drifts against Africa/Nairobi across DST changes, and a fixed cron
+ * time can't respect the per-org runMorningAt/workingDays config anyway.
+ * Cron is expected to poll frequently (e.g. every 15 min); this gate is what
+ * actually decides whether it's time yet. */
+function isScheduledTimeReached(timezone: string, targetHHMM: string, workingDays: number[]): boolean {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    weekday: 'short',
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+  const weekdayShort = parts.find((p) => p.type === 'weekday')?.value ?? '';
+  const dayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekdayShort);
+  if (workingDays.length > 0 && !workingDays.includes(dayIndex)) return false;
+
+  const [targetHour, targetMinute] = targetHHMM.split(':').map(Number);
+  return hour > targetHour || (hour === targetHour && minute >= targetMinute);
+}
+
 async function safeSend(params: Parameters<typeof sendTransactionalEmail>[0]) {
   try {
     await sendTransactionalEmail(params);
@@ -36,11 +61,16 @@ async function safeSend(params: Parameters<typeof sendTransactionalEmail>[0]) {
 }
 
 /** Idempotent per (org, date, kind): a double-fired cron finds the existing
- * row instead of generating (and later sending) a second plan. */
-export async function getOrCreateMorningRun(organizationId: string) {
+ * row instead of generating (and later sending) a second plan. `fromCron`
+ * gates on the configured run time/working days; the manual "Run now" button
+ * bypasses that gate on purpose — an admin clicking it means now. */
+export async function getOrCreateMorningRun(organizationId: string, opts: { fromCron?: boolean } = {}) {
   const vsmConfig = await prisma.vsmConfig.findUnique({ where: { organizationId } });
   if (!vsmConfig || !vsmConfig.enabled) {
     throw new Error('VSM_NOT_ENABLED');
+  }
+  if (opts.fromCron && !isScheduledTimeReached(vsmConfig.timezone, vsmConfig.runMorningAt, vsmConfig.workingDays)) {
+    return null;
   }
 
   const existing = await prisma.vsmRun.findUnique({
@@ -201,9 +231,12 @@ async function notifyCeos(organizationId: string, vsmConfig: { ceoUserIds: strin
 // A routine daily check-in — not the staged silence-escalation ladder in
 // §4.6/§4.7 (that needs VsmEscalation + multi-day tracking; Phase 2).
 
-export async function getOrCreateEodRun(organizationId: string) {
+export async function getOrCreateEodRun(organizationId: string, opts: { fromCron?: boolean } = {}) {
   const vsmConfig = await prisma.vsmConfig.findUnique({ where: { organizationId } });
   if (!vsmConfig || !vsmConfig.enabled) throw new Error('VSM_NOT_ENABLED');
+  if (opts.fromCron && !isScheduledTimeReached(vsmConfig.timezone, vsmConfig.runEveningAt, vsmConfig.workingDays)) {
+    return null;
+  }
 
   const existing = await prisma.vsmRun.findUnique({
     where: { organizationId_date_kind: { organizationId, date: todayDateOnly(), kind: 'EOD' } },
