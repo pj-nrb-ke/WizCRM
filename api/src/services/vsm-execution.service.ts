@@ -276,7 +276,7 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
       hadMovementToday,
     });
 
-    await updateSilenceStreak(organizationId, person.id, person.name, hadMovementToday);
+    await updateSilenceStreak(organizationId, person.id, person.name, hadMovementToday, { name: vsmConfig.personaName });
 
     if (stillOpenTasks.length > 0) {
       const user = await prisma.user.findUnique({ where: { id: person.id }, select: { email: true, name: true } });

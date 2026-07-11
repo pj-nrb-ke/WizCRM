@@ -9,6 +9,7 @@ import { NavIcon } from './NavIcon';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { BoltGlyph } from './BrandMark';
 import { LicenseBanner } from './LicenseBanner';
+import { NotificationBell } from './NotificationBell';
 
 const W_COLLAPSED = 64;
 const W_EXPANDED = 240;
@@ -440,6 +441,9 @@ export function Layout() {
 
       <div className="workspace" style={{ marginLeft: sidebarW }}>
         <LicenseBanner entitlements={entitlements} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 24px 0' }}>
+          <NotificationBell />
+        </div>
         <main className="main">
           <Outlet />
         </main>

@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { createTaskSchema, createTaskUpdateSchema, normalizeLeadTags, updateTaskSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { flagTaskForHelp } from '../services/vsm-escalation.service.js';
+import { maybeAskFollowUp } from '../services/vsm-followup.service.js';
 
 export const taskRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -120,6 +121,15 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       data: { taskId: id, userId, body: parsed.data.body },
       include: { user: { select: { id: true, name: true } } },
     });
+
+    // Best-effort: the VSM may ask one grounded follow-up question on its
+    // own tasks (VSM-SPEC §4.6). Never let this fail the staff member's reply.
+    try {
+      await maybeAskFollowUp(organizationId, id, parsed.data.body);
+    } catch {
+      // swallow — the reply itself already succeeded
+    }
+
     return reply.status(201).send({ update });
   });
 

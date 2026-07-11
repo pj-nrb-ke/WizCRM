@@ -1,9 +1,28 @@
 import type { EscalationKind, EscalationSeverity } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { EmailUnavailableError, sendTransactionalEmail } from './brevo-mail.js';
 
-/** Consecutive silent working days before REP_UNRESPONSIVE fires
- * (VSM-SPEC §4.7: "≥ 2 consecutive working days"). */
-const SILENCE_ESCALATION_THRESHOLD = 2;
+const APP_URL = (process.env.APP_URL ?? 'https://app.wizcrm.app').replace(/\/$/, '');
+
+async function safeSend(params: Parameters<typeof sendTransactionalEmail>[0]) {
+  try {
+    await sendTransactionalEmail(params);
+  } catch (e) {
+    if (e instanceof EmailUnavailableError) return;
+    throw e;
+  }
+}
+
+/** Consecutive silent working days before a gentle named nudge goes out
+ * directly to the person — day 2 of the staged ladder in §4.6, still no
+ * CEO involvement. */
+const SILENCE_NUDGE_THRESHOLD = 2;
+
+/** Consecutive silent working days before REP_UNRESPONSIVE escalates to the
+ * CEO — day 3 of the staged ladder in §4.6 ("Day 3 silent ... escalates to
+ * the CEO automatically"). One day after the nudge, not the same day, so a
+ * quiet person gets a chance to respond to the nudge first. */
+const SILENCE_ESCALATION_THRESHOLD = 3;
 
 /** How much staler than the normal follow-up window a HOT lead has to be
  * before it's a CRITICAL escalation rather than just tomorrow's task list —
@@ -50,24 +69,32 @@ async function upsertEscalation(params: {
   });
 }
 
-/** Called once per person per EOD run. Updates the silence streak and, once
- * it crosses the threshold, raises/refreshes a REP_UNRESPONSIVE escalation.
- * A person who moves anything resets to 0 — this is about sustained silence,
- * not one quiet afternoon (§4.6: an explained absence isn't silence either,
- * but that check belongs to the Meeting Room's absence flow, Phase 4). */
+/** Called once per person per EOD run. Updates the silence streak and walks
+ * the staged ladder from §4.6: day 1 is silent (noted in the digest by the
+ * caller, nothing sent here), day 2 gets one gentle named nudge straight
+ * from the VSM, day 3+ escalates to the CEO. A person who moves anything
+ * resets to 0 — this is about sustained silence, not one quiet afternoon
+ * (an explained absence isn't silence either, but that check belongs to the
+ * Meeting Room's absence flow, Phase 4). */
 export async function updateSilenceStreak(
   organizationId: string,
   userId: string,
   userName: string,
   hadMovementToday: boolean,
-): Promise<{ streak: number; escalated: boolean }> {
+  persona: { name: string },
+): Promise<{ streak: number; nudged: boolean; escalated: boolean }> {
   const profile = await prisma.teamMemberProfile.findUnique({ where: { userId } });
   const nextStreak = hadMovementToday ? 0 : (profile?.silentStreak ?? 0) + 1;
 
   await prisma.teamMemberProfile.updateMany({ where: { userId }, data: { silentStreak: nextStreak } });
 
+  if (nextStreak === SILENCE_NUDGE_THRESHOLD) {
+    await sendSilenceNudge(organizationId, userId, userName, persona.name);
+    return { streak: nextStreak, nudged: true, escalated: false };
+  }
+
   if (nextStreak < SILENCE_ESCALATION_THRESHOLD) {
-    return { streak: nextStreak, escalated: false };
+    return { streak: nextStreak, nudged: false, escalated: false };
   }
 
   await upsertEscalation({
@@ -78,7 +105,34 @@ export async function updateSilenceStreak(
     evidence: { userId, userName, silentStreak: nextStreak, asOf: new Date().toISOString() },
     suggestedAction: `${userName} has had no task movement for ${nextStreak} consecutive working days. Check in personally, or reassign their open accounts.`,
   });
-  return { streak: nextStreak, escalated: true };
+  return { streak: nextStreak, nudged: false, escalated: true };
+}
+
+/** Day 2 of the staged silence ladder (§4.6) — a gentle, named nudge direct
+ * from the VSM to the person, no CEO involvement yet. In-app notification +
+ * email, same channels as the rest of the module. */
+async function sendSilenceNudge(organizationId: string, userId: string, userName: string, personaName: string) {
+  await prisma.notification.create({
+    data: {
+      organizationId,
+      userId,
+      kind: 'vsm_silence_nudge',
+      title: `${personaName} checked in on your open tasks`,
+      body: 'Anything blocking you? Reply on a task to let them know.',
+      linkPath: '/',
+    },
+  });
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
+  if (!user) return;
+  const text = `Hi ${userName}, following up on yesterday's tasks — anything blocking you? Reply on any task in WizCRM and ${personaName} will see it.`;
+  await safeSend({
+    toEmail: user.email,
+    toName: user.name,
+    subject: 'Anything blocking you?',
+    text: `${text}\n\nOpen in WizCRM: ${APP_URL}`,
+    html: `<p>${text}</p><p><a href="${APP_URL}">Open in WizCRM</a></p>`,
+  });
 }
 
 /** Called once per EOD run, org-wide. A HOT lead going quiet well past the
