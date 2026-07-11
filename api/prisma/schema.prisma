@@ -8,19 +8,19 @@ datasource db {
 }
 
 model Organization {
-  id              String           @id @default(uuid())
-  name            String
-  settings        Json             @default("{}")
-  createdAt       DateTime         @default(now())
-  users           User[]
-  leads           Lead[]
-  teams           Team[]
-  campaigns       Campaign[]
-  emailTemplates  EmailTemplate[]
-  suppressionList SuppressionList[]
-  contactCaches   ContactFinderCache[]
+  id               String               @id @default(uuid())
+  name             String
+  settings         Json                 @default("{}")
+  createdAt        DateTime             @default(now())
+  users            User[]
+  leads            Lead[]
+  teams            Team[]
+  campaigns        Campaign[]
+  emailTemplates   EmailTemplate[]
+  suppressionList  SuppressionList[]
+  contactCaches    ContactFinderCache[]
   productDocuments ProductDocument[]
-  expos           Expo[]
+  expos            Expo[]
 }
 
 model Team {
@@ -37,34 +37,39 @@ model Team {
 }
 
 model User {
-  id             String       @id @default(uuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  teamId         String?
-  team           Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  email          String       @unique
-  passwordHash   String
-  name           String
-  role           UserRole     @default(SALES)
-  failedLoginCount Int        @default(0)
-  lockoutUntil   DateTime?
-  createdAt      DateTime     @default(now())
-  ownedLeads          Lead[]            @relation("LeadOwner")
-  activities          Activity[]
-  tasks               Task[]
-  calendarEvents      CalendarEvent[]
-  eventInvites        CalendarEventAttendee[] @relation("EventAttendee")
-  userReminders       UserReminder[]
-  salesOpportunities  SalesOpportunity[] @relation("OpportunityOwner")
-  quotations          Quotation[]
-  aiAuditLogs         AiAuditLog[]
-  stageChanges        StageChange[]
-  leadMessages        LeadMessage[]
-  leadAttachments     LeadAttachment[]
-  ownedCampaigns      Campaign[]        @relation("CampaignOwner")
-  emailTemplates      EmailTemplate[]   @relation("EmailTemplateCreator")
-  suppressionEntries  SuppressionList[] @relation("SuppressionAddedBy")
-  productDocuments    ProductDocument[]
+  id                 String                  @id @default(uuid())
+  organizationId     String
+  organization       Organization            @relation(fields: [organizationId], references: [id])
+  teamId             String?
+  team               Team?                   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  email              String                  @unique
+  passwordHash       String
+  name               String
+  role               UserRole                @default(SALES)
+  isVirtual          Boolean                 @default(false)
+  failedLoginCount   Int                     @default(0)
+  lockoutUntil       DateTime?
+  createdAt          DateTime                @default(now())
+  ownedLeads         Lead[]                  @relation("LeadOwner")
+  activities         Activity[]
+  tasks              Task[]
+  calendarEvents     CalendarEvent[]
+  eventInvites       CalendarEventAttendee[] @relation("EventAttendee")
+  userReminders      UserReminder[]
+  salesOpportunities SalesOpportunity[]      @relation("OpportunityOwner")
+  quotations         Quotation[]
+  aiAuditLogs        AiAuditLog[]
+  stageChanges       StageChange[]
+  leadMessages       LeadMessage[]
+  leadAttachments    LeadAttachment[]
+  ownedCampaigns     Campaign[]              @relation("CampaignOwner")
+  emailTemplates     EmailTemplate[]         @relation("EmailTemplateCreator")
+  suppressionEntries SuppressionList[]       @relation("SuppressionAddedBy")
+  productDocuments   ProductDocument[]
+  teamMemberProfile  TeamMemberProfile?
+  vsmConfigChanges   VsmConfigChange[]
+  taskUpdates        TaskUpdate[]
+  notifications      Notification[]
 
   @@index([organizationId])
   @@index([teamId])
@@ -77,37 +82,39 @@ enum UserRole {
 }
 
 model Lead {
-  id               String     @id @default(uuid())
-  organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id])
-  ownerId          String
-  owner            User       @relation("LeadOwner", fields: [ownerId], references: [id])
-  name             String
-  company          String?
-  email            String?
-  emailNormalized  String?
-  phone            String?
-  phoneNormalized  String?
-  extraPhones      Json     @default("[]")
-  extraEmails      Json     @default("[]")
-  address          String?
-  googleMapsUrl    String?
-  source           String?
-  tags             String[]   @default([])
-  priority         LeadPriority?
-  stage            LeadStage  @default(NEW)
-  wonValue         Decimal?   @db.Decimal(14, 2)
-  wonStartAt       DateTime?
-  wonProducts      String?
-  lossReason       String?
-  /** Sort order within a pipeline column (lower = higher on the board). */
-  pipelineRank     Int        @default(0)
-  lastActivityAt   DateTime?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  activities       Activity[]
-  tasks            Task[]
-  stageChanges     StageChange[]
+  id                 String             @id @default(uuid())
+  organizationId     String
+  organization       Organization       @relation(fields: [organizationId], references: [id])
+  ownerId            String
+  owner              User               @relation("LeadOwner", fields: [ownerId], references: [id])
+  name               String
+  company            String?
+  email              String?
+  emailNormalized    String?
+  phone              String?
+  phoneNormalized    String?
+  extraPhones        Json               @default("[]")
+  extraEmails        Json               @default("[]")
+  address            String?
+  googleMapsUrl      String?
+  source             String?
+  tags               String[]           @default([])
+  priority           LeadPriority?
+  stage              LeadStage          @default(NEW)
+  wonValue           Decimal?           @db.Decimal(14, 2)
+  wonStartAt         DateTime?
+  wonProducts        String?
+  lossReason         String?
+  /**
+   * Sort order within a pipeline column (lower = higher on the board).
+   */
+  pipelineRank       Int                @default(0)
+  lastActivityAt     DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  activities         Activity[]
+  tasks              Task[]
+  stageChanges       StageChange[]
   salesOpportunities SalesOpportunity[]
   quotations         Quotation[]
   calendarEvents     CalendarEvent[]
@@ -141,16 +148,16 @@ enum LeadStage {
 }
 
 model StageChange {
-  id           String    @id @default(uuid())
-  leadId       String
-  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  fromStage    LeadStage
-  toStage      LeadStage
-  note         String?
-  suggestedByAi Boolean  @default(false)
-  userId       String
-  user         User      @relation(fields: [userId], references: [id])
-  createdAt    DateTime  @default(now())
+  id            String    @id @default(uuid())
+  leadId        String
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStage     LeadStage
+  toStage       LeadStage
+  note          String?
+  suggestedByAi Boolean   @default(false)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
 
   @@index([leadId, createdAt(sort: Desc)])
 }
@@ -217,32 +224,32 @@ model Activity {
 
 /// Internal team thread per lead (FR-NTH-011) — not customer SMS.
 model LeadMessage {
-  id               String   @id @default(uuid())
+  id               String           @id @default(uuid())
   leadId           String
-  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead             Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
   userId           String
-  user             User     @relation(fields: [userId], references: [id])
+  user             User             @relation(fields: [userId], references: [id])
   body             String
-  mentionedUserIds String[] @default([])
-  createdAt        DateTime @default(now())
+  mentionedUserIds String[]         @default([])
+  createdAt        DateTime         @default(now())
   attachments      LeadAttachment[]
 
   @@index([leadId, createdAt(sort: Desc)])
 }
 
 model LeadAttachment {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   leadId      String
-  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
   messageId   String?
   message     LeadMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
   fileName    String
   mimeType    String
   sizeBytes   Int
   storagePath String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime     @default(now())
 
   @@index([leadId, createdAt(sort: Desc)])
 }
@@ -253,7 +260,7 @@ model ProductDocument {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   title          String
-  category       String?          // "Catalog" | "Brochure" | "Price list" | "Spec sheet"
+  category       String? // "Catalog" | "Brochure" | "Price list" | "Spec sheet"
   productTags    String[]     @default([])
   fileName       String
   mimeType       String
@@ -271,29 +278,29 @@ model ProductDocument {
 }
 
 model SalesOpportunity {
-  id               String              @id @default(uuid())
-  organizationId   String
-  leadId           String
-  lead             Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  ownerId          String
-  owner            User                @relation("OpportunityOwner", fields: [ownerId], references: [id])
-  referenceNumber  String
-  description      String
-  contactPerson    String?
-  isPublic         Boolean             @default(true)
-  oppStage         SalesOppStage       @default(NEW_OPPORTUNITY)
-  oppStatus        SalesOppStatus        @default(NOT_STARTED)
-  probabilityPct   Float               @default(10)
-  sourceType       OpportunitySourceType @default(OTHER)
-  sourceDetail     String?
-  startDate        DateTime            @default(now())
-  closeBy          DateTime?
-  actualClose      DateTime?
-  budgeted         Float?
-  forecastedExcl   Float?
-  isClosed         Boolean             @default(false)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  id              String                @id @default(uuid())
+  organizationId  String
+  leadId          String
+  lead            Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  ownerId         String
+  owner           User                  @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  referenceNumber String
+  description     String
+  contactPerson   String?
+  isPublic        Boolean               @default(true)
+  oppStage        SalesOppStage         @default(NEW_OPPORTUNITY)
+  oppStatus       SalesOppStatus        @default(NOT_STARTED)
+  probabilityPct  Float                 @default(10)
+  sourceType      OpportunitySourceType @default(OTHER)
+  sourceDetail    String?
+  startDate       DateTime              @default(now())
+  closeBy         DateTime?
+  actualClose     DateTime?
+  budgeted        Float?
+  forecastedExcl  Float?
+  isClosed        Boolean               @default(false)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId, leadId])
@@ -323,30 +330,32 @@ enum ErpSyncStatus {
 }
 
 model Quotation {
-  id               String          @id @default(uuid())
-  organizationId   String
-  leadId           String
-  lead             Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  ownerId          String
-  owner            User            @relation(fields: [ownerId], references: [id])
-  referenceNumber  String
-  status           QuotationStatus @default(DRAFT)
-  taxRatePct       Float           @default(0)
-  subtotal         Decimal         @db.Decimal(14, 2)
-  taxAmount        Decimal         @db.Decimal(14, 2)
-  total            Decimal         @db.Decimal(14, 2)
-  lines            Json
-  notes            String?
-  validUntil       DateTime?
-  /** When to follow up on a SENT quote (PRO-011). */
-  followUpAt       DateTime?
-  erpSyncStatus    ErpSyncStatus   @default(NONE)
-  erpReference     String?
-  erpSyncedAt      DateTime?
-  erpLastError     String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  erpSyncLogs      ErpSyncLog[]
+  id              String          @id @default(uuid())
+  organizationId  String
+  leadId          String
+  lead            Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  ownerId         String
+  owner           User            @relation(fields: [ownerId], references: [id])
+  referenceNumber String
+  status          QuotationStatus @default(DRAFT)
+  taxRatePct      Float           @default(0)
+  subtotal        Decimal         @db.Decimal(14, 2)
+  taxAmount       Decimal         @db.Decimal(14, 2)
+  total           Decimal         @db.Decimal(14, 2)
+  lines           Json
+  notes           String?
+  validUntil      DateTime?
+  /**
+   * When to follow up on a SENT quote (PRO-011).
+   */
+  followUpAt      DateTime?
+  erpSyncStatus   ErpSyncStatus   @default(NONE)
+  erpReference    String?
+  erpSyncedAt     DateTime?
+  erpLastError    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  erpSyncLogs     ErpSyncLog[]
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId, leadId])
@@ -393,7 +402,9 @@ enum RsvpStatus {
   TENTATIVE
 }
 
-/** Reach of an expo, from a Nairobi vantage point. */
+/**
+ * Reach of an expo, from a Nairobi vantage point.
+ */
 enum ExpoTier {
   LOCAL_KENYA
   EAST_AFRICA
@@ -402,7 +413,9 @@ enum ExpoTier {
   INTERNATIONAL
 }
 
-/** Take a stand, attend as a delegate, or leave it alone. */
+/**
+ * Take a stand, attend as a delegate, or leave it alone.
+ */
 enum ExpoRecommendation {
   BOOTH
   PARTICIPANT
@@ -411,7 +424,6 @@ enum ExpoRecommendation {
 
 /**
  * An upcoming trade show or exhibition, discovered from the public web.
- *
  * Every field that states a fact about the outside world (dates, venue) comes
  * from a cited `sourceUrl` — never from the model's own recollection — so a
  * blank date means "the source did not say", not "there is no date".
@@ -421,30 +433,44 @@ model Expo {
   organizationId       String
   organization         Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name                 String
-  /** Stable identity across re-runs: slug of the name + the month it starts. */
+  /**
+   * Stable identity across re-runs: slug of the name + the month it starts.
+   */
   dedupKey             String
   tier                 ExpoTier
-  /** What the event is, in a sentence or two. */
+  /**
+   * What the event is, in a sentence or two.
+   */
   brief                String?
-  /** How WizAG should position itself there. */
+  /**
+   * How WizAG should position itself there.
+   */
   positioning          String?
   recommendation       ExpoRecommendation?
   recommendationReason String?
   startDate            DateTime?
   endDate              DateTime?
-  /** Verbatim date text when the source gave no parseable date. */
+  /**
+   * Verbatim date text when the source gave no parseable date.
+   */
   dateText             String?
   city                 String?
   country              String?
   venue                String?
   websiteUrl           String?
-  /** The page this was read from. Always present; the row is dropped without it. */
+  /**
+   * The page this was read from. Always present; the row is dropped without it.
+   */
   sourceUrl            String
   sourceTitle          String?
-  /** 0-100. How firmly the source pins down the event, not the model's mood. */
+  /**
+   * 0-100. How firmly the source pins down the event, not the model's mood.
+   */
   confidence           Int                 @default(0)
   industryTags         String[]            @default([])
-  /** Set once someone puts this on the shared calendar. */
+  /**
+   * Set once someone puts this on the shared calendar.
+   */
   calendarEventId      String?
   dismissedAt          DateTime?
   createdAt            DateTime            @default(now())
@@ -454,7 +480,9 @@ model Expo {
   @@index([organizationId, tier, startDate])
 }
 
-/** A colleague invited to a shared calendar event. The organiser is CalendarEvent.userId. */
+/**
+ * A colleague invited to a shared calendar event. The organiser is CalendarEvent.userId.
+ */
 model CalendarEventAttendee {
   id          String        @id @default(uuid())
   eventId     String
@@ -470,38 +498,40 @@ model CalendarEventAttendee {
 }
 
 model CalendarEvent {
-  id                    String             @id @default(uuid())
-  organizationId        String
-  userId                String
-  user                  User               @relation(fields: [userId], references: [id])
-  leadId                String?
-  lead                  Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  title                 String
-  notes                 String?
-  startAt               DateTime
-  endAt                 DateTime
-  allDay                Boolean            @default(false)
-  eventType             CalendarEventType  @default(MEETING)
-  meetingMode           MeetingMode        @default(IN_PERSON)
-  meetingUrl            String?
-  recurrence            CalendarRecurrence @default(NONE)
+  id                     String                  @id @default(uuid())
+  organizationId         String
+  userId                 String
+  user                   User                    @relation(fields: [userId], references: [id])
+  leadId                 String?
+  lead                   Lead?                   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  title                  String
+  notes                  String?
+  startAt                DateTime
+  endAt                  DateTime
+  allDay                 Boolean                 @default(false)
+  eventType              CalendarEventType       @default(MEETING)
+  meetingMode            MeetingMode             @default(IN_PERSON)
+  meetingUrl             String?
+  recurrence             CalendarRecurrence      @default(NONE)
   recurrenceIntervalDays Int?
-  recurrenceUntil       DateTime?
-  reminderMinutes       Int?
-  /** Project / campaign tags (shared with leads via org tag list). */
-  tags                  String[]           @default([])
-  meetingAddress        String?
-  meetingLat            Float?
-  meetingLng            Float?
-  checkInAt             DateTime?
-  checkInLat            Float?
-  checkInLng            Float?
-  geofenceOverride      Boolean            @default(false)
-  checkOutAt            DateTime?
-  attendanceStatus      AttendanceStatus?
-  attendees             CalendarEventAttendee[]
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  recurrenceUntil        DateTime?
+  reminderMinutes        Int?
+  /**
+   * Project / campaign tags (shared with leads via org tag list).
+   */
+  tags                   String[]                @default([])
+  meetingAddress         String?
+  meetingLat             Float?
+  meetingLng             Float?
+  checkInAt              DateTime?
+  checkInLat             Float?
+  checkInLng             Float?
+  geofenceOverride       Boolean                 @default(false)
+  checkOutAt             DateTime?
+  attendanceStatus       AttendanceStatus?
+  attendees              CalendarEventAttendee[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
 
   @@index([organizationId, userId, startAt])
   @@index([organizationId, leadId])
@@ -509,37 +539,149 @@ model CalendarEvent {
 }
 
 model UserReminder {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   organizationId  String
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title           String
   notes           String?
   remindAt        DateTime
-  tags            String[]  @default([])
+  tags            String[] @default([])
   leadId          String?
-  lead            Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lead            Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
   calendarEventId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([organizationId, userId, remindAt])
 }
 
 model Task {
-  id          String    @id @default(uuid())
+  id             String        @id @default(uuid())
   organizationId String
-  tags        String[]  @default([])
-  leadId      String?
-  lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  title       String
-  dueAt       DateTime?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
+  tags           String[]      @default([])
+  leadId         String?
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  title          String
+  description    String?
+  source         TaskSource    @default(USER)
+  reason         String?
+  evidence       Json?
+  priority       TaskPriority?
+  dueAt          DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updates        TaskUpdate[]
 
   @@index([userId, dueAt])
+  @@index([organizationId])
+}
+
+enum TaskSource {
+  USER
+  VSM
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model TaskUpdate {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  isVsm     Boolean  @default(false)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+// ─── Virtual Sales Manager (VSM) — Phase 0 ─────────────────────────────────
+
+model TeamMemberProfile {
+  id               String   @id @default(uuid())
+  organizationId   String
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position         String?
+  responsibilities String?
+  workingDays      Int[]    @default([1, 2, 3, 4, 5])
+  workStart        String?
+  workEnd          String?
+  pushOptIn        Boolean  @default(false)
+  managedByVsm     Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+enum VsmAutonomy {
+  DRAFT
+  AUTO
+}
+
+model VsmConfig {
+  id                 String            @id @default(uuid())
+  organizationId     String            @unique
+  personaName        String            @default("Wanjiru")
+  personaEmail       String            @default("vsm@wizag.co.ke")
+  vsmUserId          String?           @unique
+  tone               String            @default("professional")
+  language           String            @default("en")
+  timezone           String            @default("Africa/Nairobi")
+  workingDays        Int[]             @default([1, 2, 3, 4, 5])
+  runMorningAt       String            @default("07:30")
+  middayNudgeEnabled Boolean           @default(false)
+  runMiddayAt        String            @default("13:00")
+  runEveningAt       String            @default("17:30")
+  runDigestAt        String            @default("18:00")
+  autonomy           VsmAutonomy       @default(DRAFT)
+  taskCapPerDay      Int               @default(5)
+  nudgeCapPerDay     Int               @default(1)
+  ceoUserIds         String[]          @default([])
+  kpiTargets         Json              @default("{}")
+  enabled            Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  changes            VsmConfigChange[]
+}
+
+model VsmConfigChange {
+  id             String    @id @default(uuid())
+  vsmConfigId    String
+  vsmConfig      VsmConfig @relation(fields: [vsmConfigId], references: [id], onDelete: Cascade)
+  organizationId String
+  field          String
+  oldValue       Json?
+  newValue       Json?
+  changedBy      String
+  changedByUser  User      @relation(fields: [changedBy], references: [id])
+  at             DateTime  @default(now())
+
+  @@index([organizationId, at(sort: Desc)])
+}
+
+model Notification {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind           String
+  title          String
+  body           String?
+  linkPath       String?
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
   @@index([organizationId])
 }
 
@@ -604,21 +746,21 @@ enum EmailSendStatus {
 }
 
 model Campaign {
-  id               String         @id @default(uuid())
+  id               String          @id @default(uuid())
   organizationId   String
-  organization     Organization   @relation(fields: [organizationId], references: [id])
+  organization     Organization    @relation(fields: [organizationId], references: [id])
   ownerId          String
-  owner            User           @relation("CampaignOwner", fields: [ownerId], references: [id])
+  owner            User            @relation("CampaignOwner", fields: [ownerId], references: [id])
   name             String
   goal             String?
-  industryKeywords Json           @default("[]")
-  locations        Json           @default("[]")
+  industryKeywords Json            @default("[]")
+  locations        Json            @default("[]")
   sizeMin          Int?
   sizeMax          Int?
-  scoringRules     Json           @default("{}")
-  status           CampaignStatus @default(DRAFT)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  scoringRules     Json            @default("{}")
+  status           CampaignStatus  @default(DRAFT)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   prospects        Prospect[]
   emailTemplates   EmailTemplate[]
   sequences        EmailSequence[]
@@ -762,16 +904,16 @@ model EmailSend {
 }
 
 model SuppressionList {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   companyName    String?
   domain         String?
   email          String?
   addedById      String
-  addedBy        User     @relation("SuppressionAddedBy", fields: [addedById], references: [id])
+  addedBy        User         @relation("SuppressionAddedBy", fields: [addedById], references: [id])
   reason         String?
-  addedAt        DateTime @default(now())
+  addedAt        DateTime     @default(now())
 
   @@index([organizationId])
   @@index([organizationId, domain])
@@ -779,30 +921,30 @@ model SuppressionList {
 }
 
 model IntentSignal {
-  id             String    @id @default(uuid())
-  campaignId     String
-  campaign       Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  source         String
-  platform       String
-  title          String
-  snippet        String?
-  url            String
-  authorName     String?
-  authorCompany  String?
-  location       String?
-  lat            Float?
-  lng            Float?
-  publishedAt    DateTime?
-  intentStrength String
-  engagementScore Int      @default(0)
-  status         String    @default("NEW")
-  dedupHash      String?
-  raw            Json?
-  createdAt      DateTime  @default(now())
+  id              String    @id @default(uuid())
+  campaignId      String
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  source          String
+  platform        String
+  title           String
+  snippet         String?
+  url             String
+  authorName      String?
+  authorCompany   String?
+  location        String?
+  lat             Float?
+  lng             Float?
+  publishedAt     DateTime?
+  intentStrength  String
+  engagementScore Int       @default(0)
+  status          String    @default("NEW")
+  dedupHash       String?
+  raw             Json?
+  createdAt       DateTime  @default(now())
 
+  @@unique([campaignId, dedupHash])
   @@index([campaignId])
   @@index([campaignId, intentStrength])
-  @@unique([campaignId, dedupHash])
 }
 
 // ─── Contact Finder Cache ───────────────────────────────────────────────────

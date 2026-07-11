@@ -16,3 +16,4 @@ export * from './geo.js';
 export * from './entitlements.js';
 export * from './mentions.js';
 export * from './reminders.js';
+export * from './vsm.js';

@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { createTaskSchema, normalizeLeadTags, updateTaskSchema } from '@wizcrm/shared';
+import { createTaskSchema, createTaskUpdateSchema, normalizeLeadTags, updateTaskSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 
 export const taskRoutes: FastifyPluginAsync = async (app) => {
@@ -67,5 +67,42 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       },
     });
     return { task };
+  });
+
+  // Task threads (VSM-SPEC §4.4) — owner or any manager/admin in the org can
+  // read/reply; staff use this to tell the VSM (or a colleague) what happened.
+  app.get('/:id/updates', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const { id } = request.params as { id: string };
+    const task = await prisma.task.findFirst({ where: { id, organizationId } });
+    if (!task) return reply.status(404).send({ error: 'Task not found' });
+    if (task.userId !== userId && role === 'SALES') {
+      return reply.status(403).send({ error: 'Not your task' });
+    }
+    const updates = await prisma.taskUpdate.findMany({
+      where: { taskId: id },
+      orderBy: { createdAt: 'asc' },
+      include: { user: { select: { id: true, name: true } } },
+    });
+    return { updates };
+  });
+
+  app.post('/:id/updates', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const { id } = request.params as { id: string };
+    const parsed = createTaskUpdateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const task = await prisma.task.findFirst({ where: { id, organizationId } });
+    if (!task) return reply.status(404).send({ error: 'Task not found' });
+    if (task.userId !== userId && role === 'SALES') {
+      return reply.status(403).send({ error: 'Not your task' });
+    }
+    const update = await prisma.taskUpdate.create({
+      data: { taskId: id, userId, body: parsed.data.body },
+      include: { user: { select: { id: true, name: true } } },
+    });
+    return reply.status(201).send({ update });
   });
 };

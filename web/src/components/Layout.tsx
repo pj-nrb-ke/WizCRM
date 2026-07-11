@@ -332,6 +332,8 @@ export function Layout() {
               <NavItem to="/users" icon="users" label="Users" expanded={expanded} />
               <NavItem to="/settings/branding" icon="org" label="Branding" expanded={expanded} />
               <NavItem to="/settings/lead-engine" icon="ai" label="Data Sources" expanded={expanded} />
+              <NavItem to="/settings/vsm-roster" icon="teams" label="Team Roster" expanded={expanded} />
+              <NavItem to="/settings/vsm" icon="ai" label="VSM (Wanjiru)" expanded={expanded} />
               <NavItem to="/platform" icon="ai" label="AI & platform" expanded={expanded} />
               <NavItem to="/connection" icon="mobile" label="Mobile connection" expanded={expanded} />
               <NavItem to="/integrations" icon="leads" label="Integrations" expanded={expanded} />

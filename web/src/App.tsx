@@ -34,6 +34,8 @@ import { BusinessPage } from './pages/BusinessPage';
 import LeadEngineSettingsPage from './pages/LeadEngineSettingsPage';
 import { ContactFinderPage } from './pages/ContactFinderPage';
 import { ProductDocumentsPage } from './pages/ProductDocumentsPage';
+import { RosterPage } from './pages/RosterPage';
+import { VsmConfigPage } from './pages/VsmConfigPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -132,6 +134,22 @@ export default function App() {
               element={
                 <AdminOnly>
                   <LeadEngineSettingsPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/settings/vsm-roster"
+              element={
+                <AdminOnly>
+                  <RosterPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/settings/vsm"
+              element={
+                <AdminOnly>
+                  <VsmConfigPage />
                 </AdminOnly>
               }
             />

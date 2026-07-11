@@ -26,6 +26,7 @@ import { leadEngineRoutes, handleUnsubscribe } from './routes/lead-engine.js';
 import { contactFinderRoutes } from './routes/contact-finder.js';
 import { leadDecisionMakerRoutes } from './routes/lead-decision-makers.js';
 import { africasTalkingVoiceRoutes } from './routes/africastalking-voice.js';
+import { vsmRoutes } from './routes/vsm.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 import { recordServerError } from './lib/error-recorder.js';
@@ -104,6 +105,7 @@ export async function buildApp() {
   await app.register(documentRoutes, { prefix: '/documents' });
   await app.register(leadEngineRoutes, { prefix: '/leadengine' });
   await app.register(contactFinderRoutes, { prefix: '/contacts/finder' });
+  await app.register(vsmRoutes, { prefix: '/vsm' });
 
   // Africa's Talking Voice IVR (AI BDR spike) — public, AT posts urlencoded here
   await app.register(africasTalkingVoiceRoutes);
