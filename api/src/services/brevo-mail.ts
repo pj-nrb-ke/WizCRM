@@ -7,6 +7,8 @@ export type SendEmailParams = {
   subject: string;
   text: string;
   html?: string;
+  /** e.g. task-<id>@reply.wizag.co.ke — routes a reply back into the task thread. */
+  replyTo?: { email: string; name?: string };
 };
 
 export class EmailUnavailableError extends Error {
@@ -64,6 +66,7 @@ async function sendViaBrevoApi(
       subject: params.subject,
       htmlContent: html,
       textContent: text,
+      ...(params.replyTo ? { replyTo: { email: params.replyTo.email, name: params.replyTo.name } } : {}),
     }),
   });
 
@@ -96,6 +99,7 @@ async function sendViaSmtp(
     subject: params.subject,
     text,
     html,
+    ...(params.replyTo ? { replyTo: `"${params.replyTo.name ?? ''}" <${params.replyTo.email}>` } : {}),
   });
 }
 

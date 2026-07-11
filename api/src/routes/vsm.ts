@@ -3,7 +3,13 @@ import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { updateVsmConfigSchema, upsertTeamMemberProfileSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
-import { getOrgSettings } from '../services/org-settings.service.js';
+import { generateCandidates } from '../services/vsm-planning.service.js';
+import {
+  getOrCreateEodRun,
+  getOrCreateMorningRun,
+  sendMorningRun,
+  updateMorningRunPlan,
+} from '../services/vsm-execution.service.js';
 
 /**
  * Admin/CEO governance guard (VSM-SPEC §4.2b): roster, VSM config, and KPIs
@@ -176,75 +182,101 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
     return { user: vsmUser, config: updated };
   });
 
-  // ─── Dry run (Phase 0 accept criterion) ───────────────────────────────────
-  // Deterministic rule layer only — no LLM ranking, no sends. Enough to prove
-  // the evidence-linked-candidate shape end to end before Phase 1 wires up
-  // prioritisation, phrasing, and actual task creation/email.
+  // ─── Dry run ───────────────────────────────────────────────────────────────
+  // Deterministic rule layer only — no LLM ranking, no sends. Same rule
+  // engine the real morning run uses (generateCandidates), just previewed.
 
   app.post('/dry-run', { preHandler: await requireAdminOrCeo() }, async (request) => {
     const { organizationId } = request.user;
-    const settings = await getOrgSettings(organizationId);
-    const staleLeadDays = settings.staleLeadDays ?? 7;
-    const staleCutoff = new Date(Date.now() - staleLeadDays * 24 * 60 * 60 * 1000);
-    const newLeadCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const now = new Date();
-
-    const [staleLeads, overdueTasks, unworkedLeads] = await Promise.all([
-      // R1 — stale lead in an active (non-terminal) stage
-      prisma.lead.findMany({
-        where: {
-          organizationId,
-          stage: { notIn: ['WON', 'LOST'] },
-          OR: [{ lastActivityAt: { lt: staleCutoff } }, { lastActivityAt: null, createdAt: { lt: staleCutoff } }],
-        },
-        select: { id: true, name: true, company: true, stage: true, ownerId: true, lastActivityAt: true },
-        take: 200,
-      }),
-      // R2 — overdue task
-      prisma.task.findMany({
-        where: { organizationId, completedAt: null, dueAt: { lt: now } },
-        select: { id: true, title: true, userId: true, dueAt: true, leadId: true },
-        take: 200,
-      }),
-      // R3 — new lead unworked >24h (no activity logged yet)
-      prisma.lead.findMany({
-        where: { organizationId, createdAt: { lt: newLeadCutoff }, activities: { none: {} } },
-        select: { id: true, name: true, company: true, ownerId: true, createdAt: true },
-        take: 200,
-      }),
-    ]);
-
-    const candidates = [
-      ...staleLeads.map((l) => ({
-        rule: 'R1_STALE_LEAD',
-        assigneeUserId: l.ownerId,
-        title: `Follow up: ${l.name}${l.company ? ` (${l.company})` : ''}`,
-        reason: `No activity since ${l.lastActivityAt?.toISOString().slice(0, 10) ?? 'lead creation'} — stage ${l.stage}`,
-        evidence: { leadId: l.id, stage: l.stage, lastActivityAt: l.lastActivityAt },
-      })),
-      ...overdueTasks.map((t) => ({
-        rule: 'R2_OVERDUE_TASK',
-        assigneeUserId: t.userId,
-        title: `Overdue: ${t.title}`,
-        reason: `Was due ${t.dueAt?.toISOString().slice(0, 10)}`,
-        evidence: { taskId: t.id, leadId: t.leadId, dueAt: t.dueAt },
-      })),
-      ...unworkedLeads.map((l) => ({
-        rule: 'R3_NEW_LEAD_UNWORKED',
-        assigneeUserId: l.ownerId,
-        title: `First touch: ${l.name}${l.company ? ` (${l.company})` : ''}`,
-        reason: `Created ${l.createdAt.toISOString().slice(0, 10)}, no activity logged yet`,
-        evidence: { leadId: l.id, createdAt: l.createdAt },
-      })),
-    ];
-
+    const candidates = await generateCandidates(organizationId);
     const cfg = await getOrCreateVsmConfig(organizationId);
     return {
-      generatedAt: now.toISOString(),
+      generatedAt: new Date().toISOString(),
       candidateCount: candidates.length,
       taskCapPerDay: cfg.taskCapPerDay,
       candidates,
     };
+  });
+
+  // ─── Morning run + CEO approval (Phase 1) ─────────────────────────────────
+
+  app.post('/runs/morning', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    try {
+      const run = await getOrCreateMorningRun(request.user.organizationId);
+      return reply.status(201).send({ run });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'VSM_NOT_ENABLED') {
+        return reply.status(400).send({ error: 'Enable VSM in configuration before running the morning plan.' });
+      }
+      throw err;
+    }
+  });
+
+  app.get('/runs', { preHandler: await requireAdminOrCeo() }, async (request) => {
+    const { kind, status } = request.query as { kind?: 'MORNING' | 'EOD' | 'WEEKLY'; status?: string };
+    const runs = await prisma.vsmRun.findMany({
+      where: {
+        organizationId: request.user.organizationId,
+        kind: kind ?? undefined,
+        status: (status as 'DRAFT' | 'APPROVED' | 'SENT' | 'SKIPPED' | undefined) ?? undefined,
+      },
+      orderBy: { date: 'desc' },
+      take: 30,
+    });
+    return { runs };
+  });
+
+  app.get('/runs/:id', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const run = await prisma.vsmRun.findFirst({ where: { id, organizationId: request.user.organizationId } });
+    if (!run) return reply.status(404).send({ error: 'Run not found' });
+    return { run };
+  });
+
+  app.patch('/runs/:id', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.vsmRun.findFirst({ where: { id, organizationId: request.user.organizationId } });
+    if (!existing) return reply.status(404).send({ error: 'Run not found' });
+    const body = request.body as { people?: unknown };
+    if (!Array.isArray(body.people)) return reply.status(400).send({ error: 'people[] required' });
+    try {
+      const run = await updateMorningRunPlan(id, body.people as never);
+      return { run };
+    } catch (err) {
+      if (err instanceof Error && err.message === 'RUN_NOT_EDITABLE') {
+        return reply.status(409).send({ error: 'Run is no longer editable — it has already been approved.' });
+      }
+      throw err;
+    }
+  });
+
+  app.post('/runs/:id/approve', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.vsmRun.findFirst({ where: { id, organizationId: request.user.organizationId } });
+    if (!existing) return reply.status(404).send({ error: 'Run not found' });
+    const run = await sendMorningRun(id, request.user.sub);
+    return { run };
+  });
+
+  app.post('/runs/:id/skip', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.vsmRun.findFirst({ where: { id, organizationId: request.user.organizationId } });
+    if (!existing) return reply.status(404).send({ error: 'Run not found' });
+    if (existing.status !== 'DRAFT') return reply.status(409).send({ error: 'Only a draft run can be skipped.' });
+    const run = await prisma.vsmRun.update({ where: { id }, data: { status: 'SKIPPED' } });
+    return { run };
+  });
+
+  app.post('/runs/eod', { preHandler: await requireAdminOrCeo() }, async (request, reply) => {
+    try {
+      const run = await getOrCreateEodRun(request.user.organizationId);
+      return reply.status(201).send({ run });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'VSM_NOT_ENABLED') {
+        return reply.status(400).send({ error: 'Enable VSM in configuration before running the evening digest.' });
+      }
+      throw err;
+    }
   });
 
   // ─── Inbound email (two-way channel on reply.wizag.co.ke) ────────────────

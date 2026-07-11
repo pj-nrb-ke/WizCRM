@@ -65,6 +65,11 @@ export const config = {
   /** The receiving subdomain — MX records point *@this to Brevo's inbound parser. */
   brevoInboundDomain: process.env.BREVO_INBOUND_DOMAIN ?? 'reply.wizag.co.ke',
 
+  // VSM scheduler — VPS crontab hits /internal/vsm/cron/:job/:secret (same
+  // path-secret pattern as the inbound email webhook, since this also has no
+  // custom-header caller to lean on — it's just curl from cron).
+  vsmCronSecret: process.env.VSM_CRON_SECRET ?? '',
+
   // Heat Map signal discovery
   googleCustomSearchKey: process.env.GOOGLE_CUSTOM_SEARCH_KEY ?? process.env.GOOGLE_PLACES_API_KEY ?? '',
   googleCustomSearchEngineId: process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID ?? '',

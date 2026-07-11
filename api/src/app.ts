@@ -29,6 +29,8 @@ import { africasTalkingVoiceRoutes } from './routes/africastalking-voice.js';
 import { vsmRoutes } from './routes/vsm.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { processBrevoInboundPayload } from './services/inbound-email.service.js';
+import { getOrCreateEodRun, getOrCreateMorningRun } from './services/vsm-execution.service.js';
+import { prisma } from './lib/prisma.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
 import { recordServerError } from './lib/error-recorder.js';
 
@@ -138,6 +140,30 @@ export async function buildApp() {
       request.body as import('./services/inbound-email.service.js').BrevoInboundPayload,
     );
     return reply.send(result);
+  });
+
+  // VSM scheduler — VPS crontab hits this per org config that has VSM enabled.
+  // No JWT (cron isn't a logged-in user); secret lives in the path like the
+  // inbound-email webhook, for the same reason (no custom-header caller).
+  app.post('/internal/vsm/cron/:job/:secret', async (request, reply) => {
+    const { job, secret } = request.params as { job: string; secret: string };
+    if (!config.vsmCronSecret || secret !== config.vsmCronSecret) {
+      return reply.status(404).send();
+    }
+    if (job !== 'morning' && job !== 'eod') {
+      return reply.status(400).send({ error: 'job must be "morning" or "eod"' });
+    }
+    const enabledConfigs = await prisma.vsmConfig.findMany({ where: { enabled: true }, select: { organizationId: true } });
+    const results = [];
+    for (const cfg of enabledConfigs) {
+      try {
+        const run = job === 'morning' ? await getOrCreateMorningRun(cfg.organizationId) : await getOrCreateEodRun(cfg.organizationId);
+        results.push({ organizationId: cfg.organizationId, runId: run.id, status: run.status });
+      } catch (err) {
+        results.push({ organizationId: cfg.organizationId, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return reply.send({ job, ranFor: results.length, results });
   });
 
   // Public unsubscribe — no auth required, verified by HMAC token

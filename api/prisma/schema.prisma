@@ -68,6 +68,7 @@ model User {
   productDocuments   ProductDocument[]
   teamMemberProfile  TeamMemberProfile?
   vsmConfigChanges   VsmConfigChange[]
+  vsmRunsApproved    VsmRun[]                @relation("VsmRunApprovedBy")
   taskUpdates        TaskUpdate[]
   inboundEmails      InboundEmail[]
   notifications      Notification[]
@@ -679,6 +680,41 @@ model VsmConfig {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   changes            VsmConfigChange[]
+}
+
+enum VsmRunKind {
+  MORNING
+  EOD
+  WEEKLY
+}
+
+enum VsmRunStatus {
+  DRAFT
+  APPROVED
+  SENT
+  SKIPPED
+}
+
+/// One row per (org, date, kind) — the unique constraint is what makes a
+/// double-fired cron idempotent (VSM-SPEC §6): a second morning run for the
+/// same day just finds the existing DRAFT/SENT row instead of creating tasks
+/// twice.
+model VsmRun {
+  id              String       @id @default(uuid())
+  organizationId  String
+  date            DateTime     @db.Date
+  kind            VsmRunKind
+  status          VsmRunStatus @default(DRAFT)
+  contextSnapshot Json
+  planJson        Json
+  approvedBy      String?
+  approvedByUser  User?        @relation("VsmRunApprovedBy", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  sentAt          DateTime?
+  createdAt       DateTime     @default(now())
+
+  @@unique([organizationId, date, kind])
+  @@index([organizationId, date])
 }
 
 model VsmConfigChange {

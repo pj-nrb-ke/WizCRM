@@ -37,6 +37,7 @@ import { ProductDocumentsPage } from './pages/ProductDocumentsPage';
 import { RosterPage } from './pages/RosterPage';
 import { VsmConfigPage } from './pages/VsmConfigPage';
 import { InboundEmailsPage } from './pages/InboundEmailsPage';
+import { VsmRunsPage } from './pages/VsmRunsPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -159,6 +160,14 @@ export default function App() {
               element={
                 <AdminOnly>
                   <InboundEmailsPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/settings/vsm-runs"
+              element={
+                <AdminOnly>
+                  <VsmRunsPage />
                 </AdminOnly>
               }
             />
