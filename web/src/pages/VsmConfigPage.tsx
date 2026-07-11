@@ -40,17 +40,37 @@ interface ConfigChange {
   changedByUser: { name: string; email: string };
 }
 
-interface DryRunCandidate {
+interface PlanItem {
   rule: string;
   title: string;
   reason: string;
-  assigneeUserId: string;
+  leadPriority: 'HOT' | 'WARM' | 'COLD' | null;
+}
+
+interface PersonPlan {
+  userId: string;
+  userName: string;
+  items: PlanItem[];
+  carryover: PlanItem[];
+}
+
+interface MorningPlanPreview {
+  rawCandidateCount: number;
+  dailyFocusCap: number;
+  people: PersonPlan[];
 }
 
 const RULE_LABELS: Record<string, string> = {
   R1_STALE_LEAD: 'Stale lead',
   R2_OVERDUE_TASK: 'Overdue task',
   R3_NEW_LEAD_UNWORKED: 'New lead, unworked',
+  R4_DEMO_TODAY: 'Demo today',
+};
+
+const PRIORITY_STYLE: Record<'HOT' | 'WARM' | 'COLD', { bg: string; fg: string }> = {
+  HOT: { bg: '#fef2f2', fg: '#dc2626' },
+  WARM: { bg: '#fffbeb', fg: '#b45309' },
+  COLD: { bg: '#eff6ff', fg: '#1A56DB' },
 };
 
 export function VsmConfigPage() {
@@ -63,7 +83,7 @@ export function VsmConfigPage() {
   const [error, setError] = useState<string | null>(null);
   const [provisioning, setProvisioning] = useState(false);
   const [dryRunning, setDryRunning] = useState(false);
-  const [dryRun, setDryRun] = useState<{ candidates: DryRunCandidate[]; candidateCount: number } | null>(null);
+  const [dryRun, setDryRun] = useState<MorningPlanPreview | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -141,7 +161,7 @@ export function VsmConfigPage() {
     setError(null);
     setDryRun(null);
     try {
-      const result = await api<{ candidates: DryRunCandidate[]; candidateCount: number }>('/vsm/dry-run', { method: 'POST' });
+      const result = await api<MorningPlanPreview>('/vsm/dry-run', { method: 'POST' });
       setDryRun(result);
     } catch {
       setError('Dry run failed.');
@@ -341,20 +361,37 @@ export function VsmConfigPage() {
         </button>
         {dryRun && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>
-              {dryRun.candidateCount} candidate{dryRun.candidateCount === 1 ? '' : 's'}
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
+              {dryRun.rawCandidateCount} candidate{dryRun.rawCandidateCount === 1 ? '' : 's'} found — focused down to the top {dryRun.dailyFocusCap} for today, prioritising hot leads and time-critical items.
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
-              {dryRun.candidates.map((c, i) => (
-                <div key={i} style={{ padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {RULE_LABELS[c.rule] ?? c.rule}
-                  </span>
-                  <div style={{ color: '#0f172a', fontWeight: 600, marginTop: 2 }}>{c.title}</div>
-                  <div style={{ color: '#64748b', fontSize: 12 }}>{c.reason}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: 400, overflowY: 'auto' }}>
+              {dryRun.people.map((person) => (
+                <div key={person.userId}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>{person.userName}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {person.items.map((item, i) => (
+                      <div key={i} style={{ padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 6 }}>
+                          {RULE_LABELS[item.rule] ?? item.rule}
+                        </span>
+                        {item.leadPriority && (
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', background: PRIORITY_STYLE[item.leadPriority].bg, color: PRIORITY_STYLE[item.leadPriority].fg, borderRadius: 20, marginRight: 6, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                            {item.leadPriority}
+                          </span>
+                        )}
+                        <div style={{ color: '#0f172a', fontWeight: 600, marginTop: 2 }}>{item.title}</div>
+                        <div style={{ color: '#64748b', fontSize: 12 }}>{item.reason}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {person.carryover.length > 0 && (
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#94a3b8' }}>
+                      + {person.carryover.length} still open from before (not counted against today's cap)
+                    </div>
+                  )}
                 </div>
               ))}
-              {dryRun.candidates.length === 0 && (
+              {dryRun.people.length === 0 && (
                 <div style={{ fontSize: 13, color: '#94a3b8' }}>No candidates — nothing stale, overdue, or unworked right now.</div>
               )}
             </div>
