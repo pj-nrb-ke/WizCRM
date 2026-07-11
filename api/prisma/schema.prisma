@@ -672,6 +672,11 @@ model VsmConfig {
   runEveningAt       String            @default("17:30")
   runDigestAt        String            @default("18:00")
   autonomy           VsmAutonomy       @default(DRAFT)
+  /// Org-wide ceiling on NEW tasks created in one morning run — the "focus"
+  /// knob (PJ, 2026-07-11): pick the top N across the whole team, not N per
+  /// person independently, so the plan stays a short, prioritised list
+  /// instead of a long one everyone half-ignores.
+  dailyFocusCap      Int               @default(10)
   taskCapPerDay      Int               @default(5)
   nudgeCapPerDay     Int               @default(1)
   ceoUserIds         String[]          @default([])

@@ -38,6 +38,7 @@ export const updateVsmConfigSchema = z.object({
   runEveningAt: timeOfDayField.optional(),
   runDigestAt: timeOfDayField.optional(),
   autonomy: z.enum(['DRAFT', 'AUTO']).optional(),
+  dailyFocusCap: z.number().int().min(1).max(50).optional(),
   taskCapPerDay: z.number().int().min(1).max(20).optional(),
   nudgeCapPerDay: z.number().int().min(0).max(5).optional(),
   ceoUserIds: z.array(z.string().uuid()).max(10).optional(),

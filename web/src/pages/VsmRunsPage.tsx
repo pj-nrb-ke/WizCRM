@@ -8,6 +8,7 @@ interface PlanItem {
   title: string;
   reason: string;
   evidence: Record<string, unknown>;
+  leadPriority: 'HOT' | 'WARM' | 'COLD' | null;
   included: boolean;
 }
 
@@ -23,7 +24,12 @@ interface VsmRun {
   date: string;
   kind: 'MORNING' | 'EOD' | 'WEEKLY';
   status: 'DRAFT' | 'APPROVED' | 'SENT' | 'SKIPPED';
-  planJson: { people?: PersonPlan[]; perPerson?: { userId: string; userName: string; completedToday: number; stillOpen: number; hadMovementToday: boolean }[] };
+  planJson: {
+    people?: PersonPlan[];
+    perPerson?: { userId: string; userName: string; completedToday: number; stillOpen: number; hadMovementToday: boolean }[];
+    rawCandidateCount?: number;
+    dailyFocusCap?: number;
+  };
   approvedAt: string | null;
   sentAt: string | null;
   createdAt: string;
@@ -42,6 +48,21 @@ const STATUS_STYLE: Record<VsmRun['status'], { bg: string; fg: string; border: s
   SENT: { bg: '#f0fdf4', fg: '#15803d', border: '#bbf7d0' },
   SKIPPED: { bg: '#f1f5f9', fg: '#64748b', border: '#e2e8f0' },
 };
+
+const PRIORITY_STYLE: Record<'HOT' | 'WARM' | 'COLD', { bg: string; fg: string }> = {
+  HOT: { bg: '#fef2f2', fg: '#dc2626' },
+  WARM: { bg: '#fffbeb', fg: '#b45309' },
+  COLD: { bg: '#eff6ff', fg: '#1A56DB' },
+};
+
+function PriorityBadge({ priority }: { priority: 'HOT' | 'WARM' | 'COLD' }) {
+  const s = PRIORITY_STYLE[priority];
+  return (
+    <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', background: s.bg, color: s.fg, borderRadius: 20, marginRight: 6, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+      {priority}
+    </span>
+  );
+}
 
 function StatusBadge({ status }: { status: VsmRun['status'] }) {
   const s = STATUS_STYLE[status];
@@ -220,6 +241,11 @@ export function VsmRunsPage() {
                 </button>
                 {isOpen && (
                   <div style={{ padding: '0 16px 16px', borderTop: '1px solid #f1f5f9' }}>
+                    {typeof run.planJson.rawCandidateCount === 'number' && (
+                      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 12 }}>
+                        {run.planJson.rawCandidateCount} candidate{run.planJson.rawCandidateCount === 1 ? '' : 's'} found — focused down to the top {run.planJson.dailyFocusCap ?? '—'} for today, prioritising hot leads and time-critical items.
+                      </div>
+                    )}
                     {people.length === 0 && <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 12 }}>No candidates today.</div>}
                     {people.map((person, pIdx) => (
                       <div key={person.userId} style={{ marginTop: 14 }}>
@@ -237,6 +263,7 @@ export function VsmRunsPage() {
                               <span style={{ fontSize: 10, fontWeight: 700, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 6 }}>
                                 {RULE_LABELS[item.rule] ?? item.rule}
                               </span>
+                              {item.leadPriority && <PriorityBadge priority={item.leadPriority} />}
                               <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{item.title}</span>
                               <div style={{ fontSize: 12, color: '#64748b' }}>{item.reason}</div>
                             </div>

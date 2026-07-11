@@ -17,6 +17,7 @@ interface VsmConfig {
   runEveningAt: string;
   runDigestAt: string;
   autonomy: 'DRAFT' | 'AUTO';
+  dailyFocusCap: number;
   taskCapPerDay: number;
   nudgeCapPerDay: number;
   ceoUserIds: string[];
@@ -103,6 +104,7 @@ export function VsmConfigPage() {
           runEveningAt: cfg.runEveningAt,
           runDigestAt: cfg.runDigestAt,
           autonomy: cfg.autonomy,
+          dailyFocusCap: cfg.dailyFocusCap,
           taskCapPerDay: cfg.taskCapPerDay,
           nudgeCapPerDay: cfg.nudgeCapPerDay,
           ceoUserIds: cfg.ceoUserIds,
@@ -283,12 +285,18 @@ export function VsmConfigPage() {
           </Field>
         </Row>
         <Row>
-          <Field label="Max tasks / person / day">
+          <Field label="Daily focus — total new tasks across the whole team">
+            <input type="number" min={1} max={50} style={inputStyle} value={cfg.dailyFocusCap} onChange={(e) => update({ dailyFocusCap: Number(e.target.value) })} />
+          </Field>
+          <Field label="Max tasks / person / day (ceiling within the focus list)">
             <input type="number" min={1} max={20} style={inputStyle} value={cfg.taskCapPerDay} onChange={(e) => update({ taskCapPerDay: Number(e.target.value) })} />
           </Field>
+        </Row>
+        <Row>
           <Field label="Max nudges / person / day">
             <input type="number" min={0} max={5} style={inputStyle} value={cfg.nudgeCapPerDay} onChange={(e) => update({ nudgeCapPerDay: Number(e.target.value) })} />
           </Field>
+          <div />
         </Row>
       </Section>
 

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { updateVsmConfigSchema, upsertTeamMemberProfileSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
-import { generateCandidates } from '../services/vsm-planning.service.js';
+import { generateMorningPlan } from '../services/vsm-planning.service.js';
 import {
   getOrCreateEodRun,
   getOrCreateMorningRun,
@@ -183,19 +183,18 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // ─── Dry run ───────────────────────────────────────────────────────────────
-  // Deterministic rule layer only — no LLM ranking, no sends. Same rule
-  // engine the real morning run uses (generateCandidates), just previewed.
+  // Previews the SAME curated plan a real morning run would produce — the
+  // org-wide top-N focus list, not the raw rule-layer candidate dump (that
+  // used to be what this returned, and it was misleading: with hundreds of
+  // stale-but-low-priority leads in the seed data it looked like the whole
+  // pile was about to become tasks, when the real run always curates down to
+  // dailyFocusCap regardless). No Tasks created, no emails sent either way.
 
   app.post('/dry-run', { preHandler: await requireAdminOrCeo() }, async (request) => {
     const { organizationId } = request.user;
-    const candidates = await generateCandidates(organizationId);
     const cfg = await getOrCreateVsmConfig(organizationId);
-    return {
-      generatedAt: new Date().toISOString(),
-      candidateCount: candidates.length,
-      taskCapPerDay: cfg.taskCapPerDay,
-      candidates,
-    };
+    const plan = await generateMorningPlan(organizationId, cfg);
+    return plan;
   });
 
   // ─── Morning run + CEO approval (Phase 1) ─────────────────────────────────
