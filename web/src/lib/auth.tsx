@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Entitlements } from '@wizcrm/shared';
-import { api, clearStoredToken, getStoredToken, setStoredToken, type AuthUser } from './api';
+import { api, clearStoredToken, getStoredToken, setStoredToken, TOKEN_KEY, type AuthUser } from './api';
 
 type AuthState = {
   user: AuthUser | null;
@@ -48,6 +48,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void loadMe();
+  }, [loadMe]);
+
+  // Keep every open tab in sync with auth state changed elsewhere — logging
+  // out (or in, or as someone else) in one tab must not leave other tabs
+  // acting on a session that's no longer valid. The `storage` event only
+  // fires in *other* tabs than the one that made the change, which is
+  // exactly the tabs that need to react.
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key !== TOKEN_KEY) return;
+      void loadMe();
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, [loadMe]);
 
   const login = useCallback(async (email: string, password: string) => {

@@ -1,6 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3000';
 
-const TOKEN_KEY = 'wizcrm_web_token';
+export const TOKEN_KEY = 'wizcrm_web_token';
 
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
