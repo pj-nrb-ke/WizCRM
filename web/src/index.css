@@ -3414,3 +3414,180 @@ tbody tr:last-child td {
   font-variant-numeric: tabular-nums;
 }
 
+/* —— Icon-prefixed inputs —— */
+.input-icon-wrap {
+  position: relative;
+}
+
+.input-icon-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.input-icon-wrap input,
+.input-icon-wrap select {
+  padding-left: 38px !important;
+}
+
+/* —— Avatar —— */
+.avatar-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* —— Role pill select: looks like a badge, behaves like a <select> —— */
+/* select.role-pill-select (not just .role-pill-select) to match the specificity
+   of `.workspace select` in the forms block above and win on source order. */
+select.role-pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 26px 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+select.role-pill-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.15);
+}
+
+select.role-pill-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* —— Kebab (overflow) menu —— */
+.kebab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0;
+}
+
+.kebab-btn:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.kebab-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.kebab-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.kebab-menu button:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.kebab-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.kebab-menu button.danger {
+  color: var(--error);
+}
+
+/* —— Table toolbar: search + filter —— */
+.table-search {
+  position: relative;
+}
+
+.table-search svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.table-search input {
+  padding-left: 34px !important;
+  width: 240px;
+}
+
+/* —— Pagination —— */
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 0;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.alert-success {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+

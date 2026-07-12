@@ -1,17 +1,119 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Key,
+  Mail,
+  MoreVertical,
+  Power,
+  Search,
+  Trash2,
+  User as UserIcon,
+  UserPlus,
+  Users as UsersIcon,
+} from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { PageHeader } from '../components/PageHeader';
+
+type Role = 'SALES' | 'MANAGER' | 'ADMIN';
 
 type UserRow = {
   id: string;
   email: string;
   name: string;
-  role: 'SALES' | 'MANAGER' | 'ADMIN';
+  role: Role;
   isActive: boolean;
   team?: { id: string; name: string } | null;
 };
 
 type TeamOption = { id: string; name: string };
+type StatusFilter = 'all' | 'active' | 'inactive';
+
+const ROLE_STYLE: Record<Role, { bg: string; fg: string; label: string }> = {
+  SALES: { bg: '#ecfdf5', fg: '#059669', label: 'Sales' },
+  MANAGER: { bg: '#f0f9ff', fg: '#0284c7', label: 'Manager' },
+  ADMIN: { bg: '#f5f3ff', fg: '#7c3aed', label: 'Admin' },
+};
+
+const AVATAR_COLORS = ['#7c3aed', '#0ea5e9', '#f59e0b', '#059669', '#db2777', '#1A56DB', '#dc2626', '#0d9488'];
+
+function avatarColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
+}
+
+const PAGE_SIZE = 10;
+
+function RowMenu({
+  user,
+  isSelf,
+  busy,
+  onToggleActive,
+  onDelete,
+}: {
+  user: UserRow;
+  isSelf: boolean;
+  busy: boolean;
+  onToggleActive: (u: UserRow) => void;
+  onDelete: (u: UserRow) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <button type="button" className="kebab-btn" onClick={() => setOpen((v) => !v)} disabled={busy}>
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <div className="kebab-menu">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onToggleActive(user);
+            }}
+            disabled={isSelf}
+            title={isSelf ? "You can't deactivate your own account" : undefined}
+          >
+            <Power size={14} />
+            {user.isActive ? 'Deactivate' : 'Reactivate'}
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              setOpen(false);
+              onDelete(user);
+            }}
+            disabled={isSelf}
+            title={isSelf ? "You can't delete your own account" : 'Only works if this user has no leads, tasks, or activity'}
+          >
+            <Trash2 size={14} />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function UsersPage() {
   const { user: me } = useAuth();
@@ -22,12 +124,24 @@ export function UsersPage() {
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'SALES' | 'MANAGER' | 'ADMIN'>('SALES');
+  const [role, setRole] = useState<Role>('SALES');
   const [teamId, setTeamId] = useState('');
 
-  // Row-level action state — which user id currently has a request in flight,
-  // and for which action, so only that row's button shows a busy state.
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
 
   function load() {
     return Promise.all([
@@ -43,6 +157,28 @@ export function UsersPage() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return users.filter((u) => {
+      if (statusFilter === 'active' && !u.isActive) return false;
+      if (statusFilter === 'inactive' && u.isActive) return false;
+      if (!q) return true;
+      return (
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        (u.team?.name ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [users, query, statusFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter]);
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -76,7 +212,7 @@ export function UsersPage() {
     }
   }
 
-  async function onRoleChange(u: UserRow, nextRole: UserRow['role']) {
+  async function onRoleChange(u: UserRow, nextRole: Role) {
     setError('');
     setMessage('');
     setBusyUserId(u.id);
@@ -96,7 +232,10 @@ export function UsersPage() {
   async function onToggleActive(u: UserRow) {
     setError('');
     setMessage('');
-    if (u.isActive && !window.confirm(`Deactivate ${u.name}? They'll be signed out and can no longer log in. Their leads and history stay untouched.`)) {
+    if (
+      u.isActive &&
+      !window.confirm(`Deactivate ${u.name}? They'll be signed out and can no longer log in. Their leads and history stay untouched.`)
+    ) {
       return;
     }
     setBusyUserId(u.id);
@@ -132,50 +271,132 @@ export function UsersPage() {
 
   return (
     <>
-      <h1>Users</h1>
-      <p className="muted">
-        Add team members — they'll get an email to set their own password. You can resend a reset link
-        any time.
-      </p>
-
-      <form className="card" onSubmit={onCreate}>
-        <h2>Add user</h2>
-        <div className="field">
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div className="field">
-          <label>Name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div className="field">
-          <label>Role</label>
-          <select value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
-            <option value="SALES">Sales</option>
-            <option value="MANAGER">Manager</option>
-            <option value="ADMIN">Admin</option>
-          </select>
-        </div>
-        <div className="field">
-          <label>Team (optional)</label>
-          <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-            <option value="">— None —</option>
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        {message ? <p className="success">{message}</p> : null}
-        <button type="submit" className="btn-primary">
-          Create user
-        </button>
-      </form>
+      <PageHeader title="Users" subtitle="Manage team members and access." />
 
       <div className="card">
-        <h2>All users</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: 'var(--primary-soft)',
+              color: 'var(--primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <UserPlus size={20} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0 }}>Add user</h2>
+            <p className="muted" style={{ margin: 0 }}>Create a new team member and set their access.</p>
+          </div>
+        </div>
+
+        <form onSubmit={onCreate}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <div className="field">
+              <label>Email</label>
+              <div className="input-icon-wrap">
+                <Mail size={15} />
+                <input
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label>Name</label>
+              <div className="input-icon-wrap">
+                <UserIcon size={15} />
+                <input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+            </div>
+            <div className="field">
+              <label>Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                <option value="SALES">Sales</option>
+                <option value="MANAGER">Manager</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <div className="field">
+              <label>Team (optional)</label>
+              <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                <option value="">— None —</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {error ? <p className="error">{error}</p> : null}
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: message ? 'space-between' : 'flex-end', gap: 12 }}>
+            {message ? (
+              <div className="alert alert-success" style={{ margin: 0, flex: 1 }}>
+                <CheckCircle2 size={16} />
+                {message}
+              </div>
+            ) : null}
+            <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <UserPlus size={15} />
+              Create user
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            All users
+            <span className="badge badge-info">{filtered.length}</span>
+          </h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="table-search">
+              <Search size={15} />
+              <input placeholder="Search by name, email or team…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            <div ref={filterRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px' }}
+                onClick={() => setFilterOpen((v) => !v)}
+              >
+                <Filter size={15} />
+              </button>
+              {filterOpen && (
+                <div className="kebab-menu" style={{ minWidth: 150 }}>
+                  {(['all', 'active', 'inactive'] as StatusFilter[]).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(f);
+                        setFilterOpen(false);
+                      }}
+                      style={{ fontWeight: statusFilter === f ? 700 : 500 }}
+                    >
+                      {f === 'all' ? 'All users' : f === 'active' ? 'Active only' : 'Deactivated only'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <table>
           <thead>
             <tr>
@@ -183,22 +404,32 @@ export function UsersPage() {
               <th>Email</th>
               <th>Role</th>
               <th>Team</th>
-              <th>Status</th>
-              <th></th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {pageRows.map((u) => {
               const isSelf = u.id === me?.id;
               const busy = busyUserId === u.id;
+              const rs = ROLE_STYLE[u.role];
               return (
-                <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.6 }}>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
+                <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="avatar-circle" style={{ background: avatarColor(u.id) }}>
+                        {initials(u.name)}
+                      </div>
+                      <span style={{ fontWeight: 600 }}>{u.name}</span>
+                      {!u.isActive ? <span className="badge badge-neutral">Deactivated</span> : null}
+                    </div>
+                  </td>
+                  <td className="muted">{u.email}</td>
                   <td>
                     <select
+                      className="role-pill-select"
+                      style={{ background: rs.bg, color: rs.fg }}
                       value={u.role}
-                      onChange={(e) => void onRoleChange(u, e.target.value as UserRow['role'])}
+                      onChange={(e) => void onRoleChange(u, e.target.value as Role)}
                       disabled={busy || isSelf}
                       title={isSelf ? "You can't change your own role" : undefined}
                     >
@@ -207,72 +438,83 @@ export function UsersPage() {
                       <option value="ADMIN">Admin</option>
                     </select>
                   </td>
-                  <td>{u.team?.name ?? '—'}</td>
-                  <td>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: 999,
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        background: u.isActive ? '#dcfce7' : '#f1f5f9',
-                        color: u.isActive ? '#166534' : '#64748b',
-                      }}
-                    >
-                      {u.isActive ? 'Active' : 'Deactivated'}
-                    </span>
+                  <td className="muted">
+                    {u.team ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <UsersIcon size={13} />
+                        {u.team.name}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
                   </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => void onSendResetLink(u)}
-                      disabled={busy}
-                      style={{ marginRight: 6 }}
-                    >
-                      Send reset link
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => void onToggleActive(u)}
-                      disabled={busy || isSelf}
-                      title={isSelf ? "You can't deactivate your own account" : undefined}
-                      style={{ marginRight: 6 }}
-                    >
-                      {u.isActive ? 'Deactivate' : 'Reactivate'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => void onDelete(u)}
-                      disabled={busy || isSelf}
-                      title={isSelf ? "You can't delete your own account" : "Only works if this user has no leads, tasks, or activity"}
-                      style={{ color: '#dc2626' }}
-                    >
-                      Delete
-                    </button>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                        onClick={() => void onSendResetLink(u)}
+                        disabled={busy}
+                      >
+                        <Key size={13} />
+                        Reset password
+                      </button>
+                      <RowMenu
+                        user={u}
+                        isSelf={isSelf}
+                        busy={busy}
+                        onToggleActive={(row) => void onToggleActive(row)}
+                        onDelete={(row) => void onDelete(row)}
+                      />
+                    </div>
                   </td>
                 </tr>
               );
             })}
-            {!loading && users.length === 0 ? (
+            {!loading && pageRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="muted" style={{ padding: 16, textAlign: 'center' }}>
-                  No users yet — add your first teammate above.
+                <td colSpan={5} className="muted" style={{ padding: 24, textAlign: 'center' }}>
+                  {users.length === 0 ? 'No users yet — add your first teammate above.' : 'No users match your search.'}
                 </td>
               </tr>
             ) : null}
             {loading ? (
               <tr>
-                <td colSpan={6} className="muted" style={{ padding: 16, textAlign: 'center' }}>
+                <td colSpan={5} className="muted" style={{ padding: 24, textAlign: 'center' }}>
                   Loading…
                 </td>
               </tr>
             ) : null}
           </tbody>
         </table>
+
+        {filtered.length > 0 ? (
+          <div className="pagination-row">
+            <span className="muted" style={{ fontSize: '0.82rem' }}>
+              Showing {(clampedPage - 1) * PAGE_SIZE + 1} to {Math.min(clampedPage * PAGE_SIZE, filtered.length)} of{' '}
+              {filtered.length} users
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={clampedPage <= 1}
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={clampedPage >= pageCount}
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </>
   );
