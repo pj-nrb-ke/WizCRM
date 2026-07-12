@@ -94,7 +94,7 @@ export default function HomeScreen() {
   useRefreshOnFocus(
     useCallback(() => {
       setLoading(true);
-      void load().finally(() => {
+      return load().finally(() => {
         setLoading(false);
         setRefreshing(false);
       });

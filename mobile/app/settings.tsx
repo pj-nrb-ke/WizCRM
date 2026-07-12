@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -72,6 +74,10 @@ export default function SettingsScreen() {
   }
 
   return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Settings</Text>
       <Text style={styles.muted}>WizCRM v{version}</Text>
@@ -143,6 +149,7 @@ export default function SettingsScreen() {
         <Text style={styles.signOutText}>Sign out</Text>
       </Pressable>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
