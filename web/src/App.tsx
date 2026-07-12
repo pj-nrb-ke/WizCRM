@@ -4,6 +4,8 @@ import { AuthProvider } from './lib/auth';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 // Landing page is public/marketing-only and pulls in heavy deps (framer-motion).
 // Lazy-load it so those bytes never ship in the authenticated app bundle.
 const LandingPage = lazy(() =>
@@ -69,6 +71,8 @@ export default function App() {
             }
           />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             element={
               <ProtectedRoute>

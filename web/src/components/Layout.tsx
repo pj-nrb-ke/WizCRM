@@ -6,10 +6,10 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { isAdmin, isManager } from '../lib/roles';
 import { NavIcon } from './NavIcon';
-import { ChangePasswordModal } from './ChangePasswordModal';
 import { BoltGlyph } from './BrandMark';
 import { LicenseBanner } from './LicenseBanner';
 import { NotificationBell } from './NotificationBell';
+import { UserMenu } from './UserMenu';
 
 const W_COLLAPSED = 64;
 const W_EXPANDED = 240;
@@ -141,11 +141,9 @@ function CollapsibleNavGroup({
 }
 
 export function Layout() {
-  const { user, entitlements, logout } = useAuth();
+  const { user, entitlements } = useAuth();
   const manager = isManager(user?.role);
   const admin = isAdmin(user?.role);
-  const roleLabel = admin ? 'Administrator' : manager ? 'Manager' : 'User';
-  const [showChangePw, setShowChangePw] = useState(false);
   const [brandName, setBrandName] = useState('WizCRM');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
@@ -346,104 +344,13 @@ export function Layout() {
             </CollapsibleNavGroup>
           )}
         </nav>
-
-        {/* Footer */}
-        <div
-          style={{
-            borderTop: '1px solid rgba(255,255,255,0.055)',
-            paddingTop: 12,
-            marginTop: 'auto',
-            padding: expanded ? '12px 10px 0' : '12px 8px 0',
-          }}
-        >
-          {/* User chip */}
-          {expanded ? (
-            <div className="flex items-center gap-2 px-2 py-1.5 mb-1.5 rounded-xl transition-colors hover:bg-white/5 cursor-default">
-              <div
-                className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full font-700 text-xs text-white"
-                style={{ background: 'linear-gradient(135deg, #374151, #1f2937)' }}
-              >
-                {(user?.name ?? '?').charAt(0).toUpperCase()}
-              </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-600 leading-tight truncate" style={{ color: '#e2e8f0' }}>
-                  {user?.name}
-                </span>
-                <span className="text-[10px]" style={{ color: '#64748b' }}>
-                  {roleLabel}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div
-              className="flex items-center justify-center mb-1.5 cursor-default"
-              title={`${user?.name} — ${roleLabel}`}
-              style={{ padding: '4px 0' }}
-            >
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded-full font-700 text-xs text-white"
-                style={{ background: 'linear-gradient(135deg, #374151, #1f2937)' }}
-              >
-                {(user?.name ?? '?').charAt(0).toUpperCase()}
-              </div>
-            </div>
-          )}
-
-          {/* Change password */}
-          {expanded ? (
-            <button
-              type="button"
-              onClick={() => setShowChangePw(true)}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 8,
-                color: '#94a3b8',
-                fontSize: '0.78rem',
-                padding: '7px 10px',
-                marginBottom: 6,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              Change password
-            </button>
-          ) : null}
-          <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
-
-          {/* Sign-out */}
-          <button
-            type="button"
-            className="btn-logout"
-            onClick={logout}
-            title={expanded ? undefined : 'Sign out'}
-            style={{
-              width: '100%',
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 8,
-              color: '#94a3b8',
-              transition: 'all 0.15s',
-              fontSize: '0.78rem',
-              padding: expanded ? '8px 10px' : '8px 0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: expanded ? 'flex-start' : 'center',
-              gap: 6,
-              cursor: 'pointer',
-            }}
-          >
-            <NavIcon name="logout" />
-            {expanded && 'Sign out'}
-          </button>
-        </div>
       </aside>
 
       <div className="workspace" style={{ marginLeft: sidebarW }}>
         <LicenseBanner entitlements={entitlements} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 24px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, padding: '10px 24px 0' }}>
           <NotificationBell />
+          <UserMenu />
         </div>
         <main className="main">
           <Outlet />
