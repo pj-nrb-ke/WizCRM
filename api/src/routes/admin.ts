@@ -16,6 +16,7 @@ import {
   resolveDeskUseAi,
 } from '../services/org-settings.service.js';
 import { disableWebhook, enableWebhook } from '../services/webhook.service.js';
+import { sendWelcomeEmail } from '../services/auth-email.service.js';
 
 function isAdmin(role: string) {
   return role === 'ADMIN';
@@ -189,6 +190,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         team: { select: { id: true, name: true } },
       },
     });
+    sendWelcomeEmail({ toEmail: user.email, toName: user.name, tempPassword: parsed.data.password });
     return reply.status(201).send({ user });
   });
 

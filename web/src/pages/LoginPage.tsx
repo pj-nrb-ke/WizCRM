@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { getApiBaseUrl } from '../lib/api';
 import { BrandMark } from '../components/BrandMark';
@@ -61,6 +61,11 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+          <p style={{ textAlign: 'right', marginTop: -8 }}>
+            <Link to="/forgot-password" style={{ fontSize: '0.85em' }}>
+              Forgot password?
+            </Link>
+          </p>
           {error ? <div className="alert alert-error">{error}</div> : null}
           <button type="submit" className="btn-primary btn-block" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}

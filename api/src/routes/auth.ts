@@ -1,3 +1,4 @@
+import { randomBytes, createHash } from 'node:crypto';
 import type { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
 import zxcvbn from 'zxcvbn';
@@ -6,6 +7,13 @@ import { loginSchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { requestGdprExport } from '../services/erp-sync.service.js';
+import { sendPasswordResetEmail } from '../services/auth-email.service.js';
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function hashToken(rawToken: string): string {
+  return createHash('sha256').update(rawToken).digest('hex');
+}
 
 // A valid bcrypt hash (of a random string) used as a constant-time decoy when
 // the email doesn't match any user, to equalize login response timing.
@@ -135,5 +143,73 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/gdpr-export-request', { onRequest: [app.authenticate] }, async (request) => {
     return requestGdprExport(request.user.organizationId);
+  });
+
+  app.post('/forgot-password', {
+    // Same throttling rationale as /login — this also does a DB lookup by email.
+    config: { rateLimit: { max: config.isProduction ? 10 : 1000, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const body = (request.body ?? {}) as { email?: string };
+    const email = typeof body.email === 'string' ? body.email.toLowerCase().trim() : '';
+    // Always return the same generic response — don't leak whether the email exists.
+    const genericReply = { ok: true, message: 'If that email has an account, a reset link is on its way.' };
+    if (!email) return genericReply;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return genericReply;
+
+    const rawToken = randomBytes(32).toString('hex');
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      },
+    });
+    sendPasswordResetEmail({ toEmail: user.email, toName: user.name, rawToken });
+    return reply.send(genericReply);
+  });
+
+  app.post('/reset-password', {
+    config: { rateLimit: { max: config.isProduction ? 10 : 1000, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const body = (request.body ?? {}) as { token?: string; newPassword?: string };
+    const rawToken = typeof body.token === 'string' ? body.token : '';
+    const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+    if (!rawToken) return reply.status(400).send({ error: 'Missing reset token.' });
+    if (newPassword.length < 12) {
+      return reply.status(400).send({ error: 'New password must be at least 12 characters.' });
+    }
+
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash: hashToken(rawToken) },
+      include: { user: true },
+    });
+    if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+      return reply.status(400).send({ error: 'This reset link is invalid or has expired.' });
+    }
+
+    const strength = zxcvbn(newPassword, [resetToken.user.email, resetToken.user.name, 'wizcrm']);
+    if (strength.score < 3) {
+      return reply.status(400).send({
+        error:
+          strength.feedback.warning ||
+          'Password is too weak or common. Use a longer, less predictable passphrase.',
+        suggestions: strength.feedback.suggestions,
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash, failedLoginCount: 0, lockoutUntil: null },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+    return { ok: true };
   });
 };
