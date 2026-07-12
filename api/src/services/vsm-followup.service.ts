@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { createOpenAIClient, chatJson } from './ai/openai.provider.js';
+import { notifyUser } from './notification.service.js';
 
 const MAX_FOLLOWUP_QUESTION_LENGTH = 300;
 
@@ -44,5 +45,13 @@ export async function maybeAskFollowUp(organizationId: string, taskId: string, r
   const question = result.question.slice(0, MAX_FOLLOWUP_QUESTION_LENGTH);
 
   await prisma.taskUpdate.create({ data: { taskId, userId: null, isVsm: true, body: question } });
+  await notifyUser({
+    organizationId,
+    userId: task.userId,
+    kind: 'vsm_followup_question',
+    title: `${vsmConfig.personaName} replied on "${task.title}"`,
+    body: question,
+    linkPath: '/',
+  });
   return { asked: true, question };
 }

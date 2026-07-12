@@ -33,6 +33,11 @@ const config: ExpoConfig = {
     versionCode: 4,
     edgeToEdgeEnabled: true,
     permissions: ['READ_EXTERNAL_STORAGE'],
+    // FCM push (VSM-SPEC §4.5 Phase 3) — not committed, see .gitignore.
+    // Expo's prebuild wires the google-services Gradle plugin/classpath
+    // automatically from this file; no manual android/ edits needed, and it
+    // survives `expo prebuild --clean`.
+    googleServicesFile: '../config/secrets/firebase-google-services.json',
   },
   web: {
     favicon: './assets/favicon.png',

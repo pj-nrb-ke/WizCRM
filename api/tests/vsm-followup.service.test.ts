@@ -25,10 +25,18 @@ vi.mock('../src/services/ai/openai.provider.js', () => ({
   chatJson: aiMocks.chatJson,
 }));
 
+const notificationMocks = vi.hoisted(() => ({
+  notifyUser: vi.fn(),
+}));
+
+vi.mock('../src/services/notification.service.js', () => ({
+  notifyUser: notificationMocks.notifyUser,
+}));
+
 import { maybeAskFollowUp } from '../src/services/vsm-followup.service.js';
 
 const VSM_CONFIG = { enabled: true, personaName: 'Wanjiru', tone: 'warm' };
-const VSM_TASK = { id: 'task-1', organizationId: 'org-1', source: 'VSM', title: 'Chase Acme', reason: 'Stale 8 days' };
+const VSM_TASK = { id: 'task-1', organizationId: 'org-1', userId: 'user-1', source: 'VSM', title: 'Chase Acme', reason: 'Stale 8 days' };
 
 describe('maybeAskFollowUp', () => {
   beforeEach(() => {
@@ -38,6 +46,7 @@ describe('maybeAskFollowUp', () => {
     prismaMocks.taskUpdateFindFirst.mockResolvedValue(null);
     aiMocks.createOpenAIClient.mockReturnValue({});
     prismaMocks.taskUpdateCreate.mockResolvedValue({ id: 'update-vsm-1' });
+    notificationMocks.notifyUser.mockResolvedValue({});
   });
 
   it('does nothing when VSM is disabled', async () => {
@@ -74,6 +83,9 @@ describe('maybeAskFollowUp', () => {
     expect(prismaMocks.taskUpdateCreate).toHaveBeenCalledWith({
       data: { taskId: 'task-1', userId: null, isVsm: true, body: 'What date did you agree the quote would go out?' },
     });
+    expect(notificationMocks.notifyUser).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', kind: 'vsm_followup_question' }),
+    );
   });
 
   it('does not post anything when the LLM decides the reply is already clear', async () => {

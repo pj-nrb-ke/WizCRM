@@ -7,12 +7,15 @@ const prismaMocks = vi.hoisted(() => ({
   vsmEscalationCreate: vi.fn(),
   vsmEscalationUpdate: vi.fn(),
   leadFindMany: vi.fn(),
-  notificationCreate: vi.fn(),
   userFindUnique: vi.fn(),
 }));
 
 const mailMocks = vi.hoisted(() => ({
   sendTransactionalEmail: vi.fn(),
+}));
+
+const notificationMocks = vi.hoisted(() => ({
+  notifyUser: vi.fn(),
 }));
 
 vi.mock('../src/lib/prisma.js', () => ({
@@ -27,7 +30,6 @@ vi.mock('../src/lib/prisma.js', () => ({
       update: prismaMocks.vsmEscalationUpdate,
     },
     lead: { findMany: prismaMocks.leadFindMany },
-    notification: { create: prismaMocks.notificationCreate },
     user: { findUnique: prismaMocks.userFindUnique },
   },
 }));
@@ -36,6 +38,10 @@ vi.mock('../src/services/brevo-mail.js', async () => {
   const actual = await vi.importActual('../src/services/brevo-mail.js');
   return { ...actual, sendTransactionalEmail: mailMocks.sendTransactionalEmail };
 });
+
+vi.mock('../src/services/notification.service.js', () => ({
+  notifyUser: notificationMocks.notifyUser,
+}));
 
 import { checkHighValueStalled, flagTaskForHelp, updateSilenceStreak } from '../src/services/vsm-escalation.service.js';
 
@@ -47,7 +53,7 @@ describe('vsm-escalation.service', () => {
     prismaMocks.teamMemberProfileUpdateMany.mockResolvedValue({ count: 1 });
     prismaMocks.vsmEscalationCreate.mockResolvedValue({ id: 'esc-new' });
     prismaMocks.vsmEscalationUpdate.mockResolvedValue({ id: 'esc-existing' });
-    prismaMocks.notificationCreate.mockResolvedValue({ id: 'notif-1' });
+    notificationMocks.notifyUser.mockResolvedValue({ id: 'notif-1' });
     prismaMocks.userFindUnique.mockResolvedValue({ email: 'amina@wizag.biz', name: 'Amina' });
     mailMocks.sendTransactionalEmail.mockResolvedValue({ method: 'smtp' });
   });
@@ -70,7 +76,7 @@ describe('vsm-escalation.service', () => {
 
       expect(result).toEqual({ streak: 1, nudged: false, escalated: false });
       expect(prismaMocks.vsmEscalationCreate).not.toHaveBeenCalled();
-      expect(prismaMocks.notificationCreate).not.toHaveBeenCalled();
+      expect(notificationMocks.notifyUser).not.toHaveBeenCalled();
     });
 
     it('sends a gentle named nudge on day 2 of silence, no escalation yet', async () => {
@@ -80,8 +86,8 @@ describe('vsm-escalation.service', () => {
 
       expect(result).toEqual({ streak: 2, nudged: true, escalated: false });
       expect(prismaMocks.vsmEscalationCreate).not.toHaveBeenCalled();
-      expect(prismaMocks.notificationCreate).toHaveBeenCalledTimes(1);
-      expect(prismaMocks.notificationCreate.mock.calls[0][0].data).toMatchObject({ userId: 'user-1', kind: 'vsm_silence_nudge' });
+      expect(notificationMocks.notifyUser).toHaveBeenCalledTimes(1);
+      expect(notificationMocks.notifyUser.mock.calls[0][0]).toMatchObject({ userId: 'user-1', kind: 'vsm_silence_nudge' });
       expect(mailMocks.sendTransactionalEmail).toHaveBeenCalledTimes(1);
     });
 

@@ -7,6 +7,7 @@ import { checkHighValueStalled, updateSilenceStreak } from './vsm-escalation.ser
 import { getOrgSettings } from './org-settings.service.js';
 import { isStaleLead, resolveStaleLeadDays } from './stale-lead.service.js';
 import { eodCheckIn, morningGreeting, signOff } from './vsm-i18n.js';
+import { notifyUser } from './notification.service.js';
 
 const APP_URL = (process.env.APP_URL ?? 'https://app.wizcrm.app').replace(/\/$/, '');
 
@@ -170,15 +171,13 @@ export async function sendMorningRun(runId: string, approvedByUserId: string | n
     }
 
     if (createdTasks.length > 0) {
-      await prisma.notification.create({
-        data: {
-          organizationId: run.organizationId,
-          userId: person.userId,
-          kind: 'vsm_morning_plan',
-          title: `${vsmConfig.personaName} assigned you ${createdTasks.length} task${createdTasks.length === 1 ? '' : 's'}`,
-          body: createdTasks.map((t) => t.title).join('; '),
-          linkPath: '/',
-        },
+      await notifyUser({
+        organizationId: run.organizationId,
+        userId: person.userId,
+        kind: 'vsm_morning_plan',
+        title: `${vsmConfig.personaName} assigned you ${createdTasks.length} task${createdTasks.length === 1 ? '' : 's'}`,
+        body: createdTasks.map((t) => t.title).join('; '),
+        linkPath: '/',
       });
 
       const user = await prisma.user.findUnique({ where: { id: person.userId }, select: { email: true, name: true } });

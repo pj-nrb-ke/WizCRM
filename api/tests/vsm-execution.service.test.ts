@@ -10,9 +10,12 @@ const prismaMocks = vi.hoisted(() => ({
   taskCount: vi.fn(),
   taskFindMany: vi.fn(),
   taskUpdateCount: vi.fn(),
-  notificationCreate: vi.fn(),
   userFindUnique: vi.fn(),
   userFindMany: vi.fn(),
+}));
+
+const notificationMocks = vi.hoisted(() => ({
+  notifyUser: vi.fn(),
 }));
 
 vi.mock('../src/lib/prisma.js', () => ({
@@ -29,9 +32,12 @@ vi.mock('../src/lib/prisma.js', () => ({
       findMany: prismaMocks.taskFindMany,
     },
     taskUpdate: { count: prismaMocks.taskUpdateCount },
-    notification: { create: prismaMocks.notificationCreate },
     user: { findUnique: prismaMocks.userFindUnique, findMany: prismaMocks.userFindMany },
   },
+}));
+
+vi.mock('../src/services/notification.service.js', () => ({
+  notifyUser: notificationMocks.notifyUser,
 }));
 
 const sendMock = vi.fn();
@@ -88,7 +94,7 @@ describe('vsm-execution.service', () => {
     sendMock.mockResolvedValue({ method: 'smtp' });
     prismaMocks.vsmConfigFindUnique.mockResolvedValue(VSM_CONFIG);
     prismaMocks.taskCreate.mockResolvedValue({ id: 'new-task-1' });
-    prismaMocks.notificationCreate.mockResolvedValue({});
+    notificationMocks.notifyUser.mockResolvedValue({});
     prismaMocks.userFindUnique.mockResolvedValue({ email: 'amina@wizag.co.ke', name: 'Amina' });
   });
 

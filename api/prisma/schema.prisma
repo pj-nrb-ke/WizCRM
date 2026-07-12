@@ -75,9 +75,26 @@ model User {
   escalationsAcknowledged VsmEscalation[]         @relation("EscalationAcknowledgedBy")
   escalationsResolved     VsmEscalation[]         @relation("EscalationResolvedBy")
   notifications           Notification[]
+  pushTokens              PushToken[]
+  passwordResetTokens     PasswordResetToken[]
 
   @@index([organizationId])
   @@index([teamId])
+}
+
+/// Self-service "forgot password" flow. `tokenHash` is a sha256 of the raw
+/// token emailed to the user — only the hash is stored, matching how
+/// passwordHash never stores the plaintext.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 enum UserRole {
@@ -811,6 +828,22 @@ model Notification {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([organizationId])
+}
+
+/// Phase 3 mobile push (VSM-SPEC §4.5) — one row per device, sent to FCM
+/// directly via the service-account credential, never through Expo's push
+/// service (no EAS dependency). `token` is the native FCM registration
+/// token from Notifications.getDevicePushTokenAsync() on the device.
+model PushToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String   @default("android")
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model AiSuggestion {

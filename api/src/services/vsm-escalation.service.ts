@@ -2,6 +2,7 @@ import type { EscalationKind, EscalationSeverity } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { EmailUnavailableError, sendTransactionalEmail } from './brevo-mail.js';
 import { eodCheckIn } from './vsm-i18n.js';
+import { notifyUser } from './notification.service.js';
 
 const APP_URL = (process.env.APP_URL ?? 'https://app.wizcrm.app').replace(/\/$/, '');
 
@@ -114,15 +115,13 @@ export async function updateSilenceStreak(
  * email, same channels as the rest of the module. */
 async function sendSilenceNudge(organizationId: string, userId: string, userName: string, personaName: string, language: string) {
   const checkIn = eodCheckIn(language);
-  await prisma.notification.create({
-    data: {
-      organizationId,
-      userId,
-      kind: 'vsm_silence_nudge',
-      title: `${personaName} checked in on your open tasks`,
-      body: `${checkIn} Reply on a task to let them know.`,
-      linkPath: '/',
-    },
+  await notifyUser({
+    organizationId,
+    userId,
+    kind: 'vsm_silence_nudge',
+    title: `${personaName} checked in on your open tasks`,
+    body: `${checkIn} Reply on a task to let them know.`,
+    linkPath: '/',
   });
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });

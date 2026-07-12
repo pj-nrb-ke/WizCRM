@@ -40,8 +40,12 @@ docs/brevo.local.txt
 docs/hosting.local.txt
 config/secrets/brevo.local.txt
 config/secrets/hosting.local.txt
+config/secrets/firebase-service-account.json
+config/secrets/firebase-google-services.json
 secrets/brevo.local.txt
 secrets/hosting.local.txt
+# Copied into the native project by expo prebuild from config/secrets/ above — never commit.
+mobile/android/app/google-services.json
 
 # Uploads (lead attachments)
 uploads/

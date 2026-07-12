@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, clearToken, getToken, login as apiLogin, type User } from '../lib/api';
 import type { Entitlements } from '../lib/entitlements';
+import { registerPushToken, unregisterPushToken } from '../lib/notifications';
 
 const SESSION_TIMEOUT_MS = 8_000;
 
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) {
           setUser(res.user);
           setEntitlements(res.entitlements);
+          void registerPushToken();
         }
       } catch {
         await clearToken();
@@ -51,10 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api<{ user: User; entitlements: Entitlements }>('/auth/me');
     setUser(res.user);
     setEntitlements(res.entitlements);
+    void registerPushToken();
     return res.user;
   }, []);
 
   const signOut = useCallback(async () => {
+    await unregisterPushToken(); // needs the auth token, so before clearToken()
     await clearToken();
     setUser(null);
     setEntitlements(null);

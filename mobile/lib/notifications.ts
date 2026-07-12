@@ -1,4 +1,6 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import { api } from './api';
 import type { UserReminderRow } from './reminders';
 
 Notifications.setNotificationHandler({
@@ -30,6 +32,37 @@ export async function requestNotificationsPermission() {
   if (granted) return true;
   const req = await Notifications.requestPermissionsAsync();
   return Boolean((req as { granted?: boolean }).granted) || req.status === 'granted';
+}
+
+/**
+ * Mobile push (VSM-SPEC §4.5 Phase 3) — the native FCM device token, not an
+ * Expo push token: sends go direct to FCM's HTTP v1 API from the server
+ * (see api/src/services/fcm-push.service.ts), never through Expo's push
+ * service. Best-effort throughout — a device without Google Play Services,
+ * or a build with no google-services.json yet, must never block sign-in.
+ */
+export async function registerPushToken(): Promise<void> {
+  const ok = await requestNotificationsPermission();
+  if (!ok) return;
+  try {
+    await ensureNotificationChannel();
+    const { data: token } = await Notifications.getDevicePushTokenAsync();
+    await api('/push-tokens', {
+      method: 'POST',
+      body: { token, platform: Platform.OS === 'ios' ? 'ios' : 'android' },
+    });
+  } catch {
+    // best-effort
+  }
+}
+
+export async function unregisterPushToken(): Promise<void> {
+  try {
+    const { data: token } = await Notifications.getDevicePushTokenAsync();
+    await api('/push-tokens', { method: 'DELETE', body: { token } });
+  } catch {
+    // best-effort — e.g. already signed out, or no token was ever issued
+  }
 }
 
 async function cancelTrackedNotifications() {
