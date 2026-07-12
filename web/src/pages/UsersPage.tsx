@@ -1,4 +1,4 @@
-import { CSSProperties, FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
 type UserRow = {
@@ -11,17 +11,6 @@ type UserRow = {
 
 type TeamOption = { id: string; name: string };
 
-const OVERLAY: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0,0,0,0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 1000,
-  padding: 16,
-};
-
 export function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
@@ -30,15 +19,11 @@ export function UsersPage() {
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
   const [role, setRole] = useState<'SALES' | 'MANAGER' | 'ADMIN'>('SALES');
   const [teamId, setTeamId] = useState('');
 
-  // Admin password reset
-  const [resetUser, setResetUser] = useState<UserRow | null>(null);
-  const [resetPw, setResetPw] = useState('');
-  const [resetError, setResetError] = useState('');
-  const [resetting, setResetting] = useState(false);
+  // Admin-triggered "send reset link"
+  const [sendingResetFor, setSendingResetFor] = useState<string | null>(null);
 
   function load() {
     return Promise.all([
@@ -62,42 +47,38 @@ export function UsersPage() {
     try {
       await api('/admin/users', {
         method: 'POST',
-        body: { email, name, password, role, teamId: teamId || null },
+        body: { email, name, role, teamId: teamId || null },
       });
       setEmail('');
       setName('');
-      setPassword('');
-      setMessage('User created.');
+      setMessage(`User created — an email with a link to set their password was sent to ${email}.`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Create failed');
     }
   }
 
-  async function onReset(e: FormEvent) {
-    e.preventDefault();
-    if (!resetUser) return;
-    setResetError('');
-    setResetting(true);
+  async function onSendResetLink(u: UserRow) {
+    setError('');
+    setMessage('');
+    setSendingResetFor(u.id);
     try {
-      await api(`/admin/users/${resetUser.id}/reset-password`, {
-        method: 'POST',
-        body: { password: resetPw },
-      });
-      setMessage(`Password reset for ${resetUser.name}. Share the new password with them.`);
-      setResetUser(null);
-      setResetPw('');
+      await api(`/admin/users/${u.id}/reset-password`, { method: 'POST' });
+      setMessage(`Reset link sent to ${u.email}.`);
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : 'Reset failed');
+      setError(err instanceof Error ? err.message : 'Could not send reset link');
     } finally {
-      setResetting(false);
+      setSendingResetFor(null);
     }
   }
 
   return (
     <>
       <h1>Users</h1>
-      <p className="muted">Add team members and reset passwords. Use strong passwords in production.</p>
+      <p className="muted">
+        Add team members — they'll get an email to set their own password. You can resend a reset link
+        any time.
+      </p>
 
       <form className="card" onSubmit={onCreate}>
         <h2>Add user</h2>
@@ -108,19 +89,6 @@ export function UsersPage() {
         <div className="field">
           <label>Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div className="field">
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={12}
-          />
-          <span className="muted" style={{ fontSize: '0.8rem' }}>
-            At least 12 characters; avoid common words, the person's name or email.
-          </span>
         </div>
         <div className="field">
           <label>Role</label>
@@ -171,14 +139,10 @@ export function UsersPage() {
                   <button
                     type="button"
                     className="btn-secondary btn-sm"
-                    onClick={() => {
-                      setResetUser(u);
-                      setResetPw('');
-                      setResetError('');
-                      setMessage('');
-                    }}
+                    onClick={() => void onSendResetLink(u)}
+                    disabled={sendingResetFor === u.id}
                   >
-                    Reset password
+                    {sendingResetFor === u.id ? 'Sending…' : 'Send reset link'}
                   </button>
                 </td>
               </tr>
@@ -201,50 +165,6 @@ export function UsersPage() {
         </table>
       </div>
 
-      {resetUser ? (
-        <div style={OVERLAY} onClick={() => setResetUser(null)}>
-          <form
-            className="card"
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={onReset}
-            style={{ maxWidth: 420, width: '100%' }}
-          >
-            <h2>Reset password</h2>
-            <p className="muted">
-              Set a new password for <strong>{resetUser.name}</strong> ({resetUser.email}). Share it with
-              them — they can change it themselves after signing in.
-            </p>
-            <div className="field">
-              <label>New password</label>
-              <input
-                type="password"
-                value={resetPw}
-                onChange={(e) => setResetPw(e.target.value)}
-                required
-                minLength={12}
-                autoFocus
-              />
-              <span className="muted" style={{ fontSize: '0.8rem' }}>
-                At least 12 characters; avoid common words, the person's name or email.
-              </span>
-            </div>
-            {resetError ? <p className="error">{resetError}</p> : null}
-            <div className="toolbar" style={{ marginTop: 8 }}>
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                onClick={() => setResetUser(null)}
-                disabled={resetting}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="btn-primary btn-sm" disabled={resetting}>
-                {resetting ? 'Saving…' : 'Set password'}
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
     </>
   );
 }

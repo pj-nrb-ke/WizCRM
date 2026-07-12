@@ -267,7 +267,6 @@ export const bulkUpdateLeadsSchema = z
 export const createAdminUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(200),
-  password: z.string().min(12).max(100),
   role: z.enum(['SALES', 'MANAGER', 'ADMIN']),
   teamId: z.string().uuid().nullable().optional(),
 });

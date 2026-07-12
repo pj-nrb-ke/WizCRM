@@ -1,4 +1,3 @@
-import { randomBytes, createHash } from 'node:crypto';
 import type { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
 import zxcvbn from 'zxcvbn';
@@ -8,12 +7,7 @@ import { prisma } from '../lib/prisma.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { requestGdprExport } from '../services/erp-sync.service.js';
 import { sendPasswordResetEmail } from '../services/auth-email.service.js';
-
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-function hashToken(rawToken: string): string {
-  return createHash('sha256').update(rawToken).digest('hex');
-}
+import { createPasswordResetToken, hashResetToken, FORGOT_PASSWORD_TTL_MS } from '../services/password-reset.service.js';
 
 // A valid bcrypt hash (of a random string) used as a constant-time decoy when
 // the email doesn't match any user, to equalize login response timing.
@@ -158,14 +152,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return genericReply;
 
-    const rawToken = randomBytes(32).toString('hex');
-    await prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: hashToken(rawToken),
-        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
-      },
-    });
+    const rawToken = await createPasswordResetToken(user.id, FORGOT_PASSWORD_TTL_MS);
     sendPasswordResetEmail({ toEmail: user.email, toName: user.name, rawToken });
     return reply.send(genericReply);
   });
@@ -182,7 +169,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({
-      where: { tokenHash: hashToken(rawToken) },
+      where: { tokenHash: hashResetToken(rawToken) },
       include: { user: true },
     });
     if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {

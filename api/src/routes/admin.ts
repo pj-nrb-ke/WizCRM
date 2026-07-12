@@ -1,6 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import bcrypt from 'bcryptjs';
-import zxcvbn from 'zxcvbn';
 import {
   createAdminUserSchema,
   orgSettingsSchema,
@@ -15,8 +14,10 @@ import {
   mergeOrgSettings,
   resolveDeskUseAi,
 } from '../services/org-settings.service.js';
+import { randomBytes } from 'node:crypto';
 import { disableWebhook, enableWebhook } from '../services/webhook.service.js';
-import { sendWelcomeEmail } from '../services/auth-email.service.js';
+import { sendAccountActivationEmail, sendPasswordResetEmail } from '../services/auth-email.service.js';
+import { createPasswordResetToken, ACCOUNT_ACTIVATION_TTL_MS, FORGOT_PASSWORD_TTL_MS } from '../services/password-reset.service.js';
 
 function isAdmin(role: string) {
   return role === 'ADMIN';
@@ -148,17 +149,6 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    // NIST 800-63B style strength check: reject weak/common/context-derived
-    // passwords (dictionary words, the user's own name/email, keyboard walks).
-    const strength = zxcvbn(parsed.data.password, [parsed.data.email, parsed.data.name, 'wizcrm']);
-    if (strength.score < 3) {
-      return reply.status(400).send({
-        error:
-          strength.feedback.warning ||
-          'Password is too weak or common. Use a longer, less predictable passphrase.',
-        suggestions: strength.feedback.suggestions,
-      });
-    }
     const email = parsed.data.email.toLowerCase().trim();
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -170,7 +160,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       });
       if (!team) return reply.status(400).send({ error: 'Invalid team' });
     }
-    const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+    // No password is set by the admin or exposed anywhere — a random,
+    // never-revealed value fills the (required) column, and the new user
+    // sets their own password via the activation-link email below.
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
     const user = await prisma.user.create({
       data: {
         organizationId: request.user.organizationId,
@@ -190,7 +183,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         team: { select: { id: true, name: true } },
       },
     });
-    sendWelcomeEmail({ toEmail: user.email, toName: user.name, tempPassword: parsed.data.password });
+    const rawToken = await createPasswordResetToken(user.id, ACCOUNT_ACTIVATION_TTL_MS);
+    sendAccountActivationEmail({ toEmail: user.email, toName: user.name, rawToken });
     return reply.status(201).send({ user });
   });
 
@@ -230,33 +224,18 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return { user };
   });
 
+  // Admin-triggered password reset — sends the same link-based flow as
+  // self-service "forgot password" rather than the admin choosing a
+  // password on the user's behalf.
   app.post('/users/:id/reset-password', { preHandler: requireAdmin() }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = (request.body ?? {}) as { password?: string };
-    const newPassword = typeof body.password === 'string' ? body.password : '';
-    if (newPassword.length < 12) {
-      return reply.status(400).send({ error: 'Password must be at least 12 characters.' });
-    }
     const target = await prisma.user.findFirst({
       where: { id, organizationId: request.user.organizationId },
     });
     if (!target) return reply.status(404).send({ error: 'User not found' });
 
-    const strength = zxcvbn(newPassword, [target.email, target.name, 'wizcrm']);
-    if (strength.score < 3) {
-      return reply.status(400).send({
-        error:
-          strength.feedback.warning ||
-          'Password is too weak or common. Use a longer, less predictable passphrase.',
-        suggestions: strength.feedback.suggestions,
-      });
-    }
-
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    await prisma.user.update({
-      where: { id: target.id },
-      data: { passwordHash, failedLoginCount: 0, lockoutUntil: null },
-    });
+    const rawToken = await createPasswordResetToken(target.id, FORGOT_PASSWORD_TTL_MS);
+    sendPasswordResetEmail({ toEmail: target.email, toName: target.name, rawToken });
     return { ok: true };
   });
 

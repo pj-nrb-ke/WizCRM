@@ -50,7 +50,7 @@ export function ResetPasswordPage() {
             </>
           ) : (
             <form onSubmit={onSubmit}>
-              <h2>New password</h2>
+              <h2>Set your password</h2>
               <p className="muted">Choose a password with at least 12 characters.</p>
               <div className="field">
                 <label htmlFor="newPassword">New password</label>
