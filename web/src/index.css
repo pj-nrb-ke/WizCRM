@@ -1782,10 +1782,6 @@ tbody tr:last-child td {
 }
 
 /* —— Manager home —— */
-.page-dashboard {
-  max-width: 1200px;
-}
-
 .manager-hero {
   background: linear-gradient(135deg, #f8f9ff 0%, #EBF3FF 60%, #f0fdf4 100%);
   border: 1px solid rgba(26, 86, 219, 0.18);

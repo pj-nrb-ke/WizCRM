@@ -338,7 +338,7 @@ export function HomePage() {
   return (
     <div
       className="page-dashboard"
-      style={{ maxWidth: 1280, display: 'flex', flexDirection: 'column', gap: 0 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 0 }}
     >
       {/* ── Executive Hero ── */}
       <ExecutiveHero
