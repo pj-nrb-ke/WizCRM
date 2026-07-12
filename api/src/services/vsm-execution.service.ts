@@ -280,7 +280,7 @@ export async function getOrCreateEodRun(organizationId: string, opts: { fromCron
   const staleLeadCount = activeLeads.filter((l) => isStaleLead(l.lastActivityAt, l.createdAt, staleLeadDays)).length;
 
   const roster = await prisma.user.findMany({
-    where: { organizationId, isVirtual: false, teamMemberProfile: { managedByVsm: true } },
+    where: { organizationId, isVirtual: false, isActive: true, teamMemberProfile: { managedByVsm: true } },
     select: { id: true, name: true, email: true },
   });
 

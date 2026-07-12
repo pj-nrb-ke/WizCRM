@@ -61,6 +61,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(401).send({ error: 'Invalid email or password' });
     }
 
+    if (!user.isActive) {
+      return reply.status(403).send({ error: 'This account has been deactivated. Contact your admin.' });
+    }
+
     // Successful login — clear any accumulated failure state.
     if (user.failedLoginCount > 0 || user.lockoutUntil) {
       await prisma.user.update({

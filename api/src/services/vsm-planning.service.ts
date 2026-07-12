@@ -273,7 +273,7 @@ async function selectOrgWideFocusList(
 export async function generateMorningPlan(organizationId: string, vsmConfig: VsmConfig): Promise<MorningPlan> {
   const candidates = await generateCandidates(organizationId);
   const roster = await prisma.user.findMany({
-    where: { organizationId, isVirtual: false },
+    where: { organizationId, isVirtual: false, isActive: true },
     select: { id: true, name: true, teamMemberProfile: { select: { responsibilities: true, managedByVsm: true } } },
   });
   const managed = new Set(roster.filter((r) => r.teamMemberProfile?.managedByVsm !== false).map((r) => r.id));

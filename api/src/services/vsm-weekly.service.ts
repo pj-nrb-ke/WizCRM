@@ -45,7 +45,7 @@ type RepTrend = {
 
 async function buildRepTrends(organizationId: string): Promise<RepTrend[]> {
   const roster = await prisma.user.findMany({
-    where: { organizationId, isVirtual: false, teamMemberProfile: { managedByVsm: true } },
+    where: { organizationId, isVirtual: false, isActive: true, teamMemberProfile: { managedByVsm: true } },
     select: { id: true, name: true },
   });
 

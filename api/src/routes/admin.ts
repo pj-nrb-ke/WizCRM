@@ -43,6 +43,27 @@ function requireManager() {
   };
 }
 
+/** True if `userId` is the org's only remaining active admin — losing them would lock the org out. */
+async function isLastActiveAdmin(organizationId: string, userId: string): Promise<boolean> {
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target || target.role !== 'ADMIN') return false;
+  const otherActiveAdmins = await prisma.user.count({
+    where: { organizationId, role: 'ADMIN', isActive: true, id: { not: userId } },
+  });
+  return otherActiveAdmins === 0;
+}
+
+const USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  teamId: true,
+  isActive: true,
+  createdAt: true,
+  team: { select: { id: true, name: true } },
+} as const;
+
 export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
 
@@ -129,16 +150,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/users', { preHandler: requireAdmin() }, async (request) => {
     const users = await prisma.user.findMany({
-      where: { organizationId: request.user.organizationId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        teamId: true,
-        createdAt: true,
-        team: { select: { id: true, name: true } },
-      },
+      where: { organizationId: request.user.organizationId, isVirtual: false },
+      select: USER_SELECT,
       orderBy: { name: 'asc' },
     });
     return { users };
@@ -173,15 +186,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         role: parsed.data.role,
         teamId: parsed.data.teamId ?? null,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        teamId: true,
-        createdAt: true,
-        team: { select: { id: true, name: true } },
-      },
+      select: USER_SELECT,
     });
     const rawToken = await createPasswordResetToken(user.id, ACCOUNT_ACTIVATION_TTL_MS);
     sendAccountActivationEmail({ toEmail: user.email, toName: user.name, rawToken });
@@ -204,6 +209,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       });
       if (!team) return reply.status(400).send({ error: 'Invalid team' });
     }
+    if (parsed.data.role && parsed.data.role !== 'ADMIN' && (await isLastActiveAdmin(request.user.organizationId, id))) {
+      return reply.status(409).send({ error: 'This is the only remaining admin — promote someone else first.' });
+    }
     const user = await prisma.user.update({
       where: { id },
       data: {
@@ -211,15 +219,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         role: parsed.data.role,
         teamId: parsed.data.teamId === undefined ? undefined : parsed.data.teamId,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        teamId: true,
-        createdAt: true,
-        team: { select: { id: true, name: true } },
-      },
+      select: USER_SELECT,
     });
     return { user };
   });
@@ -237,6 +237,61 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const rawToken = await createPasswordResetToken(target.id, FORGOT_PASSWORD_TTL_MS);
     sendPasswordResetEmail({ toEmail: target.email, toName: target.name, rawToken });
     return { ok: true };
+  });
+
+  // Deactivate — blocks login immediately, drops the user out of the VSM
+  // roster, but keeps their name attached to every lead/task/activity they
+  // ever touched. This is the primary offboarding action.
+  app.post('/users/:id/deactivate', { preHandler: requireAdmin() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    if (id === request.user.sub) {
+      return reply.status(400).send({ error: "You can't deactivate your own account." });
+    }
+    const target = await prisma.user.findFirst({
+      where: { id, organizationId: request.user.organizationId },
+    });
+    if (!target) return reply.status(404).send({ error: 'User not found' });
+    if (await isLastActiveAdmin(request.user.organizationId, id)) {
+      return reply.status(409).send({ error: 'This is the only remaining admin — promote someone else first.' });
+    }
+    const user = await prisma.user.update({ where: { id }, data: { isActive: false }, select: USER_SELECT });
+    return { user };
+  });
+
+  app.post('/users/:id/reactivate', { preHandler: requireAdmin() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const target = await prisma.user.findFirst({
+      where: { id, organizationId: request.user.organizationId },
+    });
+    if (!target) return reply.status(404).send({ error: 'User not found' });
+    const user = await prisma.user.update({ where: { id }, data: { isActive: true }, select: USER_SELECT });
+    return { user };
+  });
+
+  // Hard delete — only succeeds for accounts with no associated records
+  // (leads, tasks, activity history, etc.), so real work history is never
+  // silently destroyed. Use deactivate for anyone who's actually used the
+  // system.
+  app.delete('/users/:id', { preHandler: requireAdmin() }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    if (id === request.user.sub) {
+      return reply.status(400).send({ error: "You can't delete your own account." });
+    }
+    const target = await prisma.user.findFirst({
+      where: { id, organizationId: request.user.organizationId },
+    });
+    if (!target) return reply.status(404).send({ error: 'User not found' });
+    if (await isLastActiveAdmin(request.user.organizationId, id)) {
+      return reply.status(409).send({ error: 'This is the only remaining admin — promote someone else first.' });
+    }
+    try {
+      await prisma.user.delete({ where: { id } });
+      return reply.status(204).send();
+    } catch {
+      return reply.status(409).send({
+        error: `${target.name} has existing leads, tasks, or activity history and can't be deleted. Deactivate the account instead to preserve that history.`,
+      });
+    }
   });
 
   app.get('/teams', { preHandler: requireManager() }, async (request) => {

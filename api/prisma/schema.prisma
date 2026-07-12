@@ -47,6 +47,7 @@ model User {
   name                    String
   role                    UserRole                @default(SALES)
   isVirtual               Boolean                 @default(false)
+  isActive                Boolean                 @default(true)
   failedLoginCount        Int                     @default(0)
   lockoutUntil            DateTime?
   createdAt               DateTime                @default(now())
