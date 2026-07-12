@@ -14,12 +14,12 @@
   --amber: #D97706;
   --workspace: #EFF3F9;
 
-  --sidebar-bg: #050D1F;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-text: #94a3b8;
-  --sidebar-text-active: #f8fafc;
-  --sidebar-hover: rgba(255, 255, 255, 0.06);
-  --sidebar-active: rgba(26, 86, 219, 0.22);
+  --sidebar-bg: #E9EFF8;
+  --sidebar-border: #dbe4f0;
+  --sidebar-text: #475569;
+  --sidebar-text-active: #0f172a;
+  --sidebar-hover: rgba(15, 23, 42, 0.05);
+  --sidebar-active: rgba(26, 86, 219, 0.12);
   --brand-accent: #D97706;
 
   --workspace-bg: #EFF3F9;
@@ -142,7 +142,7 @@ textarea {
 }
 
 .brand-text strong {
-  color: #f8fafc;
+  color: var(--sidebar-text-active);
   font-size: 1.05rem;
   letter-spacing: -0.02em;
 }
@@ -197,8 +197,8 @@ textarea {
 }
 
 .nav-item.active {
-  background: rgba(26, 86, 219, 0.15);
-  color: #bfdbfe;
+  background: var(--sidebar-active);
+  color: var(--primary);
 }
 
 .nav-icon {
@@ -247,7 +247,7 @@ textarea {
 }
 
 .user-name {
-  color: #f1f5f9;
+  color: var(--sidebar-text-active);
   font-size: 0.85rem;
   font-weight: 600;
   white-space: nowrap;
@@ -279,7 +279,7 @@ textarea {
 
 .btn-logout:hover {
   background: var(--sidebar-hover);
-  color: #f8fafc;
+  color: var(--sidebar-text-active);
 }
 
 .btn-logout .nav-icon {

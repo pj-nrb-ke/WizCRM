@@ -352,6 +352,9 @@ export function HomePage() {
         loading={personalLoading}
       />
 
+      {/* ── Quick links (moved near top for actual quick access) ── */}
+      <QuickLinksBar manager={manager} admin={admin} />
+
       {/* ── Premium KPI row (manager/admin) ── */}
       {manager && orgStats && (
         <div
@@ -473,9 +476,10 @@ export function HomePage() {
           />
         </div>
       )}
+      {manager && (!summary || !orgStats) && <SkeletonRow columns={2} height={200} />}
 
       {/* ── Main analytics grid ── */}
-      {manager && (
+      {manager && summary && orgStats && (
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)' }}>
           {/* Left: trend chart + funnel */}
           <div className="flex flex-col gap-3">
@@ -504,6 +508,7 @@ export function HomePage() {
           </div>
         </div>
       )}
+      {manager && (!summary || !orgStats) && <SkeletonRow columns={2} height={320} />}
 
       {/* ── Org snapshot + team performance ── */}
       {manager && orgStats && (
@@ -528,6 +533,7 @@ export function HomePage() {
           />
         </div>
       )}
+      {manager && !orgStats && <SkeletonRow columns={2} height={220} />}
 
       {/* ── Activity feed + widgets row ── */}
       <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr)' }}>
@@ -577,9 +583,6 @@ export function HomePage() {
           </div>
         </div>
       )}
-
-      {/* ── Quick links (compact) ── */}
-      <QuickLinksBar manager={manager} admin={admin} />
 
       {/* drilldown panel */}
       {drilldown && !drillLoading && (
@@ -770,6 +773,23 @@ function buildStageChartData(summary: ReportSummary) {
       count: v,
       color: COLORS[i % COLORS.length],
     }));
+}
+
+function SkeletonRow({ columns, height }: { columns: number; height: number }) {
+  return (
+    <div
+      className="grid gap-3 mb-4"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {Array.from({ length: columns }, (_, i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-slate-200 bg-white animate-pulse"
+          style={{ height }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function QuickLinksBar({ manager, admin }: { manager: boolean; admin: boolean }) {

@@ -22,11 +22,12 @@ type Props = {
 export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, loading }: Props) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl mb-4"
+      className="relative overflow-hidden rounded-2xl mb-4 border"
       style={{
-        background: 'linear-gradient(140deg, #050D1F 0%, #0A2040 30%, #1A56DB 65%, #0A1628 100%)',
+        background: 'linear-gradient(140deg, #EFF3F9 0%, #EBF3FF 55%, #E4EEFF 100%)',
+        borderColor: '#dbe4f0',
         padding: '28px 36px 24px',
-        boxShadow: '0 10px 40px rgba(5, 13, 31, 0.45), 0 2px 8px rgba(15, 23, 42, 0.18)',
+        boxShadow: '0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)',
       }}
     >
       {/* decorative blobs */}
@@ -35,7 +36,7 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
         style={{
           top: '-60px', right: '-60px', width: '260px', height: '260px',
           borderRadius: '50%',
-          background: 'rgba(26, 86, 219, 0.12)',
+          background: 'rgba(26, 86, 219, 0.06)',
         }}
       />
       <div
@@ -43,15 +44,7 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
         style={{
           bottom: '-50px', left: '22%', width: '200px', height: '200px',
           borderRadius: '50%',
-          background: 'rgba(14, 165, 233, 0.07)',
-        }}
-      />
-      {/* grid pattern overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
+          background: 'rgba(14, 165, 233, 0.05)',
         }}
       />
 
@@ -62,13 +55,13 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
           <div>
             <h1
               className="m-0 font-800 leading-tight tracking-tight"
-              style={{ color: '#f8fafc', letterSpacing: '-0.04em', fontSize: 'clamp(22px, 3vw, 32px)', fontFamily: 'var(--font-display)' }}
+              style={{ color: '#0f172a', letterSpacing: '-0.04em', fontSize: 'clamp(22px, 3vw, 32px)', fontFamily: 'var(--font-display)' }}
             >
               {greeting}, {name}
             </h1>
-            <p className="mt-1 text-xs" style={{ color: 'rgba(248,250,252,0.55)', margin: '4px 0 0' }}>
+            <p className="mt-1 text-xs" style={{ color: '#64748b', margin: '4px 0 0' }}>
               {dateLabel}
-              <span style={{ color: 'rgba(248,250,252,0.32)', marginLeft: 8 }}>· {roleLabel}</span>
+              <span style={{ color: '#94a3b8', marginLeft: 8 }}>· {roleLabel}</span>
             </p>
           </div>
 
@@ -77,13 +70,12 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
             <div
               className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-600"
               style={{
-                background: 'rgba(26, 86, 219, 0.20)',
-                border: '1px solid rgba(26, 86, 219, 0.35)',
-                color: '#93c5fd',
-                backdropFilter: 'blur(8px)',
+                background: 'rgba(26, 86, 219, 0.10)',
+                border: '1px solid rgba(26, 86, 219, 0.25)',
+                color: '#1A56DB',
               }}
             >
-              <LiveIndicator color="#60a5fa" size={6} />
+              <LiveIndicator color="#1A56DB" size={6} />
               AI insights active
             </div>
           </div>
@@ -96,7 +88,7 @@ export function ExecutiveHero({ greeting, name, dateLabel, roleLabel, kpis, load
               <div
                 key={i}
                 className="rounded-xl animate-pulse"
-                style={{ height: 80, background: 'rgba(255,255,255,0.06)' }}
+                style={{ height: 80, background: 'rgba(15,23,42,0.04)' }}
               />
             ))}
           </div>
@@ -116,37 +108,34 @@ function HeroKpiTile({ kpi }: { kpi: HeroKpi }) {
   const Icon = kpi.icon;
   return (
     <div
-      className="rounded-xl p-3 flex flex-col gap-1.5 transition-all duration-200 hover:bg-white/10 cursor-default group"
+      className="rounded-xl p-3 flex flex-col gap-1.5 transition-all duration-200 hover:bg-white cursor-default group"
       style={{
-        background: kpi.warn
-          ? 'rgba(120, 53, 15, 0.22)'
-          : 'rgba(255, 255, 255, 0.07)',
-        border: `1px solid ${kpi.warn ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.11)'}`,
-        backdropFilter: 'blur(10px)',
+        background: kpi.warn ? '#fffbeb' : '#ffffff',
+        border: `1px solid ${kpi.warn ? '#fde68a' : '#e2e8f0'}`,
       }}
     >
       <div
         className="flex h-7 w-7 items-center justify-center rounded-lg flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
         style={{
-          background: kpi.warn ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.1)',
-          color: kpi.warn ? '#fcd34d' : '#93c5fd',
+          background: kpi.warn ? 'rgba(217, 119, 6, 0.12)' : 'rgba(26, 86, 219, 0.10)',
+          color: kpi.warn ? '#b45309' : '#1A56DB',
         }}
       >
         <Icon size={13} strokeWidth={2} />
       </div>
       <div
         className="text-xl font-800 leading-none tracking-tight tabular-nums"
-        style={{ color: kpi.warn ? '#fde68a' : '#f1f5f9', letterSpacing: '-0.02em', fontFamily: 'var(--font-mono)' }}
+        style={{ color: kpi.warn ? '#92400e' : '#0f172a', letterSpacing: '-0.02em', fontFamily: 'var(--font-mono)' }}
       >
         {typeof kpi.value === 'number'
           ? <AnimatedCounter value={kpi.value} />
           : kpi.value}
       </div>
-      <div className="text-[10px] font-600 uppercase tracking-wider" style={{ color: kpi.warn ? 'rgba(253,230,138,0.6)' : 'rgba(248,250,252,0.45)' }}>
+      <div className="text-[10px] font-600 uppercase tracking-wider" style={{ color: kpi.warn ? '#b45309' : '#64748b' }}>
         {kpi.label}
       </div>
       {kpi.sub && (
-        <div className="text-[10px]" style={{ color: 'rgba(248,250,252,0.3)' }}>{kpi.sub}</div>
+        <div className="text-[10px]" style={{ color: '#94a3b8' }}>{kpi.sub}</div>
       )}
     </div>
   );

@@ -59,15 +59,15 @@ function NavItem({
             style={{
               width: 30,
               height: 30,
-              background: isActive ? 'rgba(26, 86, 219, 0.20)' : 'transparent',
-              color: isActive ? '#93c5fd' : 'rgba(148,163,184,0.7)',
+              background: isActive ? 'rgba(26, 86, 219, 0.12)' : 'transparent',
+              color: isActive ? '#1A56DB' : '#64748b',
               transition: 'background 150ms, color 150ms',
             }}
           >
             <NavIcon name={icon} />
           </span>
           {expanded && (
-            <span style={{ color: isActive ? '#e0e7ff' : '#94a3b8', fontSize: 13, whiteSpace: 'nowrap' }}>
+            <span style={{ color: isActive ? '#1A56DB' : '#475569', fontSize: 13, whiteSpace: 'nowrap' }}>
               {label}
             </span>
           )}
@@ -194,7 +194,7 @@ export function Layout() {
             gap: 10,
             padding: expanded ? '0 12px 14px' : '0 8px 14px',
             marginBottom: 4,
-            borderBottom: '1px solid rgba(255,255,255,0.055)',
+            borderBottom: '1px solid rgba(15,23,42,0.07)',
             justifyContent: expanded ? 'space-between' : 'center',
             transition: 'padding 200ms ease',
             overflow: 'hidden',
@@ -225,7 +225,7 @@ export function Layout() {
               <div className="flex flex-col min-w-0 overflow-hidden">
                 <span
                   className="font-700 text-sm leading-tight truncate"
-                  style={{ color: '#f1f5f9', letterSpacing: '-0.01em', fontFamily: 'var(--font-display)' }}
+                  style={{ color: '#0f172a', letterSpacing: '-0.01em', fontFamily: 'var(--font-display)' }}
                 >
                   {brandName}
                 </span>
@@ -254,10 +254,10 @@ export function Layout() {
             title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
             style={{
               flexShrink: 0,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(15,23,42,0.04)',
+              border: '1px solid rgba(15,23,42,0.08)',
               borderRadius: 6,
-              color: '#94a3b8',
+              color: '#64748b',
               width: 26,
               height: 26,
               display: 'flex',
@@ -267,12 +267,12 @@ export function Layout() {
               transition: 'background 0.15s, color 0.15s',
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)';
-              (e.currentTarget as HTMLButtonElement).style.color = '#e2e8f0';
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(15,23,42,0.08)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#0f172a';
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-              (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8';
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(15,23,42,0.04)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#64748b';
             }}
           >
             {expanded ? <ChevronLeft size={14} strokeWidth={2.5} /> : <ChevronRight size={14} strokeWidth={2.5} />}

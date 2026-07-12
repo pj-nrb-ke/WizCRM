@@ -84,12 +84,6 @@ export function PremiumKpiCard({
         transition: 'opacity 0.35s ease, transform 0.35s ease, box-shadow 0.2s, border-color 0.2s',
       }}
     >
-      {/* accent top line */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl transition-all duration-200 group-hover:h-[3px]"
-        style={{ background: sparkColor }}
-      />
-
       {/* header row */}
       <div className="flex items-start justify-between gap-2">
         <div
