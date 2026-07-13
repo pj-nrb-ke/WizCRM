@@ -132,27 +132,45 @@ async function notifyCeosDraftReady(
 ) {
   if (vsmConfig.ceoUserIds.length === 0) return;
 
-  const perPersonCounts = plan.people.map((p) => ({
+  const perPerson = plan.people.map((p) => ({
     name: p.userName,
-    count: p.items.filter((i) => i.included && i.createsTask).length,
+    tasks: p.items.filter((i) => i.included && i.createsTask),
+    carryover: p.carryover,
   }));
-  const totalTasks = perPersonCounts.reduce((n, p) => n + p.count, 0);
+  const totalTasks = perPerson.reduce((n, p) => n + p.tasks.length, 0);
   const peopleLabel = `${plan.people.length} ${plan.people.length === 1 ? 'person' : 'people'}`;
 
-  const summaryLines = perPersonCounts.map(
-    (p) => `- ${p.name}: ${p.count} task${p.count === 1 ? '' : 's'}`,
-  );
-  const summaryHtml = perPersonCounts
-    .map((p) => `<li>${escapeHtml(p.name)}: ${p.count} task${p.count === 1 ? '' : 's'}</li>`)
-    .join('');
+  const textBlocks = perPerson.map((p) => {
+    const taskLines = p.tasks.map((t) => `  - ${t.title} — ${t.reason}`).join('\n');
+    const carryoverLines = p.carryover
+      .map((c) => `  - ${c.title} — ${c.reason} (carried over)`)
+      .join('\n');
+    return (
+      `${p.name} (${p.tasks.length} task${p.tasks.length === 1 ? '' : 's'}):\n` +
+      (taskLines || '  (nothing new today)') +
+      (carryoverLines ? `\n${carryoverLines}` : '')
+    );
+  });
+  const htmlBlocks = perPerson.map((p) => {
+    const taskItems = p.tasks
+      .map((t) => `<li><strong>${escapeHtml(t.title)}</strong> — ${escapeHtml(t.reason)}</li>`)
+      .join('');
+    const carryoverItems = p.carryover
+      .map((c) => `<li>${escapeHtml(c.title)} — ${escapeHtml(c.reason)} <em>(carried over)</em></li>`)
+      .join('');
+    return (
+      `<p style="margin-bottom:4px"><strong>${escapeHtml(p.name)}</strong> (${p.tasks.length} task${p.tasks.length === 1 ? '' : 's'})</p>` +
+      `<ul style="margin-top:0">${taskItems || '<li>(nothing new today)</li>'}${carryoverItems}</ul>`
+    );
+  });
 
   const text =
     `${vsmConfig.personaName}'s morning plan is ready — ${totalTasks} task${totalTasks === 1 ? '' : 's'} across ${peopleLabel}:\n\n` +
-    (summaryLines.join('\n') || 'No one has anything today.') +
+    (textBlocks.join('\n\n') || 'No one has anything today.') +
     `\n\nReply APPROVE to send it to the team now, or reply SKIP to hold it back today.`;
   const html =
     `<p>${escapeHtml(vsmConfig.personaName)}'s morning plan is ready — ${totalTasks} task${totalTasks === 1 ? '' : 's'} across ${peopleLabel}:</p>` +
-    `<ul>${summaryHtml || '<li>No one has anything today.</li>'}</ul>` +
+    (htmlBlocks.join('') || '<p>No one has anything today.</p>') +
     `<p><strong>Reply APPROVE</strong> to send it to the team now, or <strong>reply SKIP</strong> to hold it back today.</p>`;
 
   const ceos = await prisma.user.findMany({ where: { id: { in: vsmConfig.ceoUserIds } }, select: { email: true, name: true } });
