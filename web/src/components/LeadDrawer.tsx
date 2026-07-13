@@ -17,6 +17,7 @@ import { CommunicationDraftPanel } from './CommunicationDraftPanel';
 import { LeadNextActionPanel } from './LeadNextActionPanel';
 import { DecisionMakersPanel } from './DecisionMakersPanel';
 import { LeadTeamChat } from './LeadTeamChat';
+import { EditLeadModal } from './EditLeadModal';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -25,6 +26,9 @@ type LeadDetail = LeadSummary & {
   wonProducts?: string | null;
   lossReason?: string | null;
   tags?: string[];
+  extraPhones?: unknown;
+  extraEmails?: unknown;
+  address?: string | null;
   owner?: { id: string; name: string; email?: string };
   activities?: {
     id: string;
@@ -83,6 +87,7 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
     }[]
   >([]);
   const [showOppForm, setShowOppForm] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   async function reloadLead(id: string) {
     const d = await api<{ lead: LeadDetail }>(`/leads/${id}`);
@@ -172,8 +177,15 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
           <p className="muted">Loading…</p>
         ) : (
           <>
-            <h2>{lead.name}</h2>
-            {lead.company ? <p className="muted">{lead.company}</p> : null}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h2 style={{ margin: 0 }}>{lead.name}</h2>
+                {lead.company ? <p className="muted" style={{ margin: 0 }}>{lead.company}</p> : null}
+              </div>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => setEditOpen(true)}>
+                Edit
+              </button>
+            </div>
             <CloseOutcomeBanner
               stage={lead.stage}
               wonValue={lead.wonValue}
@@ -318,9 +330,25 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                     ) : null}
                   </dd>
                   <dt>Email</dt>
-                  <dd>{lead.email ?? '—'}</dd>
+                  <dd>
+                    {lead.email ?? '—'}
+                    {Array.isArray(lead.extraEmails) && lead.extraEmails.length > 0
+                      ? (lead.extraEmails as string[]).map((e) => (
+                          <div key={e} className="muted">{e}</div>
+                        ))
+                      : null}
+                  </dd>
                   <dt>Phone</dt>
-                  <dd>{lead.phone ?? '—'}</dd>
+                  <dd>
+                    {lead.phone ?? '—'}
+                    {Array.isArray(lead.extraPhones) && lead.extraPhones.length > 0
+                      ? (lead.extraPhones as string[]).map((p) => (
+                          <div key={p} className="muted">{p}</div>
+                        ))
+                      : null}
+                  </dd>
+                  <dt>Address</dt>
+                  <dd>{lead.address ?? '—'}</dd>
                   <dt>Source</dt>
                   <dd><LeadSource source={lead.source} /></dd>
                 </dl>
@@ -447,6 +475,17 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
           }}
         />
       ) : null}
+
+      <EditLeadModal
+        open={editOpen}
+        lead={lead}
+        config={config}
+        onClose={() => setEditOpen(false)}
+        onSaved={(updated) => {
+          setLead(updated as LeadDetail);
+          onUpdated?.();
+        }}
+      />
     </div>
   );
 }

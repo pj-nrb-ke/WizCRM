@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { api, getApiBaseUrl, getStoredToken } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { CrmConfig } from './CloseLeadModal';
+import { ContactListField } from './ContactListField';
 
 type Duplicate = {
   id: string;
@@ -25,6 +26,9 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [extraPhones, setExtraPhones] = useState<string[]>([]);
+  const [extraEmails, setExtraEmails] = useState<string[]>([]);
+  const [address, setAddress] = useState('');
   const [source, setSource] = useState('');
   const [priority, setPriority] = useState('');
   const [captureNotes, setCaptureNotes] = useState('');
@@ -39,6 +43,9 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
       setCompany('');
       setEmail('');
       setPhone('');
+      setExtraPhones([]);
+      setExtraEmails([]);
+      setAddress('');
       setSource('');
       setPriority('');
       setCaptureNotes('');
@@ -65,8 +72,10 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
       setError('Name is required.');
       return;
     }
-    if (!email.trim() && !phone.trim()) {
-      setError('At least one of email or phone is required.');
+    const cleanExtraPhones = extraPhones.map((p) => p.trim()).filter((p) => p.length >= 5);
+    const cleanExtraEmails = extraEmails.map((e) => e.trim()).filter((e) => e.includes('@'));
+    if (!email.trim() && !phone.trim() && cleanExtraPhones.length === 0 && cleanExtraEmails.length === 0) {
+      setError('At least one phone or email is required.');
       return;
     }
     setSaving(true);
@@ -93,6 +102,9 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
           company: company.trim() || undefined,
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
+          extraPhones: cleanExtraPhones,
+          extraEmails: cleanExtraEmails,
+          address: address.trim() || undefined,
           source: source.trim() || undefined,
           priority: priority || undefined,
           force: force || pendingForce,
@@ -179,6 +191,23 @@ export function CreateLeadModal({ open, config, onClose, onCreated }: Props) {
           <label>
             Phone
             <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </label>
+          <ContactListField
+            label="Phone"
+            type="tel"
+            values={extraPhones}
+            onChange={setExtraPhones}
+            placeholder={() => 'e.g. reception line'}
+          />
+          <ContactListField
+            label="Email"
+            type="email"
+            values={extraEmails}
+            onChange={setExtraEmails}
+          />
+          <label>
+            Address
+            <input value={address} onChange={(e) => setAddress(e.target.value)} />
           </label>
           <label>
             Source
