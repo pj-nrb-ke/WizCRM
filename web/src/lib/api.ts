@@ -67,7 +67,7 @@ export type AuthUser = {
   organizationId: string;
 };
 
-export async function downloadAuthenticated(path: string, filename: string): Promise<void> {
+async function fetchAuthenticatedBlob(path: string): Promise<Blob> {
   const token = getStoredToken();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -77,11 +77,21 @@ export async function downloadAuthenticated(path: string, filename: string): Pro
     const err = data as { error?: string; message?: string };
     throw new Error(err.message ?? err.error ?? res.statusText);
   }
-  const blob = await res.blob();
+  return res.blob();
+}
+
+export async function downloadAuthenticated(path: string, filename: string): Promise<void> {
+  const blob = await fetchAuthenticatedBlob(path);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** Blob object URL for inline viewing (e.g. in an <iframe>/<img>). Caller must revoke it when done. */
+export async function openAuthenticatedBlobUrl(path: string): Promise<string> {
+  const blob = await fetchAuthenticatedBlob(path);
+  return URL.createObjectURL(blob);
 }

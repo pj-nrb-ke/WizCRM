@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, downloadAuthenticated } from '../lib/api';
+import { api, downloadAuthenticated, openAuthenticatedBlobUrl } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { isManager } from '../lib/roles';
 import { PageHeader } from '../components/PageHeader';
+
+/** Types the browser can render natively in an <iframe>/<img> — anything else falls back to download. */
+function isInlineViewable(mimeType: string): boolean {
+  return mimeType === 'application/pdf' || mimeType.startsWith('image/');
+}
 
 type ProductDocument = {
   id: string;
@@ -57,6 +62,12 @@ export function ProductDocumentsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const [viewer, setViewer] = useState<{ doc: ProductDocument; url: string } | null>(null);
+  const [viewerLoadingId, setViewerLoadingId] = useState<string | null>(null);
+
   async function load() {
     setError('');
     try {
@@ -70,6 +81,14 @@ export function ProductDocumentsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const ids = new Set(documents.map((d) => d.id));
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [documents]);
 
   useEffect(() => {
     void load();
@@ -149,12 +168,70 @@ export function ProductDocumentsPage() {
     }
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === documents.length ? new Set() : new Set(documents.map((d) => d.id)),
+    );
+  }
+
+  async function onBulkDelete() {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`Remove ${count} document${count === 1 ? '' : 's'} from the library? Reps will no longer see them.`)) {
+      return;
+    }
+    setBulkDeleting(true);
+    setError('');
+    setMessage('');
+    try {
+      const results = await Promise.allSettled(
+        [...selectedIds].map((id) => api(`/documents/${id}`, { method: 'DELETE' })),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      setSelectedIds(new Set());
+      await load();
+      if (failed > 0) {
+        setError(`${failed} of ${count} document${count === 1 ? '' : 's'} could not be removed.`);
+      } else {
+        setMessage(`Removed ${count} document${count === 1 ? '' : 's'}.`);
+      }
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  function closeViewer() {
+    if (viewer) URL.revokeObjectURL(viewer.url);
+    setViewer(null);
+  }
+
   async function onView(doc: ProductDocument) {
     setError('');
+    if (!isInlineViewable(doc.mimeType)) {
+      try {
+        await downloadAuthenticated(`/documents/${doc.id}/file`, doc.fileName);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not open the file');
+      }
+      return;
+    }
+    setViewerLoadingId(doc.id);
     try {
-      await downloadAuthenticated(`/documents/${doc.id}/file`, doc.fileName);
+      const url = await openAuthenticatedBlobUrl(`/documents/${doc.id}/file`);
+      setViewer({ doc, url });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open the file');
+    } finally {
+      setViewerLoadingId(null);
     }
   }
 
@@ -239,7 +316,39 @@ export function ProductDocumentsPage() {
           </label>
         </div>
 
+        {canManage && selectedIds.size > 0 ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: '8px 12px',
+              marginBottom: 12,
+              borderRadius: 8,
+              background: 'var(--accent-bg, rgba(37,99,235,0.08))',
+            }}
+          >
+            <span style={{ fontSize: 13 }}>{selectedIds.size} selected</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn-secondary" onClick={() => setSelectedIds(new Set())}>
+                Clear
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                disabled={bulkDeleting}
+                onClick={() => void onBulkDelete()}
+              >
+                {bulkDeleting ? 'Removing…' : `Remove ${selectedIds.size}`}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {!canManage && error ? <p className="error">{error}</p> : null}
+        {canManage && error ? <p className="error">{error}</p> : null}
+        {canManage && message ? <p className="success">{message}</p> : null}
 
         {loading ? (
           <p className="muted">Loading…</p>
@@ -247,6 +356,19 @@ export function ProductDocumentsPage() {
           <p className="muted">No documents yet. Upload your first catalog above.</p>
         ) : (
           <div>
+            {canManage ? (
+              <label
+                className="muted"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 0 8px' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === documents.length}
+                  onChange={toggleSelectAll}
+                />
+                Select all
+              </label>
+            ) : null}
             {documents.map((doc, i) => (
               <div
                 key={doc.id}
@@ -259,15 +381,34 @@ export function ProductDocumentsPage() {
                   opacity: doc.isActive ? 1 : 0.55,
                 }}
               >
+                {canManage ? (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(doc.id)}
+                    onChange={() => toggleSelected(doc.id)}
+                    style={{ flexShrink: 0 }}
+                  />
+                ) : null}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <button type="button" className="link-btn" onClick={() => onView(doc)}>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    disabled={viewerLoadingId === doc.id}
+                    onClick={() => void onView(doc)}
+                  >
                     {doc.title}
                   </button>
+                  {viewerLoadingId === doc.id ? (
+                    <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>
+                      Opening…
+                    </span>
+                  ) : null}
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                     {(doc.category ?? 'Uncategorised')} · {formatSize(doc.sizeBytes)}
                     {doc.version > 1 ? ` · v${doc.version}` : ''}
                     {doc.uploadedBy?.name ? ` · ${doc.uploadedBy.name}` : ''}
                     {doc.isActive ? '' : ' · inactive'}
+                    {!isInlineViewable(doc.mimeType) ? ' · downloads to view' : ''}
                   </div>
                   {doc.productTags.length > 0 ? (
                     <div style={{ fontSize: 12, color: 'var(--accent, #2563eb)', marginTop: 2 }}>
@@ -300,6 +441,74 @@ export function ProductDocumentsPage() {
           </div>
         )}
       </div>
+
+      {viewer ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={closeViewer}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--card-bg, #fff)',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 960,
+              height: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                borderBottom: rowBorder,
+                gap: 12,
+              }}
+            >
+              <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {viewer.doc.title}
+              </strong>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => void downloadAuthenticated(`/documents/${viewer.doc.id}/file`, viewer.doc.fileName)}
+                >
+                  Download
+                </button>
+                <button type="button" className="btn-secondary" onClick={closeViewer}>
+                  Close
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {viewer.doc.mimeType.startsWith('image/') ? (
+                <div style={{ width: '100%', height: '100%', overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={viewer.url} alt={viewer.doc.title} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                </div>
+              ) : (
+                <iframe src={viewer.url} title={viewer.doc.title} style={{ width: '100%', height: '100%', border: 'none' }} />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
