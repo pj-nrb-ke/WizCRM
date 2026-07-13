@@ -8,6 +8,7 @@ import {
   getOrCreateEodRun,
   getOrCreateMorningRun,
   sendMorningRun,
+  skipMorningRun,
   updateMorningRunPlan,
 } from '../services/vsm-execution.service.js';
 import { getOrCreateWeeklyRun } from '../services/vsm-weekly.service.js';
@@ -278,7 +279,7 @@ export const vsmRoutes: FastifyPluginAsync = async (app) => {
     const existing = await prisma.vsmRun.findFirst({ where: { id, organizationId: request.user.organizationId } });
     if (!existing) return reply.status(404).send({ error: 'Run not found' });
     if (existing.status !== 'DRAFT') return reply.status(409).send({ error: 'Only a draft run can be skipped.' });
-    const run = await prisma.vsmRun.update({ where: { id }, data: { status: 'SKIPPED' } });
+    const run = await skipMorningRun(id);
     return { run };
   });
 

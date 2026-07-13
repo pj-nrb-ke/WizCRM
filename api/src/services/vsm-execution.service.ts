@@ -19,6 +19,10 @@ function replyAddress(taskId: string) {
   return `task-${taskId}@${config.brevoInboundDomain}`;
 }
 
+function runReplyAddress(runId: string) {
+  return `vsmrun-${runId}@${config.brevoInboundDomain}`;
+}
+
 function endOfToday() {
   const d = new Date();
   d.setHours(23, 59, 59, 999);
@@ -112,7 +116,56 @@ export async function getOrCreateMorningRun(organizationId: string, opts: { from
   if (vsmConfig.autonomy === 'AUTO') {
     return sendMorningRun(run.id, null);
   }
+
+  await notifyCeosDraftReady(run.id, vsmConfig, plan);
   return run;
+}
+
+/** DRAFT mode has no in-app requirement: the CEO gets the plan by email and
+ * approves it by replying — no login needed. Fires once, right when the
+ * DRAFT run is created (idempotent creation above already prevents a second
+ * run — and therefore a second email — on repeat cron polls same day). */
+async function notifyCeosDraftReady(
+  runId: string,
+  vsmConfig: { ceoUserIds: string[]; personaName: string },
+  plan: { people: PersonPlan[] },
+) {
+  if (vsmConfig.ceoUserIds.length === 0) return;
+
+  const perPersonCounts = plan.people.map((p) => ({
+    name: p.userName,
+    count: p.items.filter((i) => i.included && i.createsTask).length,
+  }));
+  const totalTasks = perPersonCounts.reduce((n, p) => n + p.count, 0);
+  const peopleLabel = `${plan.people.length} ${plan.people.length === 1 ? 'person' : 'people'}`;
+
+  const summaryLines = perPersonCounts.map(
+    (p) => `- ${p.name}: ${p.count} task${p.count === 1 ? '' : 's'}`,
+  );
+  const summaryHtml = perPersonCounts
+    .map((p) => `<li>${escapeHtml(p.name)}: ${p.count} task${p.count === 1 ? '' : 's'}</li>`)
+    .join('');
+
+  const text =
+    `${vsmConfig.personaName}'s morning plan is ready — ${totalTasks} task${totalTasks === 1 ? '' : 's'} across ${peopleLabel}:\n\n` +
+    (summaryLines.join('\n') || 'No one has anything today.') +
+    `\n\nReply APPROVE to send it to the team now, or reply SKIP to hold it back today.`;
+  const html =
+    `<p>${escapeHtml(vsmConfig.personaName)}'s morning plan is ready — ${totalTasks} task${totalTasks === 1 ? '' : 's'} across ${peopleLabel}:</p>` +
+    `<ul>${summaryHtml || '<li>No one has anything today.</li>'}</ul>` +
+    `<p><strong>Reply APPROVE</strong> to send it to the team now, or <strong>reply SKIP</strong> to hold it back today.</p>`;
+
+  const ceos = await prisma.user.findMany({ where: { id: { in: vsmConfig.ceoUserIds } }, select: { email: true, name: true } });
+  for (const ceo of ceos) {
+    await safeSend({
+      toEmail: ceo.email,
+      toName: ceo.name,
+      subject: `${vsmConfig.personaName}'s morning plan — ${totalTasks} task${totalTasks === 1 ? '' : 's'} ready for your OK`,
+      text,
+      html,
+      replyTo: { email: runReplyAddress(runId), name: vsmConfig.personaName },
+    });
+  }
 }
 
 /** Stamps `edited: true` onto contextSnapshot — the cheap signal
@@ -232,6 +285,15 @@ export async function sendMorningRun(runId: string, approvedByUserId: string | n
   }
 
   return updated;
+}
+
+/** Extracted so both the web "Skip" button and an emailed "SKIP" reply go
+ * through the same idempotent, DRAFT-only guard. */
+export async function skipMorningRun(runId: string) {
+  const run = await prisma.vsmRun.findUnique({ where: { id: runId } });
+  if (!run) throw new Error('RUN_NOT_FOUND');
+  if (run.status !== 'DRAFT') return run; // already sent/skipped — idempotent
+  return prisma.vsmRun.update({ where: { id: runId }, data: { status: 'SKIPPED' } });
 }
 
 async function notifyCeos(organizationId: string, vsmConfig: { ceoUserIds: string[]; personaName: string }, subject: string, text: string) {
