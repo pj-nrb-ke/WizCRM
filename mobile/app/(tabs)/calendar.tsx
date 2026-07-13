@@ -12,15 +12,18 @@ import { router, useFocusEffect } from 'expo-router';
 import { api } from '../../lib/api';
 import {
   type CalendarEventRow,
+  colorForOrganizer,
   formatEventWhen,
   monthRange,
 } from '../../lib/calendar-utils';
 import { fetchReminders } from '../../lib/reminders';
 import { rescheduleLocalReminders } from '../../lib/notifications';
+import { useAuth } from '../../context/AuthContext';
 
 type ViewMode = 'month' | 'week';
 
 export default function CalendarScreen() {
+  const { user } = useAuth();
   const now = new Date();
   const [view, setView] = useState<ViewMode>('month');
   const [selected, setSelected] = useState(
@@ -157,7 +160,7 @@ export default function CalendarScreen() {
             <Text style={styles.empty}>No events this day.</Text>
           ) : null}
           {dayEvents.map((ev) => (
-            <EventCard key={ev.id} ev={ev} />
+            <EventCard key={ev.id} ev={ev} currentUserId={user?.id} />
           ))}
         </ScrollView>
       ) : (
@@ -180,7 +183,7 @@ export default function CalendarScreen() {
               {s.events.length === 0 ? (
                 <Text style={styles.empty}>—</Text>
               ) : (
-                s.events.map((ev) => <EventCard key={ev.id} ev={ev} />)
+                s.events.map((ev) => <EventCard key={ev.id} ev={ev} currentUserId={user?.id} />)
               )}
             </View>
           ))}
@@ -190,13 +193,24 @@ export default function CalendarScreen() {
   );
 }
 
-function EventCard({ ev }: { ev: CalendarEventRow }) {
+function EventCard({ ev, currentUserId }: { ev: CalendarEventRow; currentUserId?: string }) {
+  const organizer = ev.user;
+  const isMine = !organizer || !currentUserId || organizer.id === currentUserId;
+  const dotColor = organizer ? colorForOrganizer(organizer.id) : '#38bdf8';
   return (
     <Pressable
-      style={styles.card}
+      style={[styles.card, { borderLeftColor: dotColor }]}
       onPress={() => router.push({ pathname: '/calendar/[id]', params: { id: ev.id } })}
     >
-      <Text style={styles.cardTitle}>{ev.title}</Text>
+      <View style={styles.cardHeaderRow}>
+        <Text style={styles.cardTitle}>{ev.title}</Text>
+        {organizer ? (
+          <View style={styles.organizerBadge}>
+            <View style={[styles.organizerDot, { backgroundColor: dotColor }]} />
+            <Text style={styles.organizerText}>{isMine ? 'You' : organizer.name}</Text>
+          </View>
+        ) : null}
+      </View>
       <Text style={styles.cardMeta}>{formatEventWhen(ev)}</Text>
       {ev.tags && ev.tags.length > 0 ? (
         <Text style={styles.tags}>{ev.tags.join(' · ')}</Text>
@@ -253,8 +267,18 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: '#1e293b',
     borderRadius: 10,
+    borderLeftWidth: 3,
   },
-  cardTitle: { color: '#f8fafc', fontWeight: '600', fontSize: 16 },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardTitle: { color: '#f8fafc', fontWeight: '600', fontSize: 16, flexShrink: 1 },
+  organizerBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  organizerDot: { width: 8, height: 8, borderRadius: 4 },
+  organizerText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
   cardMeta: { color: '#64748b', fontSize: 13, marginTop: 4 },
   tags: { color: '#a78bfa', fontSize: 12, marginTop: 4 },
   cardLead: { color: '#38bdf8', fontSize: 13, marginTop: 6 },

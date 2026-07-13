@@ -17,7 +17,19 @@ export type CalendarEventRow = {
   reminderMinutes?: number | null;
   tags?: string[];
   lead: { id: string; name: string; company: string | null } | null;
+  user: { id: string; name: string } | null;
 };
+
+/** Deterministic color per organizer, so the same person always gets the same dot. */
+const ORGANIZER_COLORS = ['#38bdf8', '#f472b6', '#a78bfa', '#fbbf24', '#4ade80', '#fb923c', '#22d3ee'];
+
+export function colorForOrganizer(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
+  }
+  return ORGANIZER_COLORS[hash % ORGANIZER_COLORS.length];
+}
 
 export function formatEventWhen(ev: Pick<CalendarEventRow, 'startAt' | 'endAt' | 'allDay'>) {
   const start = new Date(ev.startAt);
