@@ -16,12 +16,13 @@ import { router } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { clearApiUrlCache, resolveApiUrl } from '../lib/api-url-file';
 import { importApiUrlFromDocument, saveApiUrlToAppStorage } from '../lib/api-url-store';
+import { IS_PRODUCTION_API } from '../lib/config';
 import { isManagerRole } from '../lib/roles';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('rep@wizag.local');
-  const [password, setPassword] = useState('wizcrm123');
+  const [email, setEmail] = useState(IS_PRODUCTION_API ? '' : 'rep@wizag.local');
+  const [password, setPassword] = useState(IS_PRODUCTION_API ? '' : 'wizcrm123');
   const [apiUrlDraft, setApiUrlDraft] = useState('');
   const [error, setError] = useState('');
   const [apiStatus, setApiStatus] = useState('');
@@ -133,56 +134,60 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
-        <Text style={styles.sectionLabel}>PC API URL (when Wi‑Fi IP changes)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="https://api.wizcrm.app"
-          placeholderTextColor="#64748b"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          value={apiUrlDraft}
-          onChangeText={setApiUrlDraft}
-          editable={!apiBusy}
-        />
-        <View style={styles.apiRow}>
-          <Pressable
-            style={[styles.apiButton, apiBusy && styles.apiButtonDisabled]}
-            onPress={() => void onSaveApiUrl()}
-            disabled={apiBusy}
-          >
-            <Text style={styles.apiButtonText}>Save API URL</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.apiButtonSecondary, apiBusy && styles.apiButtonDisabled]}
-            onPress={() => void onImportApiFile()}
-            disabled={apiBusy}
-          >
-            <Text style={styles.apiButtonSecondaryText}>Import api-url.txt</Text>
-          </Pressable>
-        </View>
-        {apiStatus ? <Text style={styles.hint}>{apiStatus}</Text> : null}
-        <Pressable
-          onPress={() => {
-            void refreshApiStatus();
-            setShowApiDetails((v) => !v);
-          }}
-        >
-          <Text style={styles.reloadApi}>
-            {showApiDetails ? 'Hide details' : 'Reload / show details'}
-          </Text>
-        </Pressable>
-        {showApiDetails && apiDetails ? (
-          <Text style={styles.details}>
-            Pick Documents/WizCRM/api-url.txt with Import, or paste the line and tap Save.
-            {'\n\n'}
-            {apiDetails}
-          </Text>
-        ) : null}
+        {IS_PRODUCTION_API ? null : (
+          <>
+            <Text style={styles.sectionLabel}>PC API URL (when Wi‑Fi IP changes)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="https://api.wizcrm.app"
+              placeholderTextColor="#64748b"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              value={apiUrlDraft}
+              onChangeText={setApiUrlDraft}
+              editable={!apiBusy}
+            />
+            <View style={styles.apiRow}>
+              <Pressable
+                style={[styles.apiButton, apiBusy && styles.apiButtonDisabled]}
+                onPress={() => void onSaveApiUrl()}
+                disabled={apiBusy}
+              >
+                <Text style={styles.apiButtonText}>Save API URL</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.apiButtonSecondary, apiBusy && styles.apiButtonDisabled]}
+                onPress={() => void onImportApiFile()}
+                disabled={apiBusy}
+              >
+                <Text style={styles.apiButtonSecondaryText}>Import api-url.txt</Text>
+              </Pressable>
+            </View>
+            {apiStatus ? <Text style={styles.hint}>{apiStatus}</Text> : null}
+            <Pressable
+              onPress={() => {
+                void refreshApiStatus();
+                setShowApiDetails((v) => !v);
+              }}
+            >
+              <Text style={styles.reloadApi}>
+                {showApiDetails ? 'Hide details' : 'Reload / show details'}
+              </Text>
+            </Pressable>
+            {showApiDetails && apiDetails ? (
+              <Text style={styles.details}>
+                Pick Documents/WizCRM/api-url.txt with Import, or paste the line and tap Save.
+                {'\n\n'}
+                {apiDetails}
+              </Text>
+            ) : null}
 
-        <Text style={styles.accounts}>
-          Try: rep@wizag.local or manager@wizag.local{'\n'}Password: wizcrm123
-        </Text>
+            <Text style={styles.accounts}>
+              Try: rep@wizag.local or manager@wizag.local{'\n'}Password: wizcrm123
+            </Text>
+          </>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
