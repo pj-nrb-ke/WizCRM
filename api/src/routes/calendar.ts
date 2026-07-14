@@ -6,6 +6,7 @@ import {
   calendarQuerySchema,
   calendarRsvpSchema,
   createCalendarEventSchema,
+  duplicateCalendarEventSchema,
   updateCalendarEventSchema,
 } from '@wizcrm/shared';
 import {
@@ -13,6 +14,7 @@ import {
   checkOutCalendarEvent,
   createCalendarEvent,
   deleteCalendarEvent,
+  duplicateCalendarEvent,
   getTeamAvailability,
   listCalendarEvents,
   listOrgUsers,
@@ -57,6 +59,25 @@ export const calendarRoutes: FastifyPluginAsync = async (app) => {
     const event = await updateCalendarEvent(id, organizationId, userId, role, parsed.data);
     if (!event) return reply.status(404).send({ error: 'Event not found' });
     return { event };
+  });
+
+  /** Copy a multi-day event (recurrenceUntil set) to another day within its range. */
+  app.post('/events/:id/duplicate', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    const { id } = request.params as { id: string };
+    const parsed = duplicateCalendarEventSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const result = await duplicateCalendarEvent(id, organizationId, userId, role, parsed.data.date);
+    if ('error' in result) {
+      if (result.error === 'NOT_FOUND') return reply.status(404).send({ error: 'Event not found' });
+      if (result.error === 'NOT_A_SERIES') {
+        return reply.status(400).send({ error: 'This event has no date range to copy within' });
+      }
+      return reply.status(400).send({ error: 'Pick a day after this one and within the event\'s date range' });
+    }
+    return reply.status(201).send({ event: result.event });
   });
 
   /** Colleagues you can invite. Read-only, org-scoped, open to any signed-in user. */

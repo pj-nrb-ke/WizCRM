@@ -67,6 +67,11 @@ export const createCalendarEventSchema = calendarEventFieldsSchema.refine(
 
 export const updateCalendarEventSchema = calendarEventFieldsSchema.partial();
 
+/** Copy a recurring-capped event (recurrence + recurrenceUntil set) to another day within its range. */
+export const duplicateCalendarEventSchema = z.object({
+  date: z.string().min(8).max(10), // ISO date, e.g. "2026-08-21"
+});
+
 export const calendarQuerySchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),

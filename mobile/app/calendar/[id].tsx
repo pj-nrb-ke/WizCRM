@@ -17,6 +17,7 @@ import {
   formatEventWhen,
   openMapsForEvent,
   parseLocalDatetimeInput,
+  remainingSeriesDays,
   toLocalDatetimeInput,
 } from '../../lib/calendar-utils';
 import { openGoogleMaps } from '../../lib/maps-links';
@@ -38,9 +39,13 @@ export default function CalendarEventScreen() {
   const [meetingAddress, setMeetingAddress] = useState('');
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [reminderMinutes, setReminderMinutes] = useState('60');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [duplicating, setDuplicating] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -184,6 +189,19 @@ export default function CalendarEventScreen() {
     ]);
   }
 
+  async function duplicateToDay(date: string) {
+    if (!id) return;
+    setDuplicating(date);
+    try {
+      await api(`/calendar/events/${id}/duplicate`, { method: 'POST', body: { date } });
+      Alert.alert('Copied', `Added to your calendar on ${date}.`);
+    } catch (e) {
+      Alert.alert('Could not copy', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setDuplicating(null);
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -300,6 +318,25 @@ export default function CalendarEventScreen() {
         </Pressable>
       ) : null}
 
+      {remainingSeriesDays(ev).length > 0 ? (
+        <View style={styles.seriesBox}>
+          <Text style={styles.section}>Copy to another day</Text>
+          <Text style={styles.attMeta}>This event runs through {ev.recurrenceUntil?.slice(0, 10)} — add it to the other days too.</Text>
+          <View style={styles.chips}>
+            {remainingSeriesDays(ev).map((date) => (
+              <Pressable
+                key={date}
+                style={styles.dayChip}
+                disabled={duplicating === date}
+                onPress={() => void duplicateToDay(date)}
+              >
+                <Text style={styles.dayChipText}>{duplicating === date ? '…' : date}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       <Pressable style={styles.primaryBtn} disabled={busy} onPress={() => void save()}>
         <Text style={styles.primaryBtnText}>{busy ? 'Saving…' : 'Save changes'}</Text>
       </Pressable>
@@ -332,6 +369,22 @@ const styles = StyleSheet.create({
   },
   attMeta: { color: '#94a3b8', marginTop: 6, fontSize: 13 },
   row: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  seriesBox: {
+    marginTop: 20,
+    padding: 14,
+    backgroundColor: '#172033',
+    borderRadius: 10,
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  dayChip: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  dayChipText: { color: '#38bdf8', fontWeight: '600', fontSize: 13 },
   mapsBtn: { marginTop: 8, alignSelf: 'flex-start' },
   mapsBtnText: { color: '#38bdf8', fontWeight: '600' },
   linkLead: { marginTop: 16, marginBottom: 8 },

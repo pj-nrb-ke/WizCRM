@@ -18,7 +18,25 @@ export type CalendarEventRow = {
   tags?: string[];
   lead: { id: string; name: string; company: string | null } | null;
   user: { id: string; name: string } | null;
+  /** Set when this event is one day of a multi-day series (e.g. an exhibition) — see calendar/[id].tsx "Copy to another day". */
+  recurrence?: 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
+  recurrenceUntil?: string | null;
 };
+
+/** Remaining days a multi-day event can still be copied to (day after this event, up to and including recurrenceUntil). */
+export function remainingSeriesDays(ev: Pick<CalendarEventRow, 'startAt' | 'recurrence' | 'recurrenceUntil'>): string[] {
+  if (!ev.recurrence || ev.recurrence === 'NONE' || !ev.recurrenceUntil) return [];
+  const days: string[] = [];
+  const start = new Date(ev.startAt.slice(0, 10) + 'T00:00:00');
+  const until = new Date(ev.recurrenceUntil.slice(0, 10) + 'T00:00:00');
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + 1);
+  while (cursor <= until) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
 
 /** Deterministic color per organizer, so the same person always gets the same dot. */
 const ORGANIZER_COLORS = ['#38bdf8', '#f472b6', '#a78bfa', '#fbbf24', '#4ade80', '#fb923c', '#22d3ee'];

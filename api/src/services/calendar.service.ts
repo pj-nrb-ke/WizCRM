@@ -304,6 +304,62 @@ export async function updateCalendarEvent(
   });
 }
 
+export type DuplicateCalendarEventResult =
+  | { event: Awaited<ReturnType<typeof createCalendarEvent>> }
+  | { error: 'NOT_FOUND' | 'NOT_A_SERIES' | 'OUT_OF_RANGE' };
+
+/**
+ * Copy a capped-recurrence event (recurrence !== NONE, recurrenceUntil set —
+ * e.g. one day of a multi-day exhibition saved via photo-capture) to another
+ * day within its own range. Same time-of-day as the source; never past
+ * recurrenceUntil.
+ */
+export async function duplicateCalendarEvent(
+  id: string,
+  organizationId: string,
+  userId: string,
+  role: string,
+  targetDate: string,
+): Promise<DuplicateCalendarEventResult> {
+  const isManager = role === 'MANAGER' || role === 'ADMIN';
+  const source = await prisma.calendarEvent.findFirst({
+    where: { id, organizationId, ...(isManager ? {} : { userId }) },
+    include: { attendees: { select: { userId: true } } },
+  });
+  if (!source) return { error: 'NOT_FOUND' };
+  if (source.recurrence === 'NONE' || !source.recurrenceUntil) return { error: 'NOT_A_SERIES' };
+
+  const sourceDay = source.startAt.toISOString().slice(0, 10);
+  const target = new Date(`${targetDate}T00:00:00`);
+  const targetDay = targetDate.slice(0, 10);
+  if (targetDay <= sourceDay || target > source.recurrenceUntil) {
+    return { error: 'OUT_OF_RANGE' };
+  }
+
+  const shiftMs = target.getTime() - new Date(`${sourceDay}T00:00:00`).getTime();
+  const event = await createCalendarEvent(organizationId, userId, {
+    title: source.title,
+    notes: source.notes ?? undefined,
+    leadId: source.leadId ?? undefined,
+    startAt: new Date(source.startAt.getTime() + shiftMs).toISOString(),
+    endAt: new Date(source.endAt.getTime() + shiftMs).toISOString(),
+    allDay: source.allDay,
+    recurrence: source.recurrence,
+    recurrenceIntervalDays: source.recurrenceIntervalDays ?? undefined,
+    recurrenceUntil: source.recurrenceUntil.toISOString(),
+    reminderMinutes: source.reminderMinutes ?? undefined,
+    tags: source.tags,
+    meetingAddress: source.meetingAddress ?? undefined,
+    meetingLat: source.meetingLat ?? undefined,
+    meetingLng: source.meetingLng ?? undefined,
+    eventType: source.eventType,
+    meetingMode: source.meetingMode,
+    meetingUrl: source.meetingUrl ?? undefined,
+    attendeeIds: source.attendees.map((a) => a.userId),
+  });
+  return { event };
+}
+
 /** An invited attendee answers their own invite. Organisers are not attendees. */
 export async function rsvpCalendarEvent(
   id: string,

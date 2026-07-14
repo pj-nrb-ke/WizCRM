@@ -31,6 +31,8 @@ import { resolveStaleLeadDays } from '../services/stale-lead.service.js';
 import { getTeamMemberIds } from '../services/team.service.js';
 import { createCalendarEvent } from '../services/calendar.service.js';
 import { createLeadAttachment } from '../services/lead-thread.service.js';
+import { isPastEvent } from '../services/ai/orchestrator.js';
+import { findDuplicateCapture } from '../services/photo-capture-duplicate.service.js';
 
 const ownerSelect = {
   id: true,
@@ -280,23 +282,43 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  // Manager-only: creates a lead already assigned to someone else, from a photo
-  // capture (exhibition/tender/billboard). Mirrors /leads/import's "ownerId
-  // set by the caller, not the caller's own id" precedent.
-  app.post('/photo-capture', { preHandler: requireManager() }, async (request, reply) => {
-    const { organizationId, sub: userId } = request.user;
+  // Open to any signed-in user — any team member can capture a lead from a
+  // photo now. Non-managers always own what they capture (mirrors plain
+  // POST / above); managers may still assign to someone else via ownerId.
+  app.post('/photo-capture', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
     const parsed = photoCaptureCreateSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const { ownerId, pitchNote, event, photo, ...leadInput } = parsed.data;
+    const { category, ownerId: requestedOwnerId, pitchNote, event, photo, ...leadInput } = parsed.data;
+    const ownerId = isManager(role) ? requestedOwnerId : userId;
 
-    const owner = await prisma.user.findFirst({
-      where: { id: ownerId, organizationId },
-      select: { id: true, role: true },
+    if (isManager(role)) {
+      const owner = await prisma.user.findFirst({
+        where: { id: ownerId, organizationId },
+        select: { id: true, role: true },
+      });
+      if (!owner || !['SALES', 'MANAGER'].includes(owner.role)) {
+        return reply.status(400).send({ error: 'Invalid owner' });
+      }
+    }
+
+    // Authoritative re-checks — the client already saw these at analyze time,
+    // but re-verify here so a slow submit (or a bypassed client) can't sneak
+    // through a duplicate or stale capture.
+    const duplicateMessage = await findDuplicateCapture(organizationId, category, {
+      eventName: event?.title,
+      company: leadInput.company,
     });
-    if (!owner || !['SALES', 'MANAGER'].includes(owner.role)) {
-      return reply.status(400).send({ error: 'Invalid owner' });
+    if (duplicateMessage) {
+      return reply.status(409).send({ error: 'DUPLICATE_EVENT', message: duplicateMessage });
+    }
+    if (event) {
+      const pastMessage = isPastEvent({ eventEndDate: event.seriesEndDate ?? event.endAt, eventStartDate: event.startAt });
+      if (pastMessage) {
+        return reply.status(400).send({ error: 'PAST_EVENT', message: pastMessage });
+      }
     }
 
     const force = (request.body as { force?: boolean }).force;
@@ -331,6 +353,10 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     let calendarEvent = null;
     let calendarError: string | undefined;
     if (event) {
+      // A flyer spanning multiple days gets one event on day 1, capped by
+      // recurrenceUntil — reps copy it to the show's other days themselves
+      // via POST /calendar/events/:id/duplicate rather than one long block.
+      const isMultiDay = event.seriesEndDate && event.seriesEndDate.slice(0, 10) !== event.startAt.slice(0, 10);
       try {
         calendarEvent = await createCalendarEvent(organizationId, userId, {
           title: event.title,
@@ -338,6 +364,13 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
           endAt: event.endAt,
           leadId: lead.id,
           attendeeIds: event.attendeeIds,
+          ...(isMultiDay
+            ? {
+                recurrence: 'DAILY' as const,
+                recurrenceIntervalDays: 1,
+                recurrenceUntil: new Date(`${event.seriesEndDate!.slice(0, 10)}T23:59:59`).toISOString(),
+              }
+            : {}),
         });
       } catch (e) {
         calendarError = e instanceof Error ? e.message : 'Could not create calendar event';

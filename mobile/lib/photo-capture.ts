@@ -38,17 +38,22 @@ export async function assetBase64(asset: CardImageAsset): Promise<{ data: string
   return { data, mimeType: asset.mimeType ?? mimeFromUri(asset.uri) };
 }
 
+export type PhotoCaptureAnalysis = {
+  fields: PhotoCaptureFields;
+  duplicate: string | null;
+  pastEvent: string | null;
+};
+
 export async function analyzePhotoCapture(
   asset: CardImageAsset,
   category: PhotoCaptureCategory,
-): Promise<PhotoCaptureFields> {
+): Promise<PhotoCaptureAnalysis> {
   const { data, mimeType } = await assetBase64(asset);
-  const { fields } = await api<{ fields: PhotoCaptureFields }>('/ai/photo-capture', {
+  return api<PhotoCaptureAnalysis>('/ai/photo-capture', {
     method: 'POST',
     body: { imageBase64: data, imageMimeType: mimeType, category },
     timeoutMs: 45_000,
   });
-  return fields;
 }
 
 export function extFromMimeType(mimeType: string): string {

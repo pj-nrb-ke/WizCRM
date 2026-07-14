@@ -166,6 +166,8 @@ export const photoCaptureEventSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   attendeeIds: z.array(z.string().uuid()).max(20).optional(),
+  /** Last day of a multi-day flyer (date-only), so the server can set recurrenceUntil for day-copying. */
+  seriesEndDate: z.string().optional(),
 });
 
 /** The original photo, kept on the lead for recall (e.g. a flyer with details not otherwise captured). */
@@ -176,6 +178,7 @@ export const photoCaptureAttachmentSchema = z.object({
 });
 
 export const photoCaptureCreateSchema = z.object({
+  category: photoCaptureCategorySchema,
   name: z.string().min(1).max(200),
   company: z.string().max(200).optional(),
   // Many expo/billboard captures have no contact details on the photo at all —
@@ -186,6 +189,8 @@ export const photoCaptureCreateSchema = z.object({
   source: z.string().max(100).optional(),
   tags: leadTagsField,
   priority: z.enum(LEAD_PRIORITIES).optional(),
+  // Manager-supplied; ignored server-side and forced to the caller's own id
+  // for non-managers.
   ownerId: z.string().uuid(),
   pitchNote: z.string().min(1).max(4000),
   event: photoCaptureEventSchema.optional(),

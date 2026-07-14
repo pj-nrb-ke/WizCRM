@@ -133,11 +133,11 @@ export default function HomeScreen() {
     { title: 'My leads', subtitle: 'Search and open records', route: '/(tabs)/leads' },
     { title: 'Pipeline', subtitle: 'Stages and follow-ups', route: '/(tabs)/pipeline' },
     { title: 'Calendar', subtitle: 'Week & month schedule', route: '/(tabs)/calendar' },
+    { title: 'Capture', subtitle: 'Photo → lead (exhibitions, billboards)', route: '/lead/photo-capture' },
     { title: 'Reminders', subtitle: 'Custom alerts', route: '/reminders' },
   ];
   if (isManager) {
     quickLinks.push(
-      { title: 'Capture', subtitle: 'Photo → lead (exhibitions, billboards)', route: '/lead/photo-capture' },
       { title: 'Team', subtitle: 'Members and metrics', route: '/(tabs)/team' },
       { title: 'Reports', subtitle: 'Funnel and attendance', route: '/(tabs)/reports' },
     );

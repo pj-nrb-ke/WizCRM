@@ -559,6 +559,23 @@ export async function parsePhotoCapture(
 }
 
 /**
+ * Has the flyer's own date range already passed? Date-only comparison against
+ * today — a show that ends today still counts as current. Billboards/
+ * signboards have no dates, so this is always false for them.
+ */
+export function isPastEvent(fields: Pick<PhotoCaptureFields, 'eventEndDate' | 'eventStartDate'>): string | null {
+  const dateStr = fields.eventEndDate ?? fields.eventStartDate;
+  if (!dateStr) return null;
+  const end = new Date(dateStr);
+  if (Number.isNaN(end.getTime())) return null;
+  const today = new Date();
+  const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  if (endDateOnly >= todayDateOnly) return null;
+  return `This event already ended on ${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.`;
+}
+
+/**
  * Billboard/signboard only: a lightweight web-search pass to see what the
  * company might currently need, merged into the pitch note. Best-effort — if
  * Tavily is unconfigured or returns nothing, callers should fall back to the

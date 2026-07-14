@@ -18,6 +18,7 @@ import {
   generateLeadSummary,
   generateNextAction,
   generateSalesDesk,
+  isPastEvent,
   parseBusinessCard,
   parsePhotoCapture,
   processPostCall,
@@ -26,6 +27,7 @@ import {
   suggestStage,
   suggestLeadCapture,
 } from '../services/ai/orchestrator.js';
+import { findDuplicateCapture } from '../services/photo-capture-duplicate.service.js';
 import { buildQuotationDeskItems } from '../services/quote-desk.service.js';
 import { config } from '../config.js';
 import { buildExtendedDesk, mergeDueTasksIntoDesk } from '../services/desk-rules.service.js';
@@ -105,13 +107,10 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     return { fields };
   });
 
-  // Manager-only: this feeds straight into /leads/photo-capture, which assigns
-  // the resulting lead to someone else — same permission boundary as creation.
+  // Open to any signed-in user — any team member can capture a lead from a
+  // photo now, not just managers.
   app.post('/photo-capture', async (request, reply) => {
-    const { organizationId, sub: userId, role } = request.user;
-    if (role !== 'MANAGER' && role !== 'ADMIN') {
-      return reply.status(403).send({ error: 'Manager access required' });
-    }
+    const { organizationId, sub: userId } = request.user;
     const parsed = photoCaptureAnalyzeSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
@@ -131,7 +130,11 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       );
       if (research) pitchNote = `${pitchNote}\n\nWhat they may need: ${research}`;
     }
-    return { fields: { ...fields, pitchNote } };
+    const [duplicate, pastEvent] = await Promise.all([
+      findDuplicateCapture(organizationId, parsed.data.category, fields),
+      Promise.resolve(isPastEvent(fields)),
+    ]);
+    return { fields: { ...fields, pitchNote }, duplicate, pastEvent };
   });
 
   app.get('/leads/:leadId/summary', async (request, reply) => {

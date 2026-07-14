@@ -13,6 +13,8 @@ import {
 import { router } from 'expo-router';
 import { api } from '../../lib/api';
 import { type CardImageAsset } from '../../lib/card-scan';
+import { useAuth } from '../../context/AuthContext';
+import { isManagerRole } from '../../lib/roles';
 import {
   analyzePhotoCapture,
   assetBase64,
@@ -37,10 +39,16 @@ function toLocalDate(iso: string | undefined): Date | null {
 }
 
 export default function PhotoCaptureScreen() {
+  const { user } = useAuth();
+  const isManager = isManagerRole(user?.role);
+
   const [category, setCategory] = useState<PhotoCaptureCategory | null>(null);
   const [photo, setPhoto] = useState<CardImageAsset | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [fields, setFields] = useState<PhotoCaptureFields | null>(null);
+  // Set when analysis found this already captured, or the event's dates have
+  // passed — either blocks saving until a fresh photo is analyzed.
+  const [blockReason, setBlockReason] = useState<string | null>(null);
 
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
   const [ownerId, setOwnerId] = useState('');
@@ -54,12 +62,18 @@ export default function PhotoCaptureScreen() {
       .catch(() => setOrgUsers([]));
   }, []);
 
+  // Non-managers always own what they capture — no picker needed.
+  useEffect(() => {
+    if (!isManager && user?.id) setOwnerId(user.id);
+  }, [isManager, user?.id]);
+
   async function choosePhoto(pick: () => Promise<CardImageAsset | null>) {
     try {
       const asset = await pick();
       if (asset) {
         setPhoto(asset);
         setFields(null);
+        setBlockReason(null);
       }
     } catch (e) {
       Alert.alert('Photo', e instanceof Error ? e.message : 'Could not open camera or gallery');
@@ -70,8 +84,13 @@ export default function PhotoCaptureScreen() {
     if (!photo || !category) return;
     setAnalyzing(true);
     try {
-      const result = await analyzePhotoCapture(photo, category);
+      const { fields: result, duplicate, pastEvent } = await analyzePhotoCapture(photo, category);
       setFields(result);
+      const reason = duplicate ?? pastEvent ?? null;
+      setBlockReason(reason);
+      if (reason) {
+        Alert.alert(duplicate ? 'Already captured' : 'Event has ended', reason);
+      }
     } catch (e) {
       Alert.alert('Could not analyze photo', e instanceof Error ? e.message : 'Try again');
     } finally {
@@ -89,6 +108,13 @@ export default function PhotoCaptureScreen() {
 
   async function createLead() {
     if (!fields) return;
+    if (blockReason) {
+      Alert.alert(
+        blockReason.includes('ended') ? 'Event has ended' : 'Already captured',
+        blockReason,
+      );
+      return;
+    }
     if (!fields.name.trim()) {
       Alert.alert('Name', 'Name is required.');
       return;
@@ -103,11 +129,11 @@ export default function PhotoCaptureScreen() {
     const start = toLocalDate(fields.eventStartDate);
     const wantsEvent =
       category === 'EXHIBITION_TENDER' && createEvent && start !== null;
-    const end = toLocalDate(fields.eventEndDate) ?? start;
 
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
+        category,
         name: fields.name.trim(),
         company: fields.company?.trim() || undefined,
         email: fields.email?.trim() || undefined,
@@ -119,11 +145,16 @@ export default function PhotoCaptureScreen() {
         pitchNote: fields.pitchNote,
       };
       if (wantsEvent && start) {
+        // One event on day 1 of the show — reps copy it to the other days
+        // themselves from the event's own screen (capped at the show's last day).
+        const dayEnd = new Date(start);
+        dayEnd.setHours(17, 0, 0, 0);
         body.event = {
           title: fields.eventName || fields.company || fields.name,
           startAt: start.toISOString(),
-          endAt: (end ?? start).toISOString(),
+          endAt: dayEnd.toISOString(),
           attendeeIds,
+          seriesEndDate: fields.eventEndDate,
         };
       }
       // Keep the original photo attached to the lead for recall — the flyer
@@ -153,7 +184,14 @@ export default function PhotoCaptureScreen() {
       }
       router.replace(`/lead/${res.lead.id}`);
     } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Could not create lead');
+      const err = e as Error & { status?: number; data?: { error?: string; message?: string } };
+      if (err.status === 409 && err.data?.error === 'DUPLICATE_EVENT') {
+        Alert.alert('Already captured', err.data.message ?? 'This was already captured.');
+      } else if (err.status === 400 && err.data?.error === 'PAST_EVENT') {
+        Alert.alert('Event has ended', err.data.message ?? 'This event has already ended.');
+      } else {
+        Alert.alert('Error', e instanceof Error ? e.message : 'Could not create lead');
+      }
     } finally {
       setSaving(false);
     }
@@ -294,18 +332,22 @@ export default function PhotoCaptureScreen() {
             multiline
           />
 
-          <Text style={styles.label}>Assign to *</Text>
-          <View style={styles.chips}>
-            {orgUsers.map((u) => (
-              <Pressable
-                key={u.id}
-                style={[styles.chip, ownerId === u.id && styles.chipActive]}
-                onPress={() => setOwnerId(u.id)}
-              >
-                <Text style={[styles.chipText, ownerId === u.id && styles.chipTextActive]}>{u.name}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {isManager ? (
+            <>
+              <Text style={styles.label}>Assign to *</Text>
+              <View style={styles.chips}>
+                {orgUsers.map((u) => (
+                  <Pressable
+                    key={u.id}
+                    style={[styles.chip, ownerId === u.id && styles.chipActive]}
+                    onPress={() => setOwnerId(u.id)}
+                  >
+                    <Text style={[styles.chipText, ownerId === u.id && styles.chipTextActive]}>{u.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
 
           {category === 'EXHIBITION_TENDER' && createEvent && fields.eventStartDate ? (
             <>
@@ -328,7 +370,17 @@ export default function PhotoCaptureScreen() {
             </>
           ) : null}
 
-          <Pressable style={styles.saveBtn} onPress={createLead} disabled={saving}>
+          {blockReason ? (
+            <View style={styles.blockBanner}>
+              <Text style={styles.blockBannerText}>🚫 {blockReason}</Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            style={[styles.saveBtn, blockReason ? styles.saveBtnDisabled : null]}
+            onPress={createLead}
+            disabled={saving || Boolean(blockReason)}
+          >
             {saving ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>Create lead</Text>}
           </Pressable>
         </View>
@@ -415,5 +467,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
+  saveBtnDisabled: { opacity: 0.4 },
   saveBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 16 },
+  blockBanner: {
+    backgroundColor: 'rgba(248,113,113,0.12)',
+    borderWidth: 1,
+    borderColor: '#f87171',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 20,
+  },
+  blockBannerText: { color: '#f87171', fontWeight: '600', fontSize: 13 },
 });
