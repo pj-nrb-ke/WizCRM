@@ -168,24 +168,29 @@ export const photoCaptureEventSchema = z.object({
   attendeeIds: z.array(z.string().uuid()).max(20).optional(),
 });
 
-export const photoCaptureCreateSchema = z
-  .object({
-    name: z.string().min(1).max(200),
-    company: z.string().max(200).optional(),
-    email: emailField.optional(),
-    phone: phoneField.optional(),
-    address: z.string().max(500).optional(),
-    source: z.string().max(100).optional(),
-    tags: leadTagsField,
-    priority: z.enum(LEAD_PRIORITIES).optional(),
-    ownerId: z.string().uuid(),
-    pitchNote: z.string().min(1).max(4000),
-    event: photoCaptureEventSchema.optional(),
-  })
-  .refine((d) => Boolean(d.email || d.phone), {
-    message: 'At least one phone or email is required',
-    path: ['email'],
-  });
+/** The original photo, kept on the lead for recall (e.g. a flyer with details not otherwise captured). */
+export const photoCaptureAttachmentSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(120),
+  dataBase64: z.string().min(10).max(7_000_000),
+});
+
+export const photoCaptureCreateSchema = z.object({
+  name: z.string().min(1).max(200),
+  company: z.string().max(200).optional(),
+  // Many expo/billboard captures have no contact details on the photo at all —
+  // unlike a regular lead, a phone or email is not required here.
+  email: emailField.optional(),
+  phone: phoneField.optional(),
+  address: z.string().max(500).optional(),
+  source: z.string().max(100).optional(),
+  tags: leadTagsField,
+  priority: z.enum(LEAD_PRIORITIES).optional(),
+  ownerId: z.string().uuid(),
+  pitchNote: z.string().min(1).max(4000),
+  event: photoCaptureEventSchema.optional(),
+  photo: photoCaptureAttachmentSchema.optional(),
+});
 
 export const postCallSchema = z.object({
   leadId: z.string().uuid(),

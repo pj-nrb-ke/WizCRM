@@ -15,6 +15,8 @@ import { api } from '../../lib/api';
 import { type CardImageAsset } from '../../lib/card-scan';
 import {
   analyzePhotoCapture,
+  assetBase64,
+  extFromMimeType,
   pickCapturePhoto,
   pickCapturePhotoFromGallery,
   type PhotoCaptureCategory,
@@ -91,10 +93,8 @@ export default function PhotoCaptureScreen() {
       Alert.alert('Name', 'Name is required.');
       return;
     }
-    if (!fields.email?.trim() && !fields.phone?.trim()) {
-      Alert.alert('Contact', 'At least one phone or email is required.');
-      return;
-    }
+    // Contact details are often absent on expo flyers/billboards — unlike a
+    // regular lead, email/phone are optional here.
     if (!ownerId) {
       Alert.alert('Assign to', 'Choose who this lead should be assigned to.');
       return;
@@ -126,12 +126,30 @@ export default function PhotoCaptureScreen() {
           attendeeIds,
         };
       }
-      const res = await api<{ lead: { id: string }; calendarError?: string }>('/leads/photo-capture', {
-        method: 'POST',
-        body,
-      });
-      if (res.calendarError) {
-        Alert.alert('Lead created', `Lead saved, but the calendar event could not be created: ${res.calendarError}`);
+      // Keep the original photo attached to the lead for recall — the flyer
+      // often has details (fine print, extra contacts) not worth transcribing.
+      if (photo) {
+        try {
+          const { data, mimeType } = await assetBase64(photo);
+          body.photo = {
+            fileName: `capture.${extFromMimeType(mimeType)}`,
+            mimeType,
+            dataBase64: data,
+          };
+        } catch {
+          // Non-fatal — the lead is still worth creating without the attachment.
+        }
+      }
+      const res = await api<{ lead: { id: string }; calendarError?: string; attachmentError?: string }>(
+        '/leads/photo-capture',
+        { method: 'POST', body },
+      );
+      if (res.calendarError || res.attachmentError) {
+        const parts = [
+          res.calendarError ? `calendar event: ${res.calendarError}` : null,
+          res.attachmentError ? `original photo: ${res.attachmentError}` : null,
+        ].filter(Boolean);
+        Alert.alert('Lead created', `Lead saved, but this had an issue — ${parts.join('; ')}.`);
       }
       router.replace(`/lead/${res.lead.id}`);
     } catch (e) {
@@ -191,6 +209,17 @@ export default function PhotoCaptureScreen() {
       {fields ? (
         <View style={styles.reviewBlock}>
           <Text style={styles.reviewTitle}>Review before saving</Text>
+
+          {fields.participationFee ? (
+            <View style={styles.feeBanner}>
+              <Text style={styles.feeBannerLabel}>⚠️ Participation fee found</Text>
+              <TextInput
+                style={styles.feeBannerInput}
+                value={fields.participationFee}
+                onChangeText={(participationFee) => patchFields({ participationFee })}
+              />
+            </View>
+          ) : null}
 
           <Text style={styles.label}>Name *</Text>
           <TextInput style={styles.input} value={fields.name} onChangeText={(name) => patchFields({ name })} />
@@ -350,6 +379,22 @@ const styles = StyleSheet.create({
   analyzeBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 16 },
   reviewBlock: { marginTop: 24, borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 16 },
   reviewTitle: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
+  feeBanner: {
+    backgroundColor: 'rgba(251,191,36,0.12)',
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 14,
+  },
+  feeBannerLabel: { color: '#fbbf24', fontWeight: '700', fontSize: 13, marginBottom: 6 },
+  feeBannerInput: {
+    backgroundColor: '#1e293b',
+    color: '#f8fafc',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 15,
+  },
   input: {
     backgroundColor: '#1e293b',
     color: '#f8fafc',

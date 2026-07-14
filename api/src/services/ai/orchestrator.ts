@@ -465,6 +465,8 @@ export type PhotoCaptureFields = {
   eventEndDate?: string;
   venue?: string;
   whatFor?: string;
+  /** Stall/registration/exhibitor fee mentioned on the flyer, verbatim (e.g. "KES 50,000 per stall"). */
+  participationFee?: string;
   pitchNote: string;
 };
 
@@ -474,10 +476,11 @@ const PHOTO_CAPTURE_PROMPTS: Record<PhotoCaptureCategory, string> = {
     `Extract what a rep would need to follow up and attend. Return JSON only: ` +
     `{ "name": string, "company": string|null, "email": string|null, "phone": string|null, "address": string|null, ` +
     `"eventName": string|null, "eventStartDate": string|null, "eventEndDate": string|null, "venue": string|null, ` +
-    `"whatFor": string|null, "pitchNote": string }. ` +
+    `"whatFor": string|null, "participationFee": string|null, "pitchNote": string }. ` +
     `"name" is a contact/organizer name if visible, else use the event or company name. "company" is the organizing company/exhibitor if shown. ` +
     `eventStartDate/eventEndDate are ISO 8601 dates (date only, no time) if a date range is shown on the flyer — resolve into a specific year if the flyer states one, otherwise omit. ` +
     `"whatFor" is a one-line description of what the event/tender is about. ` +
+    `"participationFee" is any stall booking, registration, exhibitor, or entry fee/cost mentioned on the flyer, written exactly as shown (amount + currency); null if no fee is mentioned. ` +
     `"pitchNote" is 2-4 sentences a sales rep can use: what to bring up, why this exhibition/tender is relevant, and a suggested opening approach. Use only what's visible in the photo — never invent contact details.`,
   BILLBOARD_SIGNBOARD:
     `You read photos of billboards and company signboards for a B2B sales team scouting prospects. ` +
@@ -526,6 +529,9 @@ export async function parsePhotoCapture(
   const parsed = JSON.parse(text) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
+  const participationFee = str(parsed.participationFee);
+  const basePitchNote = str(parsed.pitchNote) ?? 'Review the attached photo for context before reaching out.';
+
   const fields: PhotoCaptureFields = {
     name: str(parsed.name) ?? str(parsed.company) ?? str(parsed.eventName) ?? 'Unknown contact',
     company: str(parsed.company),
@@ -537,7 +543,9 @@ export async function parsePhotoCapture(
     eventEndDate: str(parsed.eventEndDate),
     venue: str(parsed.venue),
     whatFor: str(parsed.whatFor),
-    pitchNote: str(parsed.pitchNote) ?? 'Review the attached photo for context before reaching out.',
+    participationFee,
+    // Highlighted up top so it's the first thing seen on the lead note, not buried in prose.
+    pitchNote: participationFee ? `⚠️ Participation fee: ${participationFee}\n\n${basePitchNote}` : basePitchNote,
   };
 
   await audit({

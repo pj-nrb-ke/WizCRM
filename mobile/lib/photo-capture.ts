@@ -14,6 +14,7 @@ export type PhotoCaptureFields = {
   eventEndDate?: string;
   venue?: string;
   whatFor?: string;
+  participationFee?: string;
   pitchNote: string;
 };
 
@@ -25,7 +26,7 @@ function mimeFromUri(uri: string): string {
   return 'image/jpeg';
 }
 
-async function assetBase64(asset: CardImageAsset): Promise<{ data: string; mimeType: string }> {
+export async function assetBase64(asset: CardImageAsset): Promise<{ data: string; mimeType: string }> {
   let data = asset.base64?.replace(/^data:image\/[a-z+]+;base64,/, '') ?? '';
   if (!data) {
     const { readAsStringAsync, EncodingType } = await import('expo-file-system/legacy');
@@ -48,6 +49,13 @@ export async function analyzePhotoCapture(
     timeoutMs: 45_000,
   });
   return fields;
+}
+
+export function extFromMimeType(mimeType: string): string {
+  if (mimeType.includes('png')) return 'png';
+  if (mimeType.includes('webp')) return 'webp';
+  if (mimeType.includes('gif')) return 'gif';
+  return 'jpg';
 }
 
 export { pickBusinessCardImage as pickCapturePhoto, pickBusinessCardFromGallery as pickCapturePhotoFromGallery } from './card-scan';
