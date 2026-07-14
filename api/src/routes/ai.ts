@@ -3,6 +3,7 @@ import {
   cardParseSchema,
   nextActionFeedbackSchema,
   nextActionTaskSchema,
+  photoCaptureAnalyzeSchema,
   postCallSchema,
   suggestLeadCaptureSchema,
   transcribeAudioSchema,
@@ -18,8 +19,10 @@ import {
   generateNextAction,
   generateSalesDesk,
   parseBusinessCard,
+  parsePhotoCapture,
   processPostCall,
   processVisitCapture,
+  researchCompanyForPitch,
   suggestStage,
   suggestLeadCapture,
 } from '../services/ai/orchestrator.js';
@@ -100,6 +103,35 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     }
     const fields = await parseBusinessCard(organizationId, userId, parsed.data);
     return { fields };
+  });
+
+  // Manager-only: this feeds straight into /leads/photo-capture, which assigns
+  // the resulting lead to someone else — same permission boundary as creation.
+  app.post('/photo-capture', async (request, reply) => {
+    const { organizationId, sub: userId, role } = request.user;
+    if (role !== 'MANAGER' && role !== 'ADMIN') {
+      return reply.status(403).send({ error: 'Manager access required' });
+    }
+    const parsed = photoCaptureAnalyzeSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const fields = await parsePhotoCapture(organizationId, userId, {
+      imageBase64: parsed.data.imageBase64,
+      imageMimeType: parsed.data.imageMimeType,
+      category: parsed.data.category,
+    });
+    let pitchNote = fields.pitchNote;
+    if (parsed.data.category === 'BILLBOARD_SIGNBOARD' && fields.company) {
+      const research = await researchCompanyForPitch(
+        organizationId,
+        userId,
+        fields.company,
+        fields.whatFor ?? '',
+      );
+      if (research) pitchNote = `${pitchNote}\n\nWhat they may need: ${research}`;
+    }
+    return { fields: { ...fields, pitchNote } };
   });
 
   app.get('/leads/:leadId/summary', async (request, reply) => {

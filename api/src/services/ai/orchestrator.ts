@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma.js';
 import { createOpenAIClient, chatJson, transcribeAudio } from './openai.provider.js';
 import { isAllowedStageTransition } from '@wizcrm/shared';
 import { normalizeCardFields } from '../card-fields.service.js';
+import { tavilySearch } from '../lead-engine/heat-map/tavily.provider.js';
 
 type LeadContext = Lead & {
   activities: Pick<Activity, 'type' | 'subject' | 'body' | 'createdAt'>[];
@@ -448,5 +449,146 @@ export async function suggestLeadCapture(
       priority: rulesPriority ?? 'WARM',
       reason: 'Fallback rules (AI unavailable).',
     };
+  }
+}
+
+export type PhotoCaptureCategory = 'EXHIBITION_TENDER' | 'BILLBOARD_SIGNBOARD';
+
+export type PhotoCaptureFields = {
+  name: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  eventName?: string;
+  eventStartDate?: string;
+  eventEndDate?: string;
+  venue?: string;
+  whatFor?: string;
+  pitchNote: string;
+};
+
+const PHOTO_CAPTURE_PROMPTS: Record<PhotoCaptureCategory, string> = {
+  EXHIBITION_TENDER:
+    `You read photos of exhibition flyers, trade-show ads, and tender/procurement notices for a B2B sales team. ` +
+    `Extract what a rep would need to follow up and attend. Return JSON only: ` +
+    `{ "name": string, "company": string|null, "email": string|null, "phone": string|null, "address": string|null, ` +
+    `"eventName": string|null, "eventStartDate": string|null, "eventEndDate": string|null, "venue": string|null, ` +
+    `"whatFor": string|null, "pitchNote": string }. ` +
+    `"name" is a contact/organizer name if visible, else use the event or company name. "company" is the organizing company/exhibitor if shown. ` +
+    `eventStartDate/eventEndDate are ISO 8601 dates (date only, no time) if a date range is shown on the flyer — resolve into a specific year if the flyer states one, otherwise omit. ` +
+    `"whatFor" is a one-line description of what the event/tender is about. ` +
+    `"pitchNote" is 2-4 sentences a sales rep can use: what to bring up, why this exhibition/tender is relevant, and a suggested opening approach. Use only what's visible in the photo — never invent contact details.`,
+  BILLBOARD_SIGNBOARD:
+    `You read photos of billboards and company signboards for a B2B sales team scouting prospects. ` +
+    `Extract what's visible and draft a pitch angle. Return JSON only: ` +
+    `{ "name": string, "company": string|null, "email": string|null, "phone": string|null, "address": string|null, ` +
+    `"whatFor": string|null, "pitchNote": string }. ` +
+    `"name" is a contact name if shown, else use the company name. "company" is the business named on the sign. ` +
+    `"whatFor" is what the sign advertises or what the company does. ` +
+    `"pitchNote" is 2-4 sentences: a suggested opening approach for a cold visit/call. Use only what's visible in the photo — never invent contact details.`,
+};
+
+/**
+ * Photo-capture lead generation: read a photo of an exhibition flyer, tender
+ * notice, billboard, or company signboard and extract lead-ready fields plus a
+ * drafted pitch note. Review-before-save, like parseBusinessCard — this only
+ * extracts, it never creates the lead.
+ */
+export async function parsePhotoCapture(
+  organizationId: string,
+  userId: string,
+  input: { imageBase64: string; imageMimeType: string; category: PhotoCaptureCategory },
+): Promise<PhotoCaptureFields> {
+  const client = ensureClient();
+  const raw = input.imageBase64.replace(/^data:image\/[a-z+]+;base64,/, '');
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: PHOTO_CAPTURE_PROMPTS[input.category] },
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Extract the fields from this photo.' },
+        {
+          type: 'image_url',
+          image_url: { url: `data:${input.imageMimeType};base64,${raw}`, detail: 'high' },
+        },
+      ],
+    } as OpenAI.Chat.ChatCompletionMessageParam,
+  ];
+
+  const res = await client.chat.completions.create({
+    model: config.openaiModel,
+    messages,
+    response_format: { type: 'json_object' },
+    temperature: 0.1,
+  });
+  const text = res.choices[0]?.message?.content ?? '{}';
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+
+  const fields: PhotoCaptureFields = {
+    name: str(parsed.name) ?? str(parsed.company) ?? str(parsed.eventName) ?? 'Unknown contact',
+    company: str(parsed.company),
+    email: str(parsed.email),
+    phone: str(parsed.phone),
+    address: str(parsed.address),
+    eventName: str(parsed.eventName),
+    eventStartDate: str(parsed.eventStartDate),
+    eventEndDate: str(parsed.eventEndDate),
+    venue: str(parsed.venue),
+    whatFor: str(parsed.whatFor),
+    pitchNote: str(parsed.pitchNote) ?? 'Review the attached photo for context before reaching out.',
+  };
+
+  await audit({
+    organizationId,
+    userId,
+    feature: 'photo_capture',
+    inputSummary: `[image:${input.category}]`,
+    outputSummary: text,
+  });
+  return fields;
+}
+
+/**
+ * Billboard/signboard only: a lightweight web-search pass to see what the
+ * company might currently need, merged into the pitch note. Best-effort — if
+ * Tavily is unconfigured or returns nothing, callers should fall back to the
+ * photo-only pitch note rather than fail the whole capture.
+ */
+export async function researchCompanyForPitch(
+  organizationId: string,
+  userId: string,
+  companyName: string,
+  extractedText: string,
+): Promise<string | null> {
+  if (!config.tavilyApiKey || !companyName) return null;
+  try {
+    const results = await tavilySearch(
+      `"${companyName}" Kenya "looking for" OR "need" OR procurement OR tender OR "pain point" OR expansion`,
+      { maxResults: 3 },
+    );
+    if (results.length === 0) return null;
+
+    const client = ensureClient();
+    const snippets = results
+      .map((r) => `- ${r.title}: ${r.content.slice(0, 300)} (${r.url})`)
+      .join('\n');
+    const result = await chatJson<{ summary: string }>(
+      client,
+      'You are a B2B sales researcher. Given a company name, what a sign/photo revealed about them, and some web search snippets, write a short (2-3 sentence) note on what this company might currently need or be struggling with, useful for a sales pitch. Return JSON: { "summary": string }. If the snippets are not clearly about this company, say so briefly rather than guessing.',
+      JSON.stringify({ companyName, extractedText, snippets }),
+    );
+    await audit({
+      organizationId,
+      userId,
+      feature: 'photo_capture_research',
+      inputSummary: `${companyName}\n${snippets}`,
+      outputSummary: result.summary,
+    });
+    return result.summary;
+  } catch (err) {
+    console.error('[photo_capture_research] failed:', err instanceof Error ? err.message : err);
+    return null;
   }
 }

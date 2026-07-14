@@ -137,6 +137,7 @@ export default function HomeScreen() {
   ];
   if (isManager) {
     quickLinks.push(
+      { title: 'Capture', subtitle: 'Photo → lead (exhibitions, billboards)', route: '/lead/photo-capture' },
       { title: 'Team', subtitle: 'Members and metrics', route: '/(tabs)/team' },
       { title: 'Reports', subtitle: 'Funnel and attendance', route: '/(tabs)/reports' },
     );

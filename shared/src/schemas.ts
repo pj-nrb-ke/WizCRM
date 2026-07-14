@@ -149,6 +149,44 @@ export const cardParseSchema = z.object({
   message: 'imageBase64 or ocrText required',
 });
 
+/**
+ * Photo-capture lead generation: a photo of an exhibition flyer, tender notice,
+ * billboard, or company signboard, analyzed by AI into lead-ready fields.
+ */
+export const photoCaptureCategorySchema = z.enum(['EXHIBITION_TENDER', 'BILLBOARD_SIGNBOARD']);
+
+export const photoCaptureAnalyzeSchema = z.object({
+  imageBase64: z.string().min(10),
+  imageMimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']),
+  category: photoCaptureCategorySchema,
+});
+
+export const photoCaptureEventSchema = z.object({
+  title: z.string().min(1).max(200),
+  startAt: z.string().datetime(),
+  endAt: z.string().datetime(),
+  attendeeIds: z.array(z.string().uuid()).max(20).optional(),
+});
+
+export const photoCaptureCreateSchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    company: z.string().max(200).optional(),
+    email: emailField.optional(),
+    phone: phoneField.optional(),
+    address: z.string().max(500).optional(),
+    source: z.string().max(100).optional(),
+    tags: leadTagsField,
+    priority: z.enum(LEAD_PRIORITIES).optional(),
+    ownerId: z.string().uuid(),
+    pitchNote: z.string().min(1).max(4000),
+    event: photoCaptureEventSchema.optional(),
+  })
+  .refine((d) => Boolean(d.email || d.phone), {
+    message: 'At least one phone or email is required',
+    path: ['email'],
+  });
+
 export const postCallSchema = z.object({
   leadId: z.string().uuid(),
   roughNote: z.string().min(1).max(10000),

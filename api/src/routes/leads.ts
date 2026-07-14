@@ -10,10 +10,12 @@ import {
   bulkImportLeadsSchema,
   bulkUpdateLeadsSchema,
   isLeadStage,
+  photoCaptureCreateSchema,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
 import {
+  createLead,
   createLeadGuarded,
   updateLead,
   bulkUpdateLeads,
@@ -28,6 +30,7 @@ import { buildLeadInsights } from '../services/lead-insights.service.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { resolveStaleLeadDays } from '../services/stale-lead.service.js';
 import { getTeamMemberIds } from '../services/team.service.js';
+import { createCalendarEvent } from '../services/calendar.service.js';
 
 const ownerSelect = {
   id: true,
@@ -275,6 +278,59 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       }
       throw e;
     }
+  });
+
+  // Manager-only: creates a lead already assigned to someone else, from a photo
+  // capture (exhibition/tender/billboard). Mirrors /leads/import's "ownerId
+  // set by the caller, not the caller's own id" precedent.
+  app.post('/photo-capture', { preHandler: requireManager() }, async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const parsed = photoCaptureCreateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const { ownerId, pitchNote, event, ...leadInput } = parsed.data;
+
+    const owner = await prisma.user.findFirst({
+      where: { id: ownerId, organizationId },
+      select: { id: true, role: true },
+    });
+    if (!owner || !['SALES', 'MANAGER'].includes(owner.role)) {
+      return reply.status(400).send({ error: 'Invalid owner' });
+    }
+
+    const force = (request.body as { force?: boolean }).force;
+    let lead;
+    try {
+      lead = await createLeadGuarded(organizationId, ownerId, leadInput, Boolean(force));
+    } catch (e) {
+      if (e instanceof DuplicateLeadError) {
+        return reply.status(409).send({ error: 'DUPLICATE', duplicates: e.duplicates });
+      }
+      throw e;
+    }
+
+    await prisma.activity.create({
+      data: { leadId: lead.id, userId, type: 'NOTE', subject: 'AI pitch note (photo capture)', body: pitchNote },
+    });
+
+    let calendarEvent = null;
+    let calendarError: string | undefined;
+    if (event) {
+      try {
+        calendarEvent = await createCalendarEvent(organizationId, userId, {
+          title: event.title,
+          startAt: event.startAt,
+          endAt: event.endAt,
+          leadId: lead.id,
+          attendeeIds: event.attendeeIds,
+        });
+      } catch (e) {
+        calendarError = e instanceof Error ? e.message : 'Could not create calendar event';
+      }
+    }
+
+    return reply.status(201).send({ lead, calendarEvent, calendarError });
   });
 
   app.patch('/:id', async (request, reply) => {
