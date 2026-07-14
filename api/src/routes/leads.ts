@@ -103,7 +103,7 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/', async (request, reply) => {
     const { organizationId, sub, role } = request.user;
-    const q = request.query as { stage?: string; teamId?: string; ownerId?: string; tag?: string };
+    const q = request.query as { stage?: string; teamId?: string; ownerId?: string; tag?: string; search?: string };
     let ownerFilter: { ownerId?: string | { in: string[] } } = {};
     if (!isManager(role)) {
       // Non-managers only ever see their own leads, regardless of query params.
@@ -121,6 +121,7 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
       ownerFilter = { ownerId: { in: memberIds } };
     }
     const tag = q.tag?.trim();
+    const search = q.search?.trim();
     // Only apply the stage filter if it's a real enum value — a garbage value
     // passed straight to Prisma's enum column throws (500); ignore it instead.
     const stageFilter = q.stage && isLeadStage(q.stage) ? { stage: q.stage as never } : {};
@@ -130,10 +131,18 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
         ...stageFilter,
         ...(tag ? { tags: { has: tag } } : {}),
         ...ownerFilter,
+        ...(search
+          ? {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { company: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
       },
       include: { owner: { select: ownerSelect } },
       orderBy: { updatedAt: 'desc' },
-      take: 200,
+      take: search ? 20 : 200,
     });
     return { leads };
   });

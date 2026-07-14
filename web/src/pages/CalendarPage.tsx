@@ -121,6 +121,10 @@ export function CalendarPage() {
   const [leadPhoto, setLeadPhoto] = useState<LeadAttachment | null>(null);
   const [photoViewer, setPhotoViewer] = useState<{ url: string; attachment: LeadAttachment } | null>(null);
   const [photoLoading, setPhotoLoading] = useState(false);
+  const [linkQuery, setLinkQuery] = useState('');
+  const [linkResults, setLinkResults] = useState<{ id: string; name: string; company: string | null }[]>([]);
+  const [linkSearching, setLinkSearching] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   /** The organiser (or a manager) owns the event; an invitee can only RSVP. */
   const isOrganiser = !editingId || organiser?.id === meId || (!!organiser && isManager);
@@ -204,6 +208,51 @@ export function CalendarPage() {
       cancelled = true;
     };
   }, [modalOpen, linkedLead]);
+
+  // Search for a lead to retroactively link, while the modal has no linked lead yet.
+  useEffect(() => {
+    if (!modalOpen || !editingId || linkedLead || !linkQuery.trim()) {
+      setLinkResults([]);
+      return;
+    }
+    let cancelled = false;
+    setLinkSearching(true);
+    const timer = window.setTimeout(() => {
+      api<{ leads: { id: string; name: string; company: string | null }[] }>(
+        `/leads?search=${encodeURIComponent(linkQuery.trim())}`,
+      )
+        .then((d) => {
+          if (!cancelled) setLinkResults(d.leads ?? []);
+        })
+        .catch(() => {
+          if (!cancelled) setLinkResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setLinkSearching(false);
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [modalOpen, editingId, linkedLead, linkQuery]);
+
+  async function linkLead(lead: { id: string; name: string }) {
+    if (!editingId) return;
+    setLinking(true);
+    setError('');
+    try {
+      await api(`/calendar/events/${editingId}`, { method: 'PATCH', body: { leadId: lead.id } });
+      setLinkedLead(lead);
+      setLinkQuery('');
+      setLinkResults([]);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not link that lead');
+    } finally {
+      setLinking(false);
+    }
+  }
 
   // Ask who is busy for the slot currently in the form. Debounced, because the
   // datetime inputs fire on every keystroke.
@@ -928,6 +977,34 @@ export function CalendarPage() {
                     >
                       {photoLoading ? 'Opening…' : '📷 View captured photo'}
                     </button>
+                  ) : null}
+                </div>
+              ) : editingId && isOrganiser ? (
+                <div className="calendar-attendance" style={{ marginBottom: 8 }}>
+                  <p className="muted" style={{ marginBottom: 6 }}>
+                    Not linked to a lead. Search to link one — this doesn't attach a photo.
+                  </p>
+                  <input
+                    value={linkQuery}
+                    onChange={(e) => setLinkQuery(e.target.value)}
+                    placeholder="Search leads by name or company…"
+                  />
+                  {linkSearching ? <p className="muted" style={{ margin: '4px 0 0' }}>Searching…</p> : null}
+                  {linkResults.length ? (
+                    <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0' }}>
+                      {linkResults.map((l) => (
+                        <li key={l.id} style={{ marginBottom: 4 }}>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            disabled={linking}
+                            onClick={() => void linkLead(l)}
+                          >
+                            {linking ? '…' : `Link "${l.name}"${l.company ? ` · ${l.company}` : ''}`}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   ) : null}
                 </div>
               ) : null}
