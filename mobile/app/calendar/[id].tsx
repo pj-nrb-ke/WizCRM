@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,6 +29,7 @@ import { isManagerRole } from '../../lib/roles';
 import { fetchCrmConfig } from '../../lib/crm-config';
 import { ProjectTagsEditor } from '../../components/ProjectTagsEditor';
 import { createReminder } from '../../lib/reminders';
+import { downloadLeadAttachment, findLeadPhoto, type LeadAttachmentMeta } from '../../lib/attachments';
 
 export default function CalendarEventScreen() {
   const params = useLocalSearchParams<{ id: string | string[] }>();
@@ -46,6 +49,10 @@ export default function CalendarEventScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [leadPhoto, setLeadPhoto] = useState<LeadAttachmentMeta | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -76,6 +83,13 @@ export default function CalendarEventScreen() {
       setTags(found.tags ?? []);
       setReminderMinutes(String(found.reminderMinutes ?? 60));
       fetchCrmConfig().then((c) => setTagSuggestions(c?.leadTags ?? []));
+      if (found.lead) {
+        findLeadPhoto(found.lead.id)
+          .then(setLeadPhoto)
+          .catch(() => setLeadPhoto(null));
+      } else {
+        setLeadPhoto(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -202,6 +216,20 @@ export default function CalendarEventScreen() {
     }
   }
 
+  async function viewPhoto() {
+    if (!ev?.lead || !leadPhoto) return;
+    setPhotoLoading(true);
+    try {
+      const uri = photoUri ?? (await downloadLeadAttachment(ev.lead.id, leadPhoto));
+      setPhotoUri(uri);
+      setPhotoModalOpen(true);
+    } catch (e) {
+      Alert.alert('Could not open photo', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -221,6 +249,7 @@ export default function CalendarEventScreen() {
   const mapsUrl = openMapsForEvent(ev);
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Text style={styles.when}>{formatEventWhen(ev)}</Text>
@@ -318,6 +347,12 @@ export default function CalendarEventScreen() {
         </Pressable>
       ) : null}
 
+      {leadPhoto && leadPhoto.mimeType.startsWith('image/') ? (
+        <Pressable style={styles.secondaryBtn} disabled={photoLoading} onPress={() => void viewPhoto()}>
+          <Text style={styles.secondaryBtnText}>{photoLoading ? 'Opening…' : '📷 View captured photo'}</Text>
+        </Pressable>
+      ) : null}
+
       {remainingSeriesDays(ev).length > 0 ? (
         <View style={styles.seriesBox}>
           <Text style={styles.section}>Copy to another day</Text>
@@ -344,6 +379,18 @@ export default function CalendarEventScreen() {
         <Text style={styles.dangerBtnText}>Delete event</Text>
       </Pressable>
     </ScrollView>
+
+    <Modal visible={photoModalOpen} animationType="fade" transparent>
+      <View style={styles.photoModalBackdrop}>
+        <Pressable style={styles.photoModalClose} onPress={() => setPhotoModalOpen(false)}>
+          <Text style={styles.photoModalCloseText}>Close</Text>
+        </Pressable>
+        {photoUri ? (
+          <Image source={{ uri: photoUri }} style={styles.photoModalImage} resizeMode="contain" />
+        ) : null}
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -389,6 +436,24 @@ const styles = StyleSheet.create({
   mapsBtnText: { color: '#38bdf8', fontWeight: '600' },
   linkLead: { marginTop: 16, marginBottom: 8 },
   linkLeadText: { color: '#38bdf8', fontWeight: '600' },
+  photoModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalImage: { width: '100%', height: '80%' },
+  photoModalClose: {
+    position: 'absolute',
+    top: 48,
+    right: 20,
+    zIndex: 1,
+    backgroundColor: '#1e293b',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  photoModalCloseText: { color: '#f8fafc', fontWeight: '600' },
   primaryBtn: {
     backgroundColor: '#38bdf8',
     borderRadius: 8,

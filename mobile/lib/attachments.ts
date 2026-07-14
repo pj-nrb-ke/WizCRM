@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, getToken } from './api';
 
 /**
  * A photo or voice note captured on the Visit Report screen and uploaded as a
@@ -112,4 +112,30 @@ export function attachmentPayload(file: CapturedAttachment) {
 
 export async function uploadAttachment(leadId: string, file: CapturedAttachment): Promise<void> {
   await api(`/leads/${leadId}/attachments`, { method: 'POST', body: attachmentPayload(file) });
+}
+
+export type LeadAttachmentMeta = { id: string; fileName: string; mimeType: string; createdAt: string };
+
+function isInlineViewable(mimeType: string): boolean {
+  return mimeType === 'application/pdf' || mimeType.startsWith('image/');
+}
+
+/** Most recent viewable (image/pdf) attachment on a lead — e.g. the original photo-capture flyer. */
+export async function findLeadPhoto(leadId: string): Promise<LeadAttachmentMeta | null> {
+  const { attachments } = await api<{ attachments: LeadAttachmentMeta[] }>(`/leads/${leadId}/attachments`);
+  return (attachments ?? []).find((a) => isInlineViewable(a.mimeType)) ?? null;
+}
+
+/** Downloads an attachment to a local cache file (with auth header) so <Image> can render it. */
+export async function downloadLeadAttachment(leadId: string, attachment: LeadAttachmentMeta): Promise<string> {
+  const { downloadAsync, cacheDirectory } = await import('expo-file-system/legacy');
+  const { getApiUrl } = await import('./api-url-file');
+  const apiUrl = await getApiUrl();
+  const token = await getToken();
+  const ext = attachment.fileName.split('.').pop() ?? 'jpg';
+  const dest = `${cacheDirectory}lead-photo-${attachment.id}.${ext}`;
+  const result = await downloadAsync(`${apiUrl}/leads/${leadId}/attachments/${attachment.id}`, dest, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  return result.uri;
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from '../lib/api';
+import { api, downloadAuthenticated, openAuthenticatedBlobUrl } from '../lib/api';
 import {
   allDayInputEnd,
   allDayInputStart,
@@ -48,6 +48,12 @@ type Attendee = {
   respondedAt: string | null;
   user: { id: string; name: string; email: string };
 };
+
+type LeadAttachment = { id: string; fileName: string; mimeType: string; createdAt: string };
+
+function isInlineViewable(mimeType: string): boolean {
+  return mimeType === 'application/pdf' || mimeType.startsWith('image/');
+}
 
 type CalendarEvent = {
   id: string;
@@ -111,6 +117,10 @@ export function CalendarPage() {
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [seriesInfo, setSeriesInfo] = useState<{ recurrence: string; recurrenceUntil: string | null } | null>(null);
   const [duplicatingDay, setDuplicatingDay] = useState<string | null>(null);
+  const [linkedLead, setLinkedLead] = useState<{ id: string; name: string } | null>(null);
+  const [leadPhoto, setLeadPhoto] = useState<LeadAttachment | null>(null);
+  const [photoViewer, setPhotoViewer] = useState<{ url: string; attachment: LeadAttachment } | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   /** The organiser (or a manager) owns the event; an invitee can only RSVP. */
   const isOrganiser = !editingId || organiser?.id === meId || (!!organiser && isManager);
@@ -174,6 +184,27 @@ export function CalendarPage() {
       .catch(() => setOrgUsers([]));
   }, []);
 
+  // The event's linked lead may carry the original captured photo (from photo-capture) as an attachment.
+  useEffect(() => {
+    if (!modalOpen || !linkedLead) {
+      setLeadPhoto(null);
+      return;
+    }
+    let cancelled = false;
+    api<{ attachments: LeadAttachment[] }>(`/leads/${linkedLead.id}/attachments`)
+      .then((d) => {
+        if (cancelled) return;
+        const photo = (d.attachments ?? []).find((a) => isInlineViewable(a.mimeType)) ?? null;
+        setLeadPhoto(photo);
+      })
+      .catch(() => {
+        if (!cancelled) setLeadPhoto(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [modalOpen, linkedLead]);
+
   // Ask who is busy for the slot currently in the form. Debounced, because the
   // datetime inputs fire on every keystroke.
   useEffect(() => {
@@ -218,6 +249,28 @@ export function CalendarPage() {
     setModalOpen(false);
     setEditingId(null);
     setError('');
+    closePhotoViewer();
+  }
+
+  function closePhotoViewer() {
+    setPhotoViewer((v) => {
+      if (v) URL.revokeObjectURL(v.url);
+      return null;
+    });
+  }
+
+  async function viewLeadPhoto() {
+    if (!linkedLead || !leadPhoto) return;
+    setPhotoLoading(true);
+    setError('');
+    try {
+      const url = await openAuthenticatedBlobUrl(`/leads/${linkedLead.id}/attachments/${leadPhoto.id}`);
+      setPhotoViewer({ url, attachment: leadPhoto });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open the photo');
+    } finally {
+      setPhotoLoading(false);
+    }
   }
 
   function openNewForDay(day: Date) {
@@ -244,6 +297,7 @@ export function CalendarPage() {
     setAttendees([]);
     setOrganiser(null);
     setSeriesInfo(null);
+    setLinkedLead(null);
     setModalOpen(true);
   }
 
@@ -271,6 +325,7 @@ export function CalendarPage() {
     setAttendeeIds((ev.attendees ?? []).map((a) => a.userId));
     setOrganiser(ev.user);
     setSeriesInfo({ recurrence: ev.recurrence, recurrenceUntil: ev.recurrenceUntil });
+    setLinkedLead(ev.lead);
     setModalOpen(true);
   }
 
@@ -859,6 +914,24 @@ export function CalendarPage() {
                 </div>
               ) : null}
 
+              {linkedLead ? (
+                <div className="calendar-attendance" style={{ marginBottom: 8 }}>
+                  <p className="muted" style={{ marginBottom: leadPhoto ? 6 : 0 }}>
+                    Linked to lead: <strong>{linkedLead.name}</strong>
+                  </p>
+                  {leadPhoto ? (
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      disabled={photoLoading}
+                      onClick={() => void viewLeadPhoto()}
+                    >
+                      {photoLoading ? 'Opening…' : '📷 View captured photo'}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
               <h3>Meeting location</h3>
               <label>
                 Address
@@ -946,6 +1019,86 @@ export function CalendarPage() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {photoViewer ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={closePhotoViewer}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            zIndex: 1100,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--card-bg, #fff)',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 720,
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                borderBottom: '1px solid rgba(148,163,184,0.22)',
+                gap: 12,
+              }}
+            >
+              <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {photoViewer.attachment.fileName}
+              </strong>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    linkedLead &&
+                    void downloadAuthenticated(
+                      `/leads/${linkedLead.id}/attachments/${photoViewer.attachment.id}`,
+                      photoViewer.attachment.fileName,
+                    )
+                  }
+                >
+                  Download
+                </button>
+                <button type="button" className="btn-secondary" onClick={closePhotoViewer}>
+                  Close
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {photoViewer.attachment.mimeType.startsWith('image/') ? (
+                <img
+                  src={photoViewer.url}
+                  alt={photoViewer.attachment.fileName}
+                  style={{ maxWidth: '100%', maxHeight: '75vh' }}
+                />
+              ) : (
+                <iframe
+                  src={photoViewer.url}
+                  title={photoViewer.attachment.fileName}
+                  style={{ width: '100%', height: '75vh', border: 'none' }}
+                />
+              )}
+            </div>
           </div>
         </div>
       ) : null}
