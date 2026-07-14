@@ -23,6 +23,7 @@ function requiredSecret(name: string, devFallback: string): string {
 }
 
 const defaultCorsOrigins = [
+  'https://go.wizcrm.app',
   'https://app.wizcrm.app',
   'http://localhost:5180',
   'http://localhost:5173',
