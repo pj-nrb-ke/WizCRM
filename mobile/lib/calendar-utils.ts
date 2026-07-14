@@ -23,6 +23,11 @@ export type CalendarEventRow = {
   recurrenceUntil?: string | null;
 };
 
+function localDateStr(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 /** Remaining days a multi-day event can still be copied to (day after this event, up to and including recurrenceUntil). */
 export function remainingSeriesDays(ev: Pick<CalendarEventRow, 'startAt' | 'recurrence' | 'recurrenceUntil'>): string[] {
   if (!ev.recurrence || ev.recurrence === 'NONE' || !ev.recurrenceUntil) return [];
@@ -32,7 +37,9 @@ export function remainingSeriesDays(ev: Pick<CalendarEventRow, 'startAt' | 'recu
   const cursor = new Date(start);
   cursor.setDate(cursor.getDate() + 1);
   while (cursor <= until) {
-    days.push(cursor.toISOString().slice(0, 10));
+    // Local date components, not toISOString — that converts to UTC and rolls
+    // local midnight back a day in any positive-UTC-offset timezone (e.g. EAT).
+    days.push(localDateStr(cursor));
     cursor.setDate(cursor.getDate() + 1);
   }
   return days;

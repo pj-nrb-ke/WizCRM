@@ -5,9 +5,11 @@ import {
   allDayInputStart,
   buildCalendarRange,
   buildEventIsoRange,
+  colorForOrganizer,
   findConflictingEventIds,
   formatDateInputLocal,
   getEventsOnDay,
+  remainingSeriesDays,
   shiftCalendarCursor,
   toLocalDateTimeInput,
   type CalendarViewMode,
@@ -55,6 +57,7 @@ type CalendarEvent = {
   endAt: string;
   allDay: boolean;
   recurrence: string;
+  recurrenceUntil: string | null;
   reminderMinutes: number | null;
   meetingAddress: string | null;
   meetingLat: number | null;
@@ -106,6 +109,8 @@ export function CalendarPage() {
   const [rsvping, setRsvping] = useState(false);
   const [availability, setAvailability] = useState<UserAvailability[]>([]);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [seriesInfo, setSeriesInfo] = useState<{ recurrence: string; recurrenceUntil: string | null } | null>(null);
+  const [duplicatingDay, setDuplicatingDay] = useState<string | null>(null);
 
   /** The organiser (or a manager) owns the event; an invitee can only RSVP. */
   const isOrganiser = !editingId || organiser?.id === meId || (!!organiser && isManager);
@@ -238,6 +243,7 @@ export function CalendarPage() {
     setAttendeeIds([]);
     setAttendees([]);
     setOrganiser(null);
+    setSeriesInfo(null);
     setModalOpen(true);
   }
 
@@ -264,6 +270,7 @@ export function CalendarPage() {
     setAttendees(ev.attendees ?? []);
     setAttendeeIds((ev.attendees ?? []).map((a) => a.userId));
     setOrganiser(ev.user);
+    setSeriesInfo({ recurrence: ev.recurrence, recurrenceUntil: ev.recurrenceUntil });
     setModalOpen(true);
   }
 
@@ -418,6 +425,20 @@ export function CalendarPage() {
     }
   }
 
+  async function duplicateToDay(date: string) {
+    if (!editingId) return;
+    setDuplicatingDay(date);
+    setError('');
+    try {
+      await api(`/calendar/events/${editingId}/duplicate`, { method: 'POST', body: { date } });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not copy to that day');
+    } finally {
+      setDuplicatingDay(null);
+    }
+  }
+
   async function deleteEvent() {
     if (!editingId) return;
     if (!window.confirm('Delete this event?')) return;
@@ -550,6 +571,7 @@ export function CalendarPage() {
                   <button
                     type="button"
                     className="calendar-event-chip"
+                    style={{ borderLeft: `3px solid ${colorForOrganizer(ev.user.id)}` }}
                     onClick={(e) => {
                       e.stopPropagation();
                       openEditEvent(ev);
@@ -569,6 +591,14 @@ export function CalendarPage() {
                         : ''}
                       {ev.title}
                     </span>
+                    {isManager || ev.user.id !== meId ? (
+                      <span
+                        className="calendar-event-organizer"
+                        style={{ color: colorForOrganizer(ev.user.id) }}
+                      >
+                        ● {ev.user.id === meId ? 'You' : ev.user.name}
+                      </span>
+                    ) : null}
                     {ev.attendees?.length ? (
                       <span className="calendar-event-lead" title={attendeeSummary(ev)}>
                         👥 {ev.attendees.length + 1}
@@ -802,6 +832,27 @@ export function CalendarPage() {
                         onClick={() => void respond(s)}
                       >
                         {RSVP_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {editingId && seriesInfo && remainingSeriesDays({ ...seriesInfo, startAt }).length > 0 ? (
+                <div className="calendar-attendance" style={{ marginBottom: 8 }}>
+                  <p className="muted" style={{ marginBottom: 6 }}>
+                    This runs through {seriesInfo.recurrenceUntil?.slice(0, 10)} — copy it to the other days too.
+                  </p>
+                  <div className="form-actions" style={{ gap: 6, flexWrap: 'wrap' }}>
+                    {remainingSeriesDays({ ...seriesInfo, startAt }).map((date) => (
+                      <button
+                        key={date}
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        disabled={duplicatingDay === date}
+                        onClick={() => void duplicateToDay(date)}
+                      >
+                        {duplicatingDay === date ? '…' : `Copy to ${date}`}
                       </button>
                     ))}
                   </div>

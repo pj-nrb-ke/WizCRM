@@ -293,6 +293,7 @@ export function Layout() {
         >
           <div style={{ marginTop: 8 }}>
             <NavItem to="/" end icon="home" label="Dashboard" expanded={expanded} />
+            <NavItem to="/capture" icon="ai" label="Capture" expanded={expanded} />
           </div>
 
           {manager && (

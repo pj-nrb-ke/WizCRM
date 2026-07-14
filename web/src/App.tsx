@@ -36,6 +36,7 @@ import { BusinessPage } from './pages/BusinessPage';
 import LeadEngineSettingsPage from './pages/LeadEngineSettingsPage';
 import { ContactFinderPage } from './pages/ContactFinderPage';
 import { ProductDocumentsPage } from './pages/ProductDocumentsPage';
+import { PhotoCapturePage } from './pages/PhotoCapturePage';
 import { RosterPage } from './pages/RosterPage';
 import { VsmConfigPage } from './pages/VsmConfigPage';
 import { InboundEmailsPage } from './pages/InboundEmailsPage';
@@ -209,6 +210,7 @@ export default function App() {
                 </ManagerOnly>
               }
             />
+            <Route path="/capture" element={<PhotoCapturePage />} />
             <Route
               path="/expos"
               element={

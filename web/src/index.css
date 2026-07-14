@@ -1695,6 +1695,12 @@ tbody tr:last-child td {
   font-size: 0.72rem;
 }
 
+.calendar-event-organizer {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 .calendar-modal {
   max-width: 480px;
 }

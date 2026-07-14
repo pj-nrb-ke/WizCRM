@@ -162,3 +162,40 @@ export function allDayInputStart(iso: string): string {
 export function allDayInputEnd(iso: string): string {
   return `${iso.slice(0, 10)}T23:59`;
 }
+
+/** Deterministic color per organizer, so the same person always gets the same dot (matches the mobile app). */
+const ORGANIZER_COLORS = ['#38bdf8', '#f472b6', '#a78bfa', '#fbbf24', '#4ade80', '#fb923c', '#22d3ee'];
+
+export function colorForOrganizer(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
+  }
+  return ORGANIZER_COLORS[hash % ORGANIZER_COLORS.length];
+}
+
+function localDateStr(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Remaining days a multi-day event can still be copied to (day after this event, up to and including recurrenceUntil). */
+export function remainingSeriesDays(ev: {
+  startAt: string;
+  recurrence?: string;
+  recurrenceUntil?: string | null;
+}): string[] {
+  if (!ev.recurrence || ev.recurrence === 'NONE' || !ev.recurrenceUntil) return [];
+  const days: string[] = [];
+  const start = new Date(ev.startAt.slice(0, 10) + 'T00:00:00');
+  const until = new Date(ev.recurrenceUntil.slice(0, 10) + 'T00:00:00');
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + 1);
+  while (cursor <= until) {
+    // Local date components, not toISOString — that converts to UTC and rolls
+    // local midnight back a day in any positive-UTC-offset timezone (e.g. EAT).
+    days.push(localDateStr(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}

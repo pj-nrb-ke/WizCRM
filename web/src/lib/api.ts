@@ -53,8 +53,14 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = data as { error?: string; message?: string };
-    throw new Error(err.message ?? err.error ?? res.statusText);
+    const body = data as { error?: string; message?: string };
+    const err = new Error(body.message ?? body.error ?? res.statusText) as Error & {
+      status: number;
+      data: unknown;
+    };
+    err.status = res.status;
+    err.data = data;
+    throw err;
   }
   return data as T;
 }
