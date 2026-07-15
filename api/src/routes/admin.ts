@@ -435,11 +435,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       apiKeys: apiKeysPatch,
     });
 
-    const safeProviders: Record<string, { enabled: boolean }> = {};
+    const safeProviders: Record<string, { enabled: boolean; configured: boolean }> = {};
     for (const [id, field] of Object.entries(PROVIDER_KEY_FIELDS)) {
       if (body.providers && id in body.providers) {
         const configured = Boolean(mergedSettings.apiKeys?.[field]);
-        safeProviders[id] = { enabled: Boolean(body.providers[id].enabled) && configured };
+        safeProviders[id] = { enabled: Boolean(body.providers[id].enabled) && configured, configured };
       }
     }
 
