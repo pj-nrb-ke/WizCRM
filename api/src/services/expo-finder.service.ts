@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@prisma/client';
 import type { ExpoRecommendation, ExpoTier } from '@wizcrm/shared';
 import { EXPO_RECOMMENDATIONS, EXPO_TIERS } from '@wizcrm/shared';
@@ -66,6 +67,9 @@ type ExtractedExpo = {
   websiteUrl?: unknown;
   sourceUrl?: unknown;
   industryTags?: unknown;
+  visitorFee?: unknown;
+  boothFee?: unknown;
+  participationFee?: unknown;
 };
 
 /** Grounds the AI in the calling org's own business — never assume a fixed company/product. */
@@ -91,13 +95,14 @@ RULES — follow these exactly:
 4. Dates: if the source states a specific date, give "startDate" and "endDate" as "YYYY-MM-DD". If it only gives a month or is vague, leave both null and put the source's exact wording in "dateText". Never infer a year that the source does not state.
 5. If a field is not stated in the source, use null. An empty field is correct; an invented one is not.
 6. Skip anything that is not a real expo, exhibition, trade fair or trade show — no webinars, no news articles about events, no listicles, no past events.
+7. Fees — "visitorFee", "boothFee" (a stand/booth for exhibitors), "participationFee" (general attendance/registration cost when the source doesn't distinguish visitor vs exhibitor pricing) — copy the source's own wording verbatim (e.g. "Free", "KES 5,000", "$200 – $500"). Use null when a fee type is not mentioned; never guess a number.
 
 JUDGEMENT — these two fields are your opinion, and should be:
 - "positioning": one or two sentences on how ${profile.brandName} should position itself at this event, given what they sell and who attends.
 - "recommendation": one of "BOOTH" (worth the cost of a stand), "PARTICIPANT" (attend and network, do not pay for a stand), or "SKIP" (not worth it). "recommendationReason": one sentence saying why.
 Weigh relevance to ${profile.brandName}'s likely buyers and the likely cost/value of attending.
 
-Return JSON: {"expos":[{"name","brief","positioning","recommendation","recommendationReason","startDate","endDate","dateText","city","country","venue","websiteUrl","sourceUrl","industryTags":[]}]}`;
+Return JSON: {"expos":[{"name","brief","positioning","recommendation","recommendationReason","startDate","endDate","dateText","city","country","venue","websiteUrl","sourceUrl","industryTags":[],"visitorFee","boothFee","participationFee"}]}`;
 }
 
 function slugify(s: string): string {
@@ -238,6 +243,9 @@ export function validateExtracted(
       now,
     }),
     industryTags: tags,
+    visitorFee: asTrimmedString(raw.visitorFee, 200),
+    boothFee: asTrimmedString(raw.boothFee, 200),
+    participationFee: asTrimmedString(raw.participationFee, 200),
   };
 }
 
@@ -445,6 +453,114 @@ export async function addExpoToCalendar(
 
   await prisma.expo.update({ where: { id: expo.id }, data: { calendarEventId: event.id } });
   return { event, alreadyOnCalendar: false };
+}
+
+function buildManualExtractionPrompt(profile: ExpoBusinessProfile): string {
+  const who = profile.description
+    ? `${profile.brandName}, which ${profile.description}`
+    : `${profile.brandName} (no business description on file — judge positioning generically from the event's own theme and audience)`;
+
+  return `You extract ONE upcoming trade expo/exhibition from text a ${who} team member pasted in themselves — a flyer, an email, a website snippet. AI web search missed this event, so trust the pasted text as ground truth; extract only what it actually states, never invent or guess a fact.
+
+RULES:
+1. Dates: give "startDate"/"endDate" as "YYYY-MM-DD" only if a specific date is stated; otherwise leave both null and put the exact wording in "dateText". Never infer a year the text doesn't state.
+2. Any field not stated in the text is null. An empty field is correct; an invented one is not.
+3. Fees ("visitorFee", "boothFee", "participationFee") — copy the text's own wording verbatim (e.g. "Free", "KES 5,000"); null if not mentioned.
+
+JUDGEMENT — your opinion, based on what ${profile.brandName} sells and who attends:
+- "positioning": one or two sentences on how ${profile.brandName} should position itself at this event.
+- "recommendation": one of "BOOTH", "PARTICIPANT", or "SKIP". "recommendationReason": one sentence.
+
+Return JSON: {"name","brief","positioning","recommendation","recommendationReason","startDate","endDate","dateText","city","country","venue","websiteUrl","industryTags":[],"visitorFee","boothFee","participationFee"}`;
+}
+
+/**
+ * Adds (or refreshes) a single expo from text a person pasted in themselves —
+ * for events AI web search didn't surface. Same dedup/validation shape as
+ * discovery, minus the "must match a search result URL" guard since there is
+ * no search result: the human vouching for the text is the source of trust.
+ */
+export async function createExpoFromText(
+  organizationId: string,
+  text: string,
+  opts: { tier: ExpoTier; sourceUrl?: string },
+): Promise<{ id: string; name: string; wasUpdate: boolean }> {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('Paste the event details first.');
+  if (!config.openaiApiKey) throw new ExpoFinderUnavailableError('OpenAI is not configured');
+  const client = createOpenAIClient();
+  if (!client) throw new ExpoFinderUnavailableError('OpenAI is not configured');
+
+  const settings = await getOrgSettings(organizationId);
+  const profile: ExpoBusinessProfile = {
+    brandName: settings.brandDisplayName || 'this organization',
+    description: settings.businessDescription,
+  };
+
+  const now = new Date();
+  const parsed = await chatJson<ExtractedExpo>(
+    client,
+    buildManualExtractionPrompt(profile),
+    trimmed.slice(0, 6000),
+  );
+
+  const name = asTrimmedString(parsed.name, 300);
+  if (!name) throw new Error('Could not find an event name in the pasted text.');
+
+  const startDate = parseIsoDate(parsed.startDate);
+  const endDate = parseIsoDate(parsed.endDate);
+  if (startDate && endDate && endDate < startDate) throw new Error('End date is before the start date.');
+  const dateText = startDate ? null : asTrimmedString(parsed.dateText, 200);
+  if (dateTextLooksPast(dateText, now)) throw new Error('This event has already passed.');
+  if (!isUpcoming(startDate, endDate, now)) throw new Error('This event has already passed.');
+
+  const recRaw = asTrimmedString(parsed.recommendation, 20)?.toUpperCase();
+  const recommendation = EXPO_RECOMMENDATIONS.includes(recRaw as ExpoRecommendation)
+    ? (recRaw as ExpoRecommendation)
+    : null;
+
+  const tags = Array.isArray(parsed.industryTags)
+    ? parsed.industryTags
+        .map((t) => asTrimmedString(t, 40))
+        .filter((t): t is string => !!t)
+        .slice(0, 8)
+    : [];
+
+  const row = {
+    name,
+    dedupKey: buildDedupKey(name, startDate),
+    tier: opts.tier,
+    brief: asTrimmedString(parsed.brief, 2000),
+    positioning: asTrimmedString(parsed.positioning, 2000),
+    recommendation,
+    recommendationReason: asTrimmedString(parsed.recommendationReason, 1000),
+    startDate,
+    endDate,
+    dateText,
+    city: asTrimmedString(parsed.city, 120),
+    country: asTrimmedString(parsed.country, 120),
+    venue: asTrimmedString(parsed.venue, 300),
+    websiteUrl: asTrimmedString(parsed.websiteUrl, 1000),
+    sourceUrl: asTrimmedString(opts.sourceUrl, 1000) ?? `manual:${randomUUID()}`,
+    sourceTitle: 'Added manually',
+    confidence: 60,
+    industryTags: tags,
+    visitorFee: asTrimmedString(parsed.visitorFee, 200),
+    boothFee: asTrimmedString(parsed.boothFee, 200),
+    participationFee: asTrimmedString(parsed.participationFee, 200),
+  };
+
+  const existing = await prisma.expo.findUnique({
+    where: { organizationId_dedupKey: { organizationId, dedupKey: row.dedupKey } },
+    select: { id: true },
+  });
+
+  if (existing) {
+    const updated = await prisma.expo.update({ where: { id: existing.id }, data: row });
+    return { id: updated.id, name: updated.name, wasUpdate: true };
+  }
+  const created = await prisma.expo.create({ data: { ...row, organizationId } });
+  return { id: created.id, name: created.name, wasUpdate: false };
 }
 
 export async function dismissExpo(id: string, organizationId: string) {

@@ -140,6 +140,7 @@ export default function HomeScreen() {
     quickLinks.push(
       { title: 'Team', subtitle: 'Members and metrics', route: '/(tabs)/team' },
       { title: 'Reports', subtitle: 'Funnel and attendance', route: '/(tabs)/reports' },
+      { title: 'Expo finder', subtitle: 'Trade shows worth attending', route: '/expos' },
     );
     if (proPacing) {
       quickLinks.push({

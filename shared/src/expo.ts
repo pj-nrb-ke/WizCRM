@@ -44,3 +44,10 @@ export const expoAddToCalendarSchema = z.object({
   /** Colleagues to invite to the expo event. */
   attendeeIds: z.array(z.string().uuid()).max(50).optional(),
 });
+
+/** Add a single expo AI web search didn't find — paste a flyer/email/website text. */
+export const expoManualAddSchema = z.object({
+  text: z.string().min(20).max(8000),
+  tier: z.enum(EXPO_TIERS),
+  sourceUrl: z.string().url().max(1000).optional(),
+});

@@ -3,10 +3,12 @@ import {
   expoAddToCalendarSchema,
   expoDiscoverSchema,
   expoListQuerySchema,
+  expoManualAddSchema,
   hasFeatureAccess,
 } from '@wizcrm/shared';
 import {
   addExpoToCalendar,
+  createExpoFromText,
   discoverExpos,
   dismissExpo,
   ExpoFinderUnavailableError,
@@ -61,6 +63,29 @@ export const expoRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(503).send({ error: e.message, code: e.code });
       }
       throw e;
+    }
+  });
+
+  /** For events AI web search missed — paste the flyer/email/website text in yourself. */
+  app.post('/manual-add', { preHandler: requireManager() }, async (request, reply) => {
+    const { organizationId } = request.user;
+    const parsed = expoManualAddSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const settings = await getOrgSettings(organizationId);
+    bindOrgContext(organizationId, settings.apiKeys ?? {});
+    try {
+      const result = await createExpoFromText(organizationId, parsed.data.text, {
+        tier: parsed.data.tier,
+        sourceUrl: parsed.data.sourceUrl,
+      });
+      return reply.status(201).send(result);
+    } catch (e) {
+      if (e instanceof ExpoFinderUnavailableError) {
+        return reply.status(503).send({ error: e.message, code: e.code });
+      }
+      return reply.status(400).send({ error: e instanceof Error ? e.message : 'Could not add this expo' });
     }
   });
 

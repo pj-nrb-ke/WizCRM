@@ -482,6 +482,13 @@ model Expo {
   venue                String?
   websiteUrl           String?
   /**
+   * Free-text fee amounts as stated by the source — currencies/ranges vary too
+   * much to normalize into a number.
+   */
+  visitorFee           String?
+  boothFee             String?
+  participationFee     String?
+  /**
    * The page this was read from. Always present; the row is dropped without it.
    */
   sourceUrl            String
