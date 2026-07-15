@@ -42,7 +42,7 @@ export function DataHygienePage() {
       <div className="page-wide">
         <PageHeader
           title="Data hygiene"
-          subtitle="Find missing fields, stale leads, and possible duplicates (Pro feature)."
+          subtitle="Find missing fields, stale leads, and possible duplicates (WizCRM Pro)."
         />
         <div className="card">
           <p>Upgrade to <strong>Pro</strong> to run the org-wide hygiene report.</p>

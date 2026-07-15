@@ -113,7 +113,7 @@ export function TargetsPage() {
       <div className="page-wide">
         <PageHeader
           title="Targets & pacing"
-          subtitle="Set monthly revenue targets and track rep achievement (Pro feature)."
+          subtitle="Set monthly revenue targets and track rep achievement (WizCRM Pro)."
         />
         <div className="card">
           <p>
