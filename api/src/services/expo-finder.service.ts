@@ -7,6 +7,7 @@ import { chatJson, createOpenAIClient } from './ai/openai.provider.js';
 import { createCalendarEvent } from './calendar.service.js';
 import { tavilySearch, type TavilyResult } from './lead-engine/heat-map/tavily.provider.js';
 import { orgApiKeys } from '../lib/org-context.js';
+import { getOrgSettings } from './org-settings.service.js';
 
 export class ExpoFinderUnavailableError extends Error {
   readonly code = 'EXPO_FINDER_UNAVAILABLE';
@@ -67,7 +68,19 @@ type ExtractedExpo = {
   industryTags?: unknown;
 };
 
-const SYSTEM_PROMPT = `You extract upcoming trade expos and exhibitions from web search results for WizAG, a Kenyan company in Nairobi that sells business software: Sage ERP/accounting, WizCRM, and related IT services. Their buyers are Kenyan and East African SMEs and mid-market firms in manufacturing, distribution, retail and professional services.
+/** Grounds the AI in the calling org's own business — never assume a fixed company/product. */
+export type ExpoBusinessProfile = {
+  brandName: string;
+  /** Free-text description of what the org sells and who buys it, set on the Organization settings page. */
+  description?: string;
+};
+
+function buildSystemPrompt(profile: ExpoBusinessProfile): string {
+  const who = profile.description
+    ? `${profile.brandName}, which ${profile.description}`
+    : `${profile.brandName} (no business description on file — judge positioning generically from the event's own theme and audience, not assumptions about what they sell)`;
+
+  return `You extract upcoming trade expos and exhibitions from web search results for ${who}.
 
 You will be given SOURCES: numbered search results, each with a title, URL and snippet.
 
@@ -80,11 +93,12 @@ RULES — follow these exactly:
 6. Skip anything that is not a real expo, exhibition, trade fair or trade show — no webinars, no news articles about events, no listicles, no past events.
 
 JUDGEMENT — these two fields are your opinion, and should be:
-- "positioning": one or two sentences on how WizAG should position itself at this event, given what they sell and who attends.
+- "positioning": one or two sentences on how ${profile.brandName} should position itself at this event, given what they sell and who attends.
 - "recommendation": one of "BOOTH" (worth the cost of a stand), "PARTICIPANT" (attend and network, do not pay for a stand), or "SKIP" (not worth it). "recommendationReason": one sentence saying why.
-Weigh relevance to business software buyers, the likely cost of travel from Nairobi, and how well WizAG's buyers are represented.
+Weigh relevance to ${profile.brandName}'s likely buyers and the likely cost/value of attending.
 
 Return JSON: {"expos":[{"name","brief","positioning","recommendation","recommendationReason","startDate","endDate","dateText","city","country","venue","websiteUrl","sourceUrl","industryTags":[]}]}`;
+}
 
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
@@ -238,7 +252,7 @@ function renderSources(results: TavilyResult[]): string {
     .join('\n\n');
 }
 
-async function discoverTier(tier: ExpoTier, now: Date) {
+async function discoverTier(tier: ExpoTier, now: Date, profile: ExpoBusinessProfile) {
   const results: TavilyResult[] = [];
   const seenUrls = new Set<string>();
 
@@ -267,7 +281,7 @@ async function discoverTier(tier: ExpoTier, now: Date) {
   try {
     parsed = await chatJson<{ expos?: ExtractedExpo[] }>(
       client,
-      SYSTEM_PROMPT,
+      buildSystemPrompt(profile),
       `Today is ${now.toISOString().slice(0, 10)}. Tier: ${tier}.\n\nSOURCES:\n\n${renderSources(results)}`,
     );
   } catch (err) {
@@ -301,6 +315,12 @@ export async function discoverExpos(
   if (!orgApiKeys.tavilyApiKey()) throw new ExpoFinderUnavailableError('Web search is not configured');
   if (!config.openaiApiKey) throw new ExpoFinderUnavailableError('OpenAI is not configured');
 
+  const settings = await getOrgSettings(organizationId);
+  const profile: ExpoBusinessProfile = {
+    brandName: settings.brandDisplayName || 'this organization',
+    description: settings.businessDescription,
+  };
+
   const now = new Date();
   const tiers = tier ? [tier] : [...EXPO_TIERS];
   let added = 0;
@@ -308,7 +328,7 @@ export async function discoverExpos(
   let found = 0;
 
   for (const t of tiers) {
-    const rows = await discoverTier(t, now);
+    const rows = await discoverTier(t, now, profile);
     found += rows.length;
 
     for (const row of rows) {

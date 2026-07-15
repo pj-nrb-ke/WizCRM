@@ -302,6 +302,8 @@ export const orgSettingsSchema = z.object({
     .optional(),
   /** MGT-021: shown on help / business page */
   supportEmail: z.string().email().optional(),
+  /** Short description of what the org sells and who buys it — grounds AI features (e.g. Expo Finder positioning) instead of assuming a fixed business. */
+  businessDescription: z.string().max(500).optional(),
   /** MGT-023: minutes after meeting start before check-in counts as late */
   meetingGraceMinutes: z.number().int().min(0).max(120).optional(),
   /** Default days after SENT before quote follow-up if followUpAt not set (PRO-011) */
