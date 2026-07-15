@@ -14,6 +14,7 @@ import {
   listExpos,
 } from '../services/expo-finder.service.js';
 import { getOrgSettings } from '../services/org-settings.service.js';
+import { bindOrgContext } from '../lib/org-context.js';
 
 /** Discovery spends web-search and LLM credits, so it is not open to everyone. */
 function requireManager() {
@@ -47,6 +48,11 @@ export const expoRoutes: FastifyPluginAsync = async (app) => {
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
+    // Re-bind here: AsyncLocalStorage context set in the onRequest hook does not
+    // reliably survive the extra async preHandler above, so rebind right before
+    // the code that actually needs the org's own provider keys.
+    const settings = await getOrgSettings(organizationId);
+    bindOrgContext(organizationId, settings.apiKeys ?? {});
     try {
       const summary = await discoverExpos(organizationId, parsed.data.tier);
       return { summary };

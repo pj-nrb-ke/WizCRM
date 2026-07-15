@@ -3,6 +3,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { hasFeatureAccess } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings } from '../services/org-settings.service.js';
+import { bindOrgContext } from '../lib/org-context.js';
 import {
   listCampaigns,
   getCampaign,
@@ -135,6 +136,12 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     if (!keywords.length) {
       return reply.status(400).send({ error: 'keywords are required (set on campaign or pass in body)' });
     }
+
+    // Re-bind here: AsyncLocalStorage context set in the onRequest hook does not
+    // reliably survive the extra async preHandler above, so rebind right before
+    // the code that actually needs the org's own provider keys.
+    const orgSettings = await getOrgSettings(request.user.organizationId);
+    bindOrgContext(request.user.organizationId, orgSettings.apiKeys ?? {});
 
     try {
       const result = await runIcpPipeline({

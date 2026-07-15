@@ -31,7 +31,8 @@ import { findDuplicateCapture } from '../services/photo-capture-duplicate.servic
 import { buildQuotationDeskItems } from '../services/quote-desk.service.js';
 import { config } from '../config.js';
 import { buildExtendedDesk, mergeDueTasksIntoDesk } from '../services/desk-rules.service.js';
-import { resolveDeskUseAi } from '../services/org-settings.service.js';
+import { getOrgSettings, resolveDeskUseAi } from '../services/org-settings.service.js';
+import { bindOrgContext } from '../lib/org-context.js';
 import { resolveStaleLeadDays } from '../services/stale-lead.service.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { isNextActionSuppressed, shouldApplySuggestedStage } from '@wizcrm/shared';
@@ -122,6 +123,8 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     });
     let pitchNote = fields.pitchNote;
     if (parsed.data.category === 'BILLBOARD_SIGNBOARD' && fields.company) {
+      const settings = await getOrgSettings(organizationId);
+      bindOrgContext(organizationId, settings.apiKeys ?? {});
       const research = await researchCompanyForPitch(
         organizationId,
         userId,

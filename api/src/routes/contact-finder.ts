@@ -5,6 +5,7 @@ import {
   type CompanyInput,
 } from '../services/contact-finder/contact-finder.service.js';
 import { getOrgSettings } from '../services/org-settings.service.js';
+import { bindOrgContext } from '../lib/org-context.js';
 
 export const contactFinderRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -18,6 +19,9 @@ export const contactFinderRoutes: FastifyPluginAsync = async (app) => {
     if (!hasFeatureAccess(role, settings.rolePermissions, 'contactFinder')) {
       return reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
     }
+    // Re-bind here rather than trusting the onRequest hook's earlier bind to have
+    // survived — see expos.ts's /discover handler for why.
+    bindOrgContext(organizationId, settings.apiKeys ?? {});
 
     const body = request.body as {
       companies?: Array<string | { name: string; website?: string }>;
