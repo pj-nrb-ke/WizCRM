@@ -12,13 +12,8 @@ import {
   View,
 } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
-import {
-  EXPO_RECOMMENDATION_LABELS,
-  EXPO_TIERS,
-  EXPO_TIER_LABELS,
-  type ExpoRecommendation,
-  type ExpoTier,
-} from '@wizcrm/shared';
+import type { ExpoRecommendation, ExpoTier } from '@wizcrm/shared';
+import { EXPO_RECOMMENDATION_LABELS, EXPO_TIERS, EXPO_TIER_LABELS } from '../constants/expo';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { isManagerRole } from '../lib/roles';
