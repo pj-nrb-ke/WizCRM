@@ -8,6 +8,7 @@ import {
 } from '@wizcrm/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useBrandName } from '../lib/branding';
 import { PageHeader } from '../components/PageHeader';
 
 type Expo = {
@@ -65,6 +66,7 @@ function whereLabel(e: Expo): string {
 
 export function ExposPage() {
   const { user } = useAuth();
+  const brandName = useBrandName();
   const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
 
   const [expos, setExpos] = useState<Expo[]>([]);
@@ -168,7 +170,7 @@ export function ExposPage() {
     <div className="page-wide">
       <PageHeader
         title="Expo finder"
-        subtitle="Upcoming trade shows worth WizAG's time, read from the public web — with a view on whether to take a booth or just attend."
+        subtitle={`Upcoming trade shows worth ${brandName}'s time, read from the public web — with a view on whether to take a booth or just attend.`}
         actions={
           isManager ? (
             <button type="button" className="btn-primary" disabled={discovering} onClick={() => void discover()}>

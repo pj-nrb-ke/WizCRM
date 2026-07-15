@@ -473,8 +473,8 @@ export default function LeadEngineSettingsPage() {
         lineHeight: 1.5,
       }}>
         <strong style={{ color: '#374151' }}>Each organization uses its own provider accounts.</strong> Enter your
-        own API key for a provider, save, then enable it — your key is never shared with other organizations on
-        WizCRM. The "Connected" badge confirms a key is saved for your org. Disabling a source reduces cost but
+        own API key for a provider, save, then enable it — your key is never shared with any other organization.
+        The "Connected" badge confirms a key is saved for your org. Disabling a source reduces cost but
         may reduce lead quality.
       </div>
     </div>

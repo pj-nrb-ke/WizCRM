@@ -48,7 +48,7 @@ export function OrganizationPage() {
   return (
     <>
       <h1>Organization</h1>
-      <p className="muted">Company name shown across your WizCRM workspace.</p>
+      <p className="muted">Company name shown across your workspace.</p>
       <form className="card" onSubmit={onSave}>
         <div className="field">
           <label htmlFor="orgName">Organization name</label>
