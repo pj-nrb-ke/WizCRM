@@ -20,6 +20,8 @@ import { normalizeName } from '../services/lead-engine/discovery/google-places.p
 import { runIcpPipeline } from '../services/lead-engine/icp-pipeline.service.js';
 import { enrichCompany } from '../services/lead-engine/enrichment/enrichment.service.js';
 import { purgePersonalData } from '../services/lead-engine/kdpa.js';
+import { chatJson, createOpenAIClient } from '../services/ai/openai.provider.js';
+import { config } from '../config.js';
 import {
   sendSequenceStep,
   getEmailStats,
@@ -305,6 +307,126 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     });
 
     return reply.status(201).send(prospect);
+  });
+
+  /** For prospect lists a rep already has (email exports, corporate directory) — not AI discovery. */
+  app.post('/campaigns/:id/prospects/import-text', { preHandler: requireLeadGeneratorAccess() }, async (request, reply) => {
+    const { id: campaignId } = request.params as { id: string };
+    const { organizationId } = request.user;
+    const body = request.body as { text?: string };
+    const text = (body?.text ?? '').trim();
+    if (text.length < 20) {
+      return reply.status(400).send({ error: 'Paste more detail — at least a few contacts with names/companies.' });
+    }
+    if (text.length > 40000) {
+      return reply.status(400).send({ error: 'Paste is too long — split into smaller batches.' });
+    }
+
+    const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, organizationId } });
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' });
+
+    if (!config.openaiApiKey) return reply.status(503).send({ error: 'OpenAI is not configured' });
+    const client = createOpenAIClient();
+    if (!client) return reply.status(503).send({ error: 'OpenAI is not configured' });
+
+    let parsed: {
+      contacts?: Array<{
+        companyName?: unknown;
+        contactName?: unknown;
+        email?: unknown;
+        phone?: unknown;
+        title?: unknown;
+        industry?: unknown;
+      }>;
+    };
+    try {
+      parsed = await chatJson(
+        client,
+        `You extract a list of business contacts from text a salesperson pasted in — an email export, a corporate directory listing, or a CSV. Each entry may span one or more lines. Extract only what the text actually states; never invent a company, name, email, or phone. Skip anything that isn't a person/company contact (headers, signatures-only, blank noise).
+
+Return JSON: {"contacts":[{"companyName","contactName","email","phone","title","industry"}]}
+- "companyName": the organization this person belongs to. If genuinely not stated, use null — do not guess from the email domain unless the text elsewhere confirms it.
+- "contactName": the person's full name.
+- Any field not stated is null.`,
+        text.slice(0, 40000),
+        { maxTokens: 8000 },
+      );
+    } catch (err) {
+      return reply.status(502).send({
+        error: err instanceof Error ? err.message : 'Could not read the pasted contacts',
+      });
+    }
+
+    const rows = Array.isArray(parsed.contacts) ? parsed.contacts.slice(0, 500) : [];
+    const str = (v: unknown, max: number) => {
+      if (typeof v !== 'string') return null;
+      const t = v.trim();
+      return t && t.toLowerCase() !== 'null' ? t.slice(0, max) : null;
+    };
+
+    let imported = 0;
+    let skipped = 0;
+    const warnings: string[] = [];
+
+    for (const row of rows) {
+      const companyName = str(row.companyName, 300);
+      const contactName = str(row.contactName, 200);
+      const email = str(row.email, 300)?.toLowerCase() ?? null;
+      const phone = str(row.phone, 40);
+
+      if (!companyName) {
+        skipped++;
+        if (contactName) warnings.push(`${contactName}: no company stated — skipped`);
+        continue;
+      }
+
+      const normalized = normalizeName(companyName);
+      const dedupHash = createHash('sha256').update(`${normalized}|manual`).digest('hex').slice(0, 16);
+
+      const prospect = await prisma.prospect.upsert({
+        where: { campaignId_dedupHash: { campaignId, dedupHash } },
+        create: {
+          organizationId,
+          campaignId,
+          companyName,
+          normalizedName: normalized,
+          industry: str(row.industry, 120),
+          sectorTags: [],
+          phone,
+          source: 'manual',
+          score: 0,
+          scoreBreakdown: [],
+          dedupHash,
+          status: 'NEW',
+        },
+        update: {
+          phone: phone ?? undefined,
+        },
+      });
+
+      if (contactName || email || phone) {
+        const existingContact = email
+          ? await prisma.prospectContact.findFirst({ where: { prospectId: prospect.id, email } })
+          : null;
+        if (!existingContact) {
+          await prisma.prospectContact.create({
+            data: {
+              prospectId: prospect.id,
+              fullName: contactName,
+              role: str(row.title, 120),
+              email,
+              phone,
+              source: 'manual',
+              confidence: 90,
+            },
+          });
+        }
+      }
+
+      imported++;
+    }
+
+    return reply.status(201).send({ imported, skipped, total: rows.length, warnings: warnings.slice(0, 20) });
   });
 
   app.get('/prospects/:id', async (request, reply) => {

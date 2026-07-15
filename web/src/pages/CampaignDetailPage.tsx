@@ -211,6 +211,81 @@ function AddProspectModal({
   );
 }
 
+// ── Import contacts (paste-text, AI-assisted) modal ────────────────────────
+
+function ImportContactsModal({
+  open, campaignId, onClose, onImported,
+}: { open: boolean; campaignId: string; onClose: () => void; onImported: () => void }) {
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ imported: number; skipped: number; total: number; warnings: string[] } | null>(null);
+
+  useEffect(() => {
+    if (open) { setText(''); setError(''); setResult(null); }
+  }, [open]);
+
+  if (!open) return null;
+
+  async function submit() {
+    setSaving(true); setError(''); setResult(null);
+    try {
+      const res = await api<{ imported: number; skipped: number; total: number; warnings: string[] }>(
+        `/leadengine/campaigns/${campaignId}/prospects/import-text`,
+        { method: 'POST', body: { text: text.trim() } },
+      );
+      setResult(res);
+      onImported();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not import these contacts');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="presentation">
+      <div className="modal-panel" style={{ maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
+        <h2>Import contacts</h2>
+        <p className="muted" style={{ marginTop: -4 }}>
+          Paste contacts from your inbox, a corporate directory export, or a CSV — AI reads out the
+          company, contact name, email, phone and title for each one. Up to 500 at a time.
+        </p>
+        {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+        {result ? (
+          <div className="alert alert-success" style={{ marginBottom: 12 }}>
+            Imported {result.imported} of {result.total} contacts as prospects
+            {result.skipped ? ` (${result.skipped} skipped — no company name found)` : ''}.
+            {result.warnings.length ? (
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                {result.warnings.map((w) => <li key={w}>{w}</li>)}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="field">
+          <label>Contacts</label>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={12}
+            placeholder={'Paste here — e.g.\nJane Wanjiru, Finance Director, Acme Manufacturing Ltd\njane.wanjiru@acme.co.ke, +254 722 000 000\n\nJohn Otieno — Procurement Lead — Beta Traders\njohn@betatraders.com'}
+            style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '0.85rem' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
+            {result ? 'Close' : 'Cancel'}
+          </button>
+          <button type="button" className="btn-primary" onClick={() => void submit()} disabled={saving || text.trim().length < 20}>
+            {saving ? 'Reading…' : 'Import contacts'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Email template modal ───────────────────────────────────────────────────
 
 const MERGE_FIELDS = ['{{company_name}}', '{{contact_name}}', '{{sender_name}}', '{{campaign_name}}'];
@@ -319,6 +394,7 @@ function ProspectsTab({
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [bulkError, setBulkError] = useState('');
 
   const filtered = prospects.filter((p) => {
@@ -392,6 +468,7 @@ function ProspectsTab({
           <option value="IMPORTED">Imported</option>
         </select>
         <button type="button" className="btn-secondary" onClick={() => setShowAdd(true)}>+ Add manually</button>
+        <button type="button" className="btn-secondary" onClick={() => setShowImport(true)}>📋 Import contacts</button>
         <button
           type="button"
           className="btn-primary"
@@ -579,6 +656,12 @@ function ProspectsTab({
         campaignId={campaignId}
         onClose={() => setShowAdd(false)}
         onAdded={() => { setShowAdd(false); onRefresh(); }}
+      />
+      <ImportContactsModal
+        open={showImport}
+        campaignId={campaignId}
+        onClose={() => setShowImport(false)}
+        onImported={onRefresh}
       />
     </div>
   );
