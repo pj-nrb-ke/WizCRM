@@ -127,6 +127,7 @@ function seededNoise(seed: number) {
 }
 
 function buildSparkData(count: number, seed = 1) {
+  if (count <= 0) return Array.from({ length: 7 }, () => ({ v: 0 }));
   const rnd = seededNoise(seed + count);
   let v = Math.max(1, Math.round(count * 0.4));
   return Array.from({ length: 7 }, () => {
