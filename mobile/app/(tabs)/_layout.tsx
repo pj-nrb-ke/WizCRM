@@ -6,10 +6,11 @@ import { isManagerRole } from '../../lib/roles';
 import { HeaderActions } from '../../components/HeaderActions';
 
 export default function TabsLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, can } = useAuth();
   if (loading) return null;
   if (!user) return <Redirect href="/login" />;
   const showTeam = isManagerRole(user.role);
+  const showReports = showTeam && can('reports');
 
   return (
     <Tabs
@@ -92,7 +93,7 @@ export default function TabsLayout() {
         name="reports"
         options={{
           title: 'Reports',
-          href: showTeam ? '/reports' : null,
+          href: showReports ? '/reports' : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart-outline" size={size} color={color} />
           ),

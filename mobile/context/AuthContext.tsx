@@ -1,13 +1,18 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import type { FeatureKey } from '@wizcrm/shared';
 import { api, clearToken, getToken, login as apiLogin, type User } from '../lib/api';
 import type { Entitlements } from '../lib/entitlements';
 import { registerPushToken, unregisterPushToken } from '../lib/notifications';
 
 const SESSION_TIMEOUT_MS = 8_000;
 
+type Permissions = Record<FeatureKey, boolean>;
+
 type AuthState = {
   user: User | null;
   entitlements: Entitlements | null;
+  permissions: Permissions | null;
+  can: (key: FeatureKey) => boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<User>;
   signOut: () => Promise<void>;
@@ -18,6 +23,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,12 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = await getToken();
         if (!token) return;
 
-        const res = await api<{ user: User; entitlements: Entitlements }>('/auth/me', {
-          timeoutMs: SESSION_TIMEOUT_MS,
-        });
+        const res = await api<{ user: User; entitlements: Entitlements; permissions: Permissions }>(
+          '/auth/me',
+          { timeoutMs: SESSION_TIMEOUT_MS },
+        );
         if (!cancelled) {
           setUser(res.user);
           setEntitlements(res.entitlements);
+          setPermissions(res.permissions);
           void registerPushToken();
         }
       } catch {
@@ -50,9 +58,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     await apiLogin(email, password);
-    const res = await api<{ user: User; entitlements: Entitlements }>('/auth/me');
+    const res = await api<{ user: User; entitlements: Entitlements; permissions: Permissions }>('/auth/me');
     setUser(res.user);
     setEntitlements(res.entitlements);
+    setPermissions(res.permissions);
     void registerPushToken();
     return res.user;
   }, []);
@@ -62,10 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearToken();
     setUser(null);
     setEntitlements(null);
+    setPermissions(null);
   }, []);
 
+  const can = useCallback((key: FeatureKey) => permissions?.[key] ?? true, [permissions]);
+
   return (
-    <AuthContext.Provider value={{ user, entitlements, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, entitlements, permissions, can, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
