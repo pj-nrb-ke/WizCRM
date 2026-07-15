@@ -1,6 +1,45 @@
 import * as XLSX from 'xlsx';
-import { extractedLeadRowSchema, type ExtractedLeadRow } from '@wizcrm/shared';
+import { LEAD_PRIORITIES, type ExtractedLeadRow, type LeadPriority } from '@wizcrm/shared';
 import { createOpenAIClient, chatJson } from './ai/openai.provider.js';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Field-level sanitization — an LLM hallucinating one bad field (e.g. "Use
+ * website enquiry" as an email) must not silently drop the whole lead, the
+ * way a single strict object-level zod parse would. */
+function sanitizeRow(item: Record<string, unknown>): ExtractedLeadRow | null {
+  const str = (v: unknown, max: number): string | undefined => {
+    if (typeof v !== 'string') return undefined;
+    const t = v.trim();
+    return t ? t.slice(0, max) : undefined;
+  };
+  const name = str(item.name, 200);
+  if (!name) return null;
+
+  const email = str(item.email, 200);
+  const phone = str(item.phone, 30);
+  const priorityRaw = str(item.priority, 10)?.toUpperCase();
+
+  const tagsRaw = Array.isArray(item.tags) ? item.tags : [];
+  const tags = tagsRaw
+    .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+    .map((t) => t.trim().slice(0, 40))
+    .slice(0, 10);
+
+  return {
+    name,
+    company: str(item.company, 200),
+    email: email && EMAIL_RE.test(email) ? email : undefined,
+    phone: phone && phone.length >= 5 ? phone : undefined,
+    address: str(item.address, 500),
+    source: str(item.source, 100),
+    tags: tags.length ? tags : undefined,
+    priority:
+      priorityRaw && (LEAD_PRIORITIES as readonly string[]).includes(priorityRaw)
+        ? (priorityRaw as LeadPriority)
+        : undefined,
+  };
+}
 
 const SPREADSHEET_EXTS = ['.xlsx', '.xls', '.xlsm'];
 const MAX_TEXT_CHARS = 60_000; // keeps token cost bounded on very large files
@@ -101,15 +140,25 @@ export async function extractLeadsFromImport(
     { temperature: 0.2 },
   );
 
+  const items = Array.isArray(raw.leads) ? raw.leads : [];
   const candidates: ExtractedLeadRow[] = [];
-  for (const item of raw.leads ?? []) {
-    const parsed = extractedLeadRowSchema.safeParse(item);
-    if (parsed.success) candidates.push(parsed.data);
+  let dropped = 0;
+  for (const item of items) {
     if (candidates.length >= MAX_CANDIDATES) break;
+    if (typeof item !== 'object' || item === null) {
+      dropped++;
+      continue;
+    }
+    const sanitized = sanitizeRow(item as Record<string, unknown>);
+    if (sanitized) candidates.push(sanitized);
+    else dropped++;
   }
 
   const warnings = (raw.warnings ?? []).filter((w): w is string => typeof w === 'string');
-  const truncated = (raw.leads?.length ?? 0) > candidates.length || (raw.leads?.length ?? 0) >= MAX_CANDIDATES;
+  if (dropped > 0) {
+    warnings.push(`${dropped} row${dropped === 1 ? '' : 's'} had no usable name and were skipped.`);
+  }
+  const truncated = items.length > MAX_CANDIDATES;
 
   return { candidates, warnings, truncated };
 }
