@@ -12,6 +12,7 @@ import {
   isLeadStage,
   photoCaptureCreateSchema,
   hasFeatureAccess,
+  leadImportExtractSchema,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
@@ -26,6 +27,7 @@ import {
 } from '../services/lead.service.js';
 import { getCrmConfig } from '../services/crm-config.service.js';
 import { bulkImportLeads } from '../services/lead-import.service.js';
+import { extractLeadsFromImport, LeadImportUnavailableError } from '../services/lead-import-extract.service.js';
 import { buildLeadInsights } from '../services/lead-insights.service.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { resolveStaleLeadDays } from '../services/stale-lead.service.js';
@@ -224,6 +226,40 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     );
     return reply.status(201).send(result);
   });
+
+  app.post(
+    '/import/extract',
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const { organizationId, role } = request.user;
+      if (!isManagerRole(role)) {
+        return reply.status(403).send({ error: 'Managers only' });
+      }
+      const settings = await getOrgSettings(organizationId);
+      if (!hasFeatureAccess(role, settings.rolePermissions, 'bulkImport')) {
+        return reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
+      }
+      const parsed = leadImportExtractSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      try {
+        const result = await extractLeadsFromImport(
+          parsed.data.fileName,
+          parsed.data.mimeType,
+          parsed.data.dataBase64,
+        );
+        return result;
+      } catch (e) {
+        if (e instanceof LeadImportUnavailableError) {
+          return reply.status(503).send({ error: e.message, code: e.code });
+        }
+        return reply.status(500).send({
+          error: e instanceof Error ? e.message : 'Could not extract leads from this file.',
+        });
+      }
+    },
+  );
 
   app.get('/check-duplicates', async (request, reply) => {
     const { organizationId } = request.user;

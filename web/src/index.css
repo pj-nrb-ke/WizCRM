@@ -599,6 +599,16 @@ button {
   background: #f8fafc;
 }
 
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .btn-danger {
   background: #fef2f2;
   color: #b91c1c;

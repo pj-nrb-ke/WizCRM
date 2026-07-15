@@ -106,13 +106,36 @@ export const bulkImportLeadsSchema = z.object({
         company: z.string().max(200).optional(),
         email: emailField.optional(),
         phone: phoneField.optional(),
+        address: z.string().max(500).optional(),
         source: z.string().max(100).optional(),
+        tags: leadTagsField,
+        priority: z.enum(LEAD_PRIORITIES).optional(),
       }),
     )
     .min(1)
     .max(500),
   ownerId: z.string().uuid().optional(),
 });
+
+/** Upload a file (or pasted text, base64-encoded client-side) for AI-assisted lead extraction. */
+export const leadImportExtractSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(200),
+  dataBase64: z.string().min(1).max(14_000_000),
+});
+
+export const extractedLeadRowSchema = z.object({
+  name: z.string().min(1).max(200),
+  company: z.string().max(200).optional(),
+  email: emailField.optional(),
+  phone: phoneField.optional(),
+  address: z.string().max(500).optional(),
+  source: z.string().max(100).optional(),
+  tags: z.array(z.string().max(40)).max(10).optional(),
+  priority: z.enum(LEAD_PRIORITIES).optional(),
+});
+
+export type ExtractedLeadRow = z.infer<typeof extractedLeadRowSchema>;
 
 /** Reorder cards within one pipeline column (manager board). */
 export const pipelineReorderSchema = z.object({

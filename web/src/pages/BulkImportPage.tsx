@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { PageHeader } from '../components/PageHeader';
 import type { CrmConfig } from '../components/CloseLeadModal';
@@ -8,81 +8,41 @@ type ImportRow = {
   company?: string;
   email?: string;
   phone?: string;
+  address?: string;
   source?: string;
+  tags?: string[];
+  priority?: 'HOT' | 'WARM' | 'COLD';
 };
 
 type AssignableUser = { id: string; name: string; email: string };
 
-// Quote-aware CSV line split: keeps commas inside "quoted fields" intact and
-// unescapes doubled quotes ("" -> "). A naive split(',') corrupts any field
-// like "Acme, Inc" and shifts every column after it.
-export function parseCsvLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cur += ch;
-      }
-    } else if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === ',') {
-      out.push(cur);
-      cur = '';
-    } else {
-      cur += ch;
-    }
+const ACCEPTED_EXT = '.xlsx,.xls,.csv,.json,.txt';
+
+async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
-  out.push(cur);
-  return out.map((c) => c.trim());
+  return btoa(binary);
 }
 
-function parseCsv(text: string): ImportRow[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length === 0) return [];
-  const header = lines[0]!.toLowerCase();
-  const hasHeader = header.includes('name');
-  const start = hasHeader ? 1 : 0;
-  const cols = hasHeader
-    ? parseCsvLine(lines[0]!).map((c) => c.toLowerCase())
-    : ['name', 'company', 'email', 'phone', 'source'];
-
-  const idx = (key: string) => cols.indexOf(key);
-
-  return lines.slice(start).map((line) => {
-    const parts = parseCsvLine(line);
-    const pick = (key: string) => {
-      const i = idx(key);
-      return i >= 0 ? parts[i]?.trim() : undefined;
-    };
-    return {
-      name: pick('name') ?? parts[0] ?? '',
-      company: pick('company'),
-      email: pick('email'),
-      phone: pick('phone'),
-      source: pick('source'),
-    };
-  }).filter((r) => r.name.length > 0);
+function textToBase64(text: string): string {
+  return btoa(unescape(encodeURIComponent(text)));
 }
 
 export function BulkImportPage() {
-  const [csv, setCsv] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [pastedText, setPastedText] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [users, setUsers] = useState<AssignableUser[]>([]);
   const [config, setConfig] = useState<CrmConfig | null>(null);
   const [preview, setPreview] = useState<ImportRow[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [truncated, setTruncated] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [result, setResult] = useState<{
     imported: number;
     failed: number;
@@ -90,6 +50,7 @@ export function BulkImportPage() {
   } | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api<{ users: AssignableUser[] }>('/teams/assignable-users')
@@ -100,31 +61,60 @@ export function BulkImportPage() {
       .catch(() => setConfig(null));
   }, []);
 
-  function onParse() {
+  async function onExtract() {
     setError('');
     setResult(null);
+    setWarnings([]);
+    setTruncated(false);
+    setPreview([]);
+
+    let fileName: string;
+    let mimeType: string;
+    let dataBase64: string;
     try {
-      const rows = parseCsv(csv);
-      if (rows.length === 0) {
-        setError('No rows found. Use columns: name, company, email, phone, source');
-        setPreview([]);
+      if (file) {
+        fileName = file.name;
+        mimeType = file.type || 'application/octet-stream';
+        dataBase64 = await fileToBase64(file);
+      } else if (pastedText.trim()) {
+        fileName = 'pasted-text.txt';
+        mimeType = 'text/plain';
+        dataBase64 = textToBase64(pastedText);
+      } else {
+        setError('Upload a file or paste some text first.');
         return;
       }
-      if (rows.length > 500) {
-        setError('Maximum 500 rows per import.');
-        setPreview(rows.slice(0, 500));
-        return;
-      }
-      setPreview(rows);
     } catch {
-      setError('Could not parse CSV.');
-      setPreview([]);
+      setError('Could not read the file.');
+      return;
     }
+
+    setExtracting(true);
+    try {
+      const data = await api<{ candidates: ImportRow[]; warnings: string[]; truncated: boolean }>(
+        '/leads/import/extract',
+        { method: 'POST', body: { fileName, mimeType, dataBase64 } },
+      );
+      if (data.candidates.length === 0) {
+        setError('No usable leads found in this file.');
+      }
+      setPreview(data.candidates);
+      setWarnings(data.warnings ?? []);
+      setTruncated(data.truncated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Extraction failed.');
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  function removeRow(index: number) {
+    setPreview((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function onImport() {
     if (preview.length === 0) {
-      setError('Parse CSV first.');
+      setError('Extract leads from a file first.');
       return;
     }
     setSaving(true);
@@ -150,7 +140,7 @@ export function BulkImportPage() {
     <div className="page-wide">
       <PageHeader
         title="Bulk import leads"
-        subtitle="Paste CSV with header row: name, company, email, phone, source. Up to 500 rows."
+        subtitle="Upload an Excel, CSV, JSON, or text file — AI reads it, merges multi-sheet data by company, and maps it to leads. Up to 500 leads."
       />
 
       <div className="card bulk-import-card">
@@ -166,22 +156,55 @@ export function BulkImportPage() {
           </select>
         </label>
         {config?.leadSources?.length ? (
-          <p className="muted">
-            Known sources: {config.leadSources.join(', ')}
-          </p>
+          <p className="muted">Known sources: {config.leadSources.join(', ')}</p>
         ) : null}
+
         <label>
-          CSV data
-          <textarea
-            rows={12}
-            value={csv}
-            onChange={(e) => setCsv(e.target.value)}
-            placeholder={'name,company,email,phone,source\nAcme Co,Acme,a@acme.com,+15551234,Website'}
+          File (Excel, CSV, JSON, or text)
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_EXT}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setPastedText('');
+            }}
           />
         </label>
+        {file ? (
+          <p className="muted">
+            {file.name} ({Math.round(file.size / 1024)} KB){' '}
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => {
+                setFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+            >
+              Remove
+            </button>
+          </p>
+        ) : (
+          <label>
+            Or paste raw text (CSV, JSON, or freeform notes)
+            <textarea
+              rows={8}
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              placeholder={'Paste a prospect list, CSV data, or notes here…'}
+            />
+          </label>
+        )}
+
         <div className="toolbar">
-          <button type="button" className="btn-secondary" onClick={onParse}>
-            Preview rows
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={extracting || (!file && !pastedText.trim())}
+            onClick={() => void onExtract()}
+          >
+            {extracting ? 'Reading file…' : 'Extract leads'}
           </button>
           <button
             type="button"
@@ -193,6 +216,16 @@ export function BulkImportPage() {
           </button>
         </div>
         {error ? <p className="error">{error}</p> : null}
+        {truncated ? (
+          <p className="muted">The file had more rows than fit in one import — showing the first {preview.length}.</p>
+        ) : null}
+        {warnings.length > 0 ? (
+          <ul className="import-errors">
+            {warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        ) : null}
         {result ? (
           <p className="success">
             Imported {result.imported}, failed {result.failed}.
@@ -218,24 +251,32 @@ export function BulkImportPage() {
                 <th>Company</th>
                 <th>Email</th>
                 <th>Phone</th>
+                <th>Priority</th>
                 <th>Source</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              {preview.slice(0, 50).map((r, i) => (
+              {preview.slice(0, 100).map((r, i) => (
                 <tr key={i}>
                   <td>{r.name}</td>
                   <td>{r.company ?? '—'}</td>
                   <td>{r.email ?? '—'}</td>
                   <td>{r.phone ?? '—'}</td>
+                  <td>{r.priority ?? '—'}</td>
                   <td>{r.source ?? '—'}</td>
+                  <td>
+                    <button type="button" className="btn-link" onClick={() => removeRow(i)}>
+                      Remove
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {preview.length > 50 ? (
+          {preview.length > 100 ? (
             <p className="muted" style={{ padding: 12 }}>
-              Showing first 50 of {preview.length} rows.
+              Showing first 100 of {preview.length} rows.
             </p>
           ) : null}
         </div>
