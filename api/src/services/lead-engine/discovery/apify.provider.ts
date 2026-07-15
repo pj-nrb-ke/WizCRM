@@ -2,6 +2,7 @@ import { DiscoveryProvider } from './provider.interface.js';
 import type { CompanyCandidate } from '../types.js';
 import { normalizeName } from './google-places.provider.js';
 import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 const APIFY_API = 'https://api.apify.com/v2';
 const RUN_TIMEOUT_MS = 120_000;
@@ -33,8 +34,8 @@ export class ApifyDiscoveryProvider extends DiscoveryProvider {
     locations: string[],
     maxPerQuery = 10,
   ): Promise<CompanyCandidate[]> {
-    if (!config.apifyToken) {
-      throw new Error('APIFY_TOKEN is not set — cannot run Apify discovery');
+    if (!orgApiKeys.apifyToken()) {
+      throw new Error('Apify is not configured for your organization — add your Apify token in Data Sources settings.');
     }
 
     const results: CompanyCandidate[] = [];
@@ -67,7 +68,7 @@ export class ApifyDiscoveryProvider extends DiscoveryProvider {
   }
 
   private async runActor(query: string, maxItems: number): Promise<ApifyPlace[]> {
-    const token = config.apifyToken;
+    const token = orgApiKeys.apifyToken();
     const actorId = config.apifyActorId;
 
     // Start actor run

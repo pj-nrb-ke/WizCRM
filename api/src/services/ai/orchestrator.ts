@@ -6,6 +6,7 @@ import { createOpenAIClient, chatJson, transcribeAudio } from './openai.provider
 import { isAllowedStageTransition } from '@wizcrm/shared';
 import { normalizeCardFields } from '../card-fields.service.js';
 import { tavilySearch } from '../lead-engine/heat-map/tavily.provider.js';
+import { orgApiKeys } from '../../lib/org-context.js';
 
 type LeadContext = Lead & {
   activities: Pick<Activity, 'type' | 'subject' | 'body' | 'createdAt'>[];
@@ -587,7 +588,7 @@ export async function researchCompanyForPitch(
   companyName: string,
   extractedText: string,
 ): Promise<string | null> {
-  if (!config.tavilyApiKey || !companyName) return null;
+  if (!orgApiKeys.tavilyApiKey() || !companyName) return null;
   try {
     const results = await tavilySearch(
       `"${companyName}" Kenya "looking for" OR "need" OR procurement OR tender OR "pain point" OR expansion`,

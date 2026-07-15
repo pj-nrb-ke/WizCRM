@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 import { SignalProvider, type IntentSignalRaw } from './signal-provider.interface.js';
 
 // OpenCorporates — free REST API for company registrations.
@@ -94,8 +94,9 @@ async function searchCompanies(
     per_page:             '20',
     order:                'incorporation_date',
   });
-  if (config.openCorporatesApiKey) {
-    params.set('api_token', config.openCorporatesApiKey);
+  const openCorporatesApiKey = orgApiKeys.openCorporatesApiKey();
+  if (openCorporatesApiKey) {
+    params.set('api_token', openCorporatesApiKey);
   }
 
   const url = `${BASE_URL}/companies/search?${params}`;

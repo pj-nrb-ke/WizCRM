@@ -1,7 +1,7 @@
 import { ContactProvider, type ContactProviderOpts } from './contact-provider.interface.js';
 import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 interface ProspeoEmail {
   email?: string;
@@ -26,7 +26,7 @@ export class ProspeoContactProvider extends ContactProvider {
     domain: string | null,
     _opts?: ContactProviderOpts,
   ): Promise<ClassifiedContact[]> {
-    if (!config.prospeoApiKey || !domain) return [];
+    if (!orgApiKeys.prospeoApiKey() || !domain) return [];
 
     // Company-name search has ~0.9% accuracy per benchmarks; domain search ~33%.
     // Skip entirely when domain is unknown.
@@ -39,7 +39,7 @@ export class ProspeoContactProvider extends ContactProvider {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-KEY': config.prospeoApiKey,
+          'X-KEY': orgApiKeys.prospeoApiKey(),
         },
         body: JSON.stringify({ url: domain, limit: 20 }),
         signal: AbortSignal.timeout(15_000),

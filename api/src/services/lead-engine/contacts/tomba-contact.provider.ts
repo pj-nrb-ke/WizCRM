@@ -1,7 +1,7 @@
 import { ContactProvider, type ContactProviderOpts } from './contact-provider.interface.js';
 import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 interface TombaEmail {
   email?: string;
@@ -25,15 +25,17 @@ export class TombaContactProvider extends ContactProvider {
     domain: string | null,
     _opts?: ContactProviderOpts,
   ): Promise<ClassifiedContact[]> {
-    if (!config.tombaApiKey || !config.tombaApiSecret || !domain) return [];
+    const tombaApiKey = orgApiKeys.tombaApiKey();
+    const tombaApiSecret = orgApiKeys.tombaApiSecret();
+    if (!tombaApiKey || !tombaApiSecret || !domain) return [];
 
     try {
       const res = await fetch(
         `https://api.tomba.io/v1/domain-search/${encodeURIComponent(domain)}`,
         {
           headers: {
-            'X-Tomba-Key': config.tombaApiKey,
-            'X-Tomba-Secret': config.tombaApiSecret,
+            'X-Tomba-Key': tombaApiKey,
+            'X-Tomba-Secret': tombaApiSecret,
             'Content-Type': 'application/json',
           },
           signal: AbortSignal.timeout(15_000),

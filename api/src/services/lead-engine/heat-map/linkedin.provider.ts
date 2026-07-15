@@ -1,4 +1,4 @@
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 import { SignalProvider, type IntentSignalRaw } from './signal-provider.interface.js';
 import { tavilySearch, guessCoords, guessStrength, dedupHashUrl, extractDomain } from './tavily.provider.js';
 
@@ -18,7 +18,7 @@ export class LinkedInProvider extends SignalProvider {
   readonly name = 'linkedin';
 
   async search(productKeywords: string[], locations: string[]): Promise<IntentSignalRaw[]> {
-    if (!config.tavilyApiKey) return [];
+    if (!orgApiKeys.tavilyApiKey()) return [];
 
     const queries  = buildLinkedInQueries(productKeywords, locations);
     const signals: IntentSignalRaw[] = [];

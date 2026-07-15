@@ -141,7 +141,7 @@ function CollapsibleNavGroup({
 }
 
 export function Layout() {
-  const { user, entitlements } = useAuth();
+  const { user, entitlements, can } = useAuth();
   const manager = isManager(user?.role);
   const admin = isAdmin(user?.role);
   const [brandName, setBrandName] = useState('WizCRM');
@@ -301,26 +301,26 @@ export function Layout() {
               <NavItem to="/manager" icon="dashboard" label="Manager view" expanded={expanded} />
               <NavItem to="/pipeline" icon="pipeline" label="Pipeline" expanded={expanded} />
               <NavItem to="/leads" icon="leads" label="Leads" expanded={expanded} />
-              <NavItem to="/leads/import" icon="leads" label="Bulk import" expanded={expanded} />
-              <NavItem to="/lead-generator" icon="ai" label="Lead Generator" expanded={expanded} />
-              <NavItem to="/contact-finder" icon="leads" label="Contact Finder" expanded={expanded} />
+              {can('bulkImport') && <NavItem to="/leads/import" icon="leads" label="Bulk import" expanded={expanded} />}
+              {can('leadGenerator') && <NavItem to="/lead-generator" icon="ai" label="Lead Generator" expanded={expanded} />}
+              {can('contactFinder') && <NavItem to="/contact-finder" icon="leads" label="Contact Finder" expanded={expanded} />}
               <NavItem to="/documents" icon="org" label="Documents" expanded={expanded} />
               <NavItem to="/calendar" icon="calendar" label="Calendar" expanded={expanded} />
-              <NavItem to="/expos" icon="calendar" label="Expo finder" expanded={expanded} />
+              {can('expoFinder') && <NavItem to="/expos" icon="calendar" label="Expo finder" expanded={expanded} />}
             </CollapsibleNavGroup>
           )}
 
-          {manager && (
+          {manager && (can('reports') || can('targets') || can('dataHygiene')) && (
             <CollapsibleNavGroup label="Analytics" storageKey="analytics" defaultOpen expanded={expanded}>
-              <NavItem to="/reports" icon="reports" label="Reports" expanded={expanded} />
-              <NavItem to="/targets" icon="reports" label="Targets" expanded={expanded} />
-              <NavItem to="/data-hygiene" icon="leads" label="Data hygiene" expanded={expanded} />
+              {can('reports') && <NavItem to="/reports" icon="reports" label="Reports" expanded={expanded} />}
+              {can('targets') && <NavItem to="/targets" icon="reports" label="Targets" expanded={expanded} />}
+              {can('dataHygiene') && <NavItem to="/data-hygiene" icon="leads" label="Data hygiene" expanded={expanded} />}
             </CollapsibleNavGroup>
           )}
 
           {manager && (
             <CollapsibleNavGroup label="Organisation" storageKey="organisation" defaultOpen={false} expanded={expanded}>
-              <NavItem to="/organization" icon="org" label="Profile" expanded={expanded} />
+              {admin && <NavItem to="/organization" icon="org" label="Profile" expanded={expanded} />}
               <NavItem to="/settings/crm" icon="org" label="CRM lists" expanded={expanded} />
               <NavItem to="/teams" icon="teams" label="Teams" expanded={expanded} />
               <NavItem to="/business" icon="org" label="Business checklist" expanded={expanded} />
@@ -330,6 +330,7 @@ export function Layout() {
           {admin && (
             <CollapsibleNavGroup label="Admin" storageKey="admin" defaultOpen={false} expanded={expanded}>
               <NavItem to="/users" icon="users" label="Users" expanded={expanded} />
+              <NavItem to="/settings/permissions" icon="users" label="Roles & Permissions" expanded={expanded} />
               <NavItem to="/settings/branding" icon="org" label="Branding" expanded={expanded} />
               <NavItem to="/settings/lead-engine" icon="ai" label="Data Sources" expanded={expanded} />
               <NavItem to="/settings/vsm-roster" icon="teams" label="Team Roster" expanded={expanded} />

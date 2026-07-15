@@ -3,6 +3,7 @@ import {
   expoAddToCalendarSchema,
   expoDiscoverSchema,
   expoListQuerySchema,
+  hasFeatureAccess,
 } from '@wizcrm/shared';
 import {
   addExpoToCalendar,
@@ -12,12 +13,17 @@ import {
   ExpoNotDatedError,
   listExpos,
 } from '../services/expo-finder.service.js';
+import { getOrgSettings } from '../services/org-settings.service.js';
 
 /** Discovery spends web-search and LLM credits, so it is not open to everyone. */
 function requireManager() {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     if (request.user.role !== 'MANAGER' && request.user.role !== 'ADMIN') {
       return reply.status(403).send({ error: 'Managers and admins only' });
+    }
+    const settings = await getOrgSettings(request.user.organizationId);
+    if (!hasFeatureAccess(request.user.role, settings.rolePermissions, 'expoFinder')) {
+      return reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
     }
   };
 }

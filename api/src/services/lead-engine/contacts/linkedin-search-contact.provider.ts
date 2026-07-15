@@ -1,7 +1,7 @@
 import { ContactProvider, type ContactProviderOpts } from './contact-provider.interface.js';
 import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 import { tavilySearch } from '../heat-map/tavily.provider.js';
 
 // Finds named decision-makers by searching the public web for their LinkedIn
@@ -82,7 +82,7 @@ export class LinkedinSearchContactProvider extends ContactProvider {
     _domain: string | null,
     _opts?: ContactProviderOpts,
   ): Promise<ClassifiedContact[]> {
-    if (!config.tavilyApiKey || !companyName.trim()) return [];
+    if (!orgApiKeys.tavilyApiKey() || !companyName.trim()) return [];
 
     const tokens = companyTokens(companyName);
     if (tokens.length === 0) return [];

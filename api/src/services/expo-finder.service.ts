@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma.js';
 import { chatJson, createOpenAIClient } from './ai/openai.provider.js';
 import { createCalendarEvent } from './calendar.service.js';
 import { tavilySearch, type TavilyResult } from './lead-engine/heat-map/tavily.provider.js';
+import { orgApiKeys } from '../lib/org-context.js';
 
 export class ExpoFinderUnavailableError extends Error {
   readonly code = 'EXPO_FINDER_UNAVAILABLE';
@@ -297,7 +298,7 @@ export async function discoverExpos(
   organizationId: string,
   tier?: ExpoTier,
 ): Promise<DiscoverSummary> {
-  if (!config.tavilyApiKey) throw new ExpoFinderUnavailableError('Web search is not configured');
+  if (!orgApiKeys.tavilyApiKey()) throw new ExpoFinderUnavailableError('Web search is not configured');
   if (!config.openaiApiKey) throw new ExpoFinderUnavailableError('OpenAI is not configured');
 
   const now = new Date();

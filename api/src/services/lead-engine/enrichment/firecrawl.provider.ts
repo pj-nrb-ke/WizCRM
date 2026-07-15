@@ -1,6 +1,6 @@
 import { EnrichmentProvider } from './enrichment-provider.interface.js';
 import type { CompanyProfile } from '../types.js';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 const FIRECRAWL_API = 'https://api.firecrawl.dev/v1';
 
@@ -65,7 +65,7 @@ export class FirecrawlEnrichmentProvider extends EnrichmentProvider {
   readonly name = 'firecrawl';
 
   async enrich(website: string): Promise<CompanyProfile | null> {
-    if (!config.firecrawlApiKey) return null;
+    if (!orgApiKeys.firecrawlApiKey()) return null;
 
     const url = website.startsWith('http') ? website : `https://${website}`;
 
@@ -74,7 +74,7 @@ export class FirecrawlEnrichmentProvider extends EnrichmentProvider {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.firecrawlApiKey}`,
+          Authorization: `Bearer ${orgApiKeys.firecrawlApiKey()}`,
         },
         body: JSON.stringify({
           url,

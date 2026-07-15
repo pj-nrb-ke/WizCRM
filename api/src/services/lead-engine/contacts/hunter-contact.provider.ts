@@ -1,7 +1,7 @@
 import { ContactProvider, type ContactProviderOpts } from './contact-provider.interface.js';
 import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 /** Generic role-based prefixes — not individual contacts */
 const GENERIC_PREFIXES = new Set([
@@ -109,7 +109,7 @@ export class HunterContactProvider extends ContactProvider {
     domain: string | null,
     _opts?: ContactProviderOpts,
   ): Promise<ClassifiedContact[]> {
-    if (!config.hunterApiKey) return [];
+    if (!orgApiKeys.hunterApiKey()) return [];
 
     const resolvedDomain = domain ?? await this.findDomain(companyName);
     if (!resolvedDomain) return [];
@@ -121,7 +121,7 @@ export class HunterContactProvider extends ContactProvider {
     try {
       const url = new URL('https://api.hunter.io/v2/domain-finder');
       url.searchParams.set('company', companyName);
-      url.searchParams.set('api_key', config.hunterApiKey);
+      url.searchParams.set('api_key', orgApiKeys.hunterApiKey());
 
       const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8_000) });
       if (!res.ok) return null;
@@ -165,7 +165,7 @@ export class HunterContactProvider extends ContactProvider {
       const url = new URL('https://api.hunter.io/v2/domain-search');
       url.searchParams.set('domain', domain);
       url.searchParams.set('limit', '10');
-      url.searchParams.set('api_key', config.hunterApiKey);
+      url.searchParams.set('api_key', orgApiKeys.hunterApiKey());
 
       const res = await fetch(url.toString(), { signal: AbortSignal.timeout(12_000) });
       if (!res.ok) {

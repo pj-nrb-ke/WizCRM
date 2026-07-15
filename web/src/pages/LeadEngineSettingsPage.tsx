@@ -26,7 +26,7 @@ const PROVIDERS: ProviderMeta[] = [
     category: 'Discovery',
     description: 'Crawls Google Maps to find companies matching your keywords and locations. Primary discovery source for Kenya-based searches.',
     costHint: '~$0.005 per company found',
-    envVar: 'APIFY_TOKEN',
+    envVar: 'apifyToken',
     implemented: true,
   },
   {
@@ -37,7 +37,7 @@ const PROVIDERS: ProviderMeta[] = [
     category: 'Discovery',
     description: 'AI-powered web search that surfaces buyer intent signals — tender notices, hiring posts, and discussions about ERP pain points.',
     costHint: 'Free up to 1,000 searches/month',
-    envVar: 'TAVILY_API_KEY',
+    envVar: 'tavilyApiKey',
     implemented: true,
   },
   {
@@ -48,7 +48,7 @@ const PROVIDERS: ProviderMeta[] = [
     category: 'Discovery',
     description: 'Newly incorporated companies sourced from Kenya company registries. Good for early-stage pipeline before competitors find them.',
     costHint: 'Free tier available',
-    envVar: 'OPENCORPORATES_API_KEY',
+    envVar: 'openCorporatesApiKey',
     implemented: true,
   },
   {
@@ -59,7 +59,7 @@ const PROVIDERS: ProviderMeta[] = [
     category: 'Enrichment',
     description: 'Scrapes company websites using AI extraction to detect sector, employee count, ERP/accounting software in use, and services offered.',
     costHint: 'Free up to 500 pages/month',
-    envVar: 'FIRECRAWL_API_KEY',
+    envVar: 'firecrawlApiKey',
     implemented: true,
   },
   {
@@ -70,7 +70,7 @@ const PROVIDERS: ProviderMeta[] = [
     category: 'Contacts',
     description: 'Finds decision-maker contacts (CEO, CFO, Finance Director) at target companies. Capped at 3 credits per company.',
     costHint: '1 credit per contact retrieved',
-    envVar: 'APOLLO_API_KEY',
+    envVar: 'apolloApiKey',
     implemented: true,
   },
   {
@@ -81,8 +81,8 @@ const PROVIDERS: ProviderMeta[] = [
     category: 'Contacts',
     description: 'Email finder used as fallback when Apollo returns no results. Verifies email deliverability before storing.',
     costHint: 'Free up to 25 searches/month',
-    envVar: 'HUNTER_API_KEY',
-    implemented: false,
+    envVar: 'hunterApiKey',
+    implemented: true,
   },
 ];
 
@@ -117,6 +117,7 @@ interface ProviderState {
 interface SettingsPayload {
   providers: Record<string, ProviderState>;
   globalLimit: number;
+  apiKeys: Record<string, string>;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -128,12 +129,14 @@ export default function LeadEngineSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<Record<string, ProviderState>>({});
   const [globalLimit, setGlobalLimit] = useState(20);
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
 
   useEffect(() => {
     api<SettingsPayload>('/admin/settings/lead-engine')
       .then((data) => {
         setProviders(data.providers);
         setGlobalLimit(data.globalLimit);
+        setApiKeys(data.apiKeys ?? {});
       })
       .catch(() => setError('Failed to load data source settings.'))
       .finally(() => setLoading(false));
@@ -147,14 +150,21 @@ export default function LeadEngineSettingsPage() {
     setSaved(false);
   }
 
+  function setKey(envVar: string, value: string) {
+    setApiKeys((prev) => ({ ...prev, [envVar]: value }));
+    setSaved(false);
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
-      await api('/admin/settings/lead-engine', {
+      const data = await api<SettingsPayload>('/admin/settings/lead-engine', {
         method: 'PUT',
-        body: JSON.stringify({ providers, globalLimit }),
+        body: { providers, globalLimit, apiKeys },
       });
+      setProviders(data.providers);
+      setApiKeys(data.apiKeys ?? {});
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -351,14 +361,29 @@ export default function LeadEngineSettingsPage() {
                     <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.45, marginBottom: 6 }}>
                       {provider.description}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                       <span style={{ fontSize: 12, color: '#64748b' }}>
                         💰 {provider.costHint}
                       </span>
-                      <span style={{ fontSize: 12, color: '#94a3b8' }}>
-                        Env var: <code style={{ fontFamily: 'var(--font-mono)', background: '#f8fafc', padding: '1px 4px', borderRadius: 3 }}>{provider.envVar}</code>
-                      </span>
                     </div>
+                    <input
+                      type="password"
+                      value={apiKeys[provider.envVar] ?? ''}
+                      onChange={(e) => setKey(provider.envVar, e.target.value)}
+                      placeholder={`Your organization's own ${provider.name} API key`}
+                      autoComplete="off"
+                      style={{
+                        width: '100%',
+                        maxWidth: 380,
+                        padding: '6px 10px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#0f172a',
+                        outline: 'none',
+                      }}
+                    />
                   </div>
 
                   {/* Right side: status + toggle */}
@@ -397,7 +422,7 @@ export default function LeadEngineSettingsPage() {
                         !provider.implemented
                           ? 'Not yet available'
                           : !isConfigured
-                          ? `Set ${provider.envVar} in api/.env to enable`
+                          ? 'Enter your API key above, save, then enable'
                           : isEnabled
                           ? 'Click to disable'
                           : 'Click to enable'
@@ -447,9 +472,10 @@ export default function LeadEngineSettingsPage() {
         color: '#64748b',
         lineHeight: 1.5,
       }}>
-        <strong style={{ color: '#374151' }}>API keys are set by your system administrator</strong> in the server environment
-        and are never stored in the database. The "Connected" badge confirms the key is present on the server —
-        you can safely enable that provider. Disabling a source reduces cost but may reduce lead quality.
+        <strong style={{ color: '#374151' }}>Each organization uses its own provider accounts.</strong> Enter your
+        own API key for a provider, save, then enable it — your key is never shared with other organizations on
+        WizCRM. The "Connected" badge confirms a key is saved for your org. Disabling a source reduces cost but
+        may reduce lead quality.
       </div>
     </div>
   );

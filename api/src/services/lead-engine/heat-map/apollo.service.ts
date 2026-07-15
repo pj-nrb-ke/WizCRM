@@ -1,4 +1,4 @@
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 export interface ApolloContact {
   name:        string;
@@ -73,7 +73,8 @@ export async function getApolloContact(
   signalUrl:     string,
   authorCompany: string | null | undefined,
 ): Promise<ApolloContact | null> {
-  if (!config.apolloApiKey) return null;
+  const apolloApiKey = orgApiKeys.apolloApiKey();
+  if (!apolloApiKey) return null;
 
   const companyHint = extractCompanyHint(signalTitle, signalUrl, authorCompany);
 
@@ -82,7 +83,7 @@ export async function getApolloContact(
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key':    config.apolloApiKey,
+        'x-api-key':    apolloApiKey,
       },
       body: JSON.stringify({
         q_organization_name: companyHint,

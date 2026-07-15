@@ -11,6 +11,7 @@ import {
   bulkUpdateLeadsSchema,
   isLeadStage,
   photoCaptureCreateSchema,
+  hasFeatureAccess,
 } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings, mergeOrgSettings } from '../services/org-settings.service.js';
@@ -206,6 +207,10 @@ export const leadRoutes: FastifyPluginAsync = async (app) => {
     const { organizationId, sub: userId, role } = request.user;
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
+    }
+    const settings = await getOrgSettings(organizationId);
+    if (!hasFeatureAccess(role, settings.rolePermissions, 'bulkImport')) {
+      return reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
     }
     const parsed = bulkImportLeadsSchema.safeParse(request.body);
     if (!parsed.success) {

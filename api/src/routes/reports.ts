@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { hasFeatureAccess } from '@wizcrm/shared';
 import {
   type ReportDateRange,
   leadsToCsv,
@@ -11,9 +12,24 @@ import { loadDataHygieneReport } from '../services/data-hygiene-report.service.j
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { buildManagerBrief } from '../services/manager-brief.service.js';
 import { loadPipelineForecast } from '../services/pipeline-forecast.service.js';
+import { getOrgSettings } from '../services/org-settings.service.js';
 
 function isManagerRole(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
+}
+
+/** Returns true and sends the 403 response if the caller's role has this feature disabled. */
+async function blockedByFeature(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  key: 'reports' | 'targets' | 'dataHygiene',
+): Promise<boolean> {
+  const settings = await getOrgSettings(request.user.organizationId);
+  if (!hasFeatureAccess(request.user.role, settings.rolePermissions, key)) {
+    reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
+    return true;
+  }
+  return false;
 }
 
 export const reportRoutes: FastifyPluginAsync = async (app) => {
@@ -24,6 +40,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
     }
+    if (await blockedByFeature(request, reply, 'reports')) return;
     const q = request.query as { teamId?: string; dateFrom?: string; dateTo?: string };
     const parsedRange = parseDateRange(q.dateFrom, q.dateTo);
     if (!parsedRange.ok) {
@@ -51,6 +68,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
     }
+    if (await blockedByFeature(request, reply, 'targets')) return;
     const ent = await getOrganizationEntitlements(organizationId);
     if (!ent.features.targetsPacing) {
       return reply.status(403).send({ error: 'Pro plan required for targets and pacing' });
@@ -100,6 +118,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
     }
+    if (await blockedByFeature(request, reply, 'dataHygiene')) return;
     const ent = await getOrganizationEntitlements(organizationId);
     if (!ent.features.dataHygiene) {
       return reply.status(403).send({ error: 'Pro plan required for data hygiene report' });
@@ -112,6 +131,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
     }
+    if (await blockedByFeature(request, reply, 'reports')) return;
     const ent = await getOrganizationEntitlements(organizationId);
     if (!ent.features.advancedReports) {
       return reply.status(403).send({ error: 'Pro plan required for pipeline forecast' });
@@ -124,6 +144,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
     }
+    if (await blockedByFeature(request, reply, 'reports')) return;
     const ent = await getOrganizationEntitlements(organizationId);
     if (!ent.features.advancedReports) {
       return reply.status(403).send({ error: 'Pro plan required for manager brief' });
@@ -136,6 +157,7 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
     if (!isManagerRole(role)) {
       return reply.status(403).send({ error: 'Managers only' });
     }
+    if (await blockedByFeature(request, reply, 'reports')) return;
     const q = request.query as { teamId?: string; dateFrom?: string; dateTo?: string };
     const parsedRange = parseDateRange(q.dateFrom, q.dateTo);
     if (!parsedRange.ok) {

@@ -1,12 +1,13 @@
 import { prisma } from '../../lib/prisma.js';
+import { orgSettingsSchema, type OrgSettings } from '@wizcrm/shared';
 
-const PROVIDER_ENV_KEYS: Record<string, string> = {
-  apify: 'APIFY_TOKEN',
-  firecrawl: 'FIRECRAWL_API_KEY',
-  apollo: 'APOLLO_API_KEY',
-  hunter: 'HUNTER_API_KEY',
-  tavily: 'TAVILY_API_KEY',
-  opencorporates: 'OPENCORPORATES_API_KEY',
+const PROVIDER_KEY_FIELDS: Record<string, keyof NonNullable<OrgSettings['apiKeys']>> = {
+  apify: 'apifyToken',
+  firecrawl: 'firecrawlApiKey',
+  apollo: 'apolloApiKey',
+  hunter: 'hunterApiKey',
+  tavily: 'tavilyApiKey',
+  opencorporates: 'openCorporatesApiKey',
 };
 
 const PROVIDER_DEFAULTS: Record<string, boolean> = {
@@ -28,13 +29,15 @@ export async function getLeadEngineConfig(organizationId: string): Promise<LeadE
     where: { id: organizationId },
     select: { settings: true },
   });
-  const settings = (org?.settings ?? {}) as Record<string, unknown>;
-  const stored = (settings.leadEngine ?? {}) as Record<string, unknown>;
+  const parsedSettings = orgSettingsSchema.safeParse(org?.settings ?? {});
+  const settings: OrgSettings = parsedSettings.success ? parsedSettings.data : {};
+  const rawSettings = (org?.settings ?? {}) as Record<string, unknown>;
+  const stored = (rawSettings.leadEngine ?? {}) as Record<string, unknown>;
   const storedProviders = (stored.providers ?? {}) as Record<string, { enabled: boolean }>;
 
   const providers: Record<string, boolean> = {};
-  for (const [id, envKey] of Object.entries(PROVIDER_ENV_KEYS)) {
-    const configured = Boolean(process.env[envKey]);
+  for (const [id, field] of Object.entries(PROVIDER_KEY_FIELDS)) {
+    const configured = Boolean(settings.apiKeys?.[field]);
     providers[id] = (storedProviders[id]?.enabled ?? PROVIDER_DEFAULTS[id]) && configured;
   }
 

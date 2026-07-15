@@ -5,6 +5,7 @@ import { pipelineStageConfigSchema } from './pipeline-stages.js';
 import { LEAD_STAGES } from './stages.js';
 import { DEFAULT_LOSS_REASONS } from './close-lead.js';
 import { leadTagsField } from './lead-tags.js';
+import { rolePermissionsSchema } from './permissions.js';
 
 const lossReasonCodes = DEFAULT_LOSS_REASONS.map((r) => r.code) as [string, ...string[]];
 
@@ -282,6 +283,23 @@ export const orgSettingsSchema = z.object({
   meetingGraceMinutes: z.number().int().min(0).max(120).optional(),
   /** Default days after SENT before quote follow-up if followUpAt not set (PRO-011) */
   quoteFollowUpDays: z.number().int().min(1).max(90).optional(),
+  /** Granular per-role feature access, configured by an org admin. */
+  rolePermissions: rolePermissionsSchema,
+  /** Org-owned integration credentials for lead-gen data sources — each org uses its own account. */
+  apiKeys: z
+    .object({
+      apolloApiKey: z.string().max(500).optional(),
+      apifyToken: z.string().max(500).optional(),
+      firecrawlApiKey: z.string().max(500).optional(),
+      tavilyApiKey: z.string().max(500).optional(),
+      hunterApiKey: z.string().max(500).optional(),
+      openCorporatesApiKey: z.string().max(500).optional(),
+      prospeoApiKey: z.string().max(500).optional(),
+      tombaApiKey: z.string().max(500).optional(),
+      tombaApiSecret: z.string().max(500).optional(),
+    })
+    .partial()
+    .optional(),
 });
 
 export const suggestLeadCaptureSchema = z.object({

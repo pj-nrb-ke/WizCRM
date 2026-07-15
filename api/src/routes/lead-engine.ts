@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { hasFeatureAccess } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
+import { getOrgSettings } from '../services/org-settings.service.js';
 import {
   listCampaigns,
   getCampaign,
@@ -23,6 +25,20 @@ import {
   countEligibleForStep,
   verifyUnsubToken,
 } from '../services/lead-engine/email-sequence.service.js';
+
+/** Discovery/ICP runs spend web-search and LLM credits, so they are restricted to managers with the feature enabled. */
+function requireLeadGeneratorAccess() {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    const { role, organizationId } = request.user;
+    if (role !== 'MANAGER' && role !== 'ADMIN') {
+      return reply.status(403).send({ error: 'Managers and admins only' });
+    }
+    const settings = await getOrgSettings(organizationId);
+    if (!hasFeatureAccess(role, settings.rolePermissions, 'leadGenerator')) {
+      return reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
+    }
+  };
+}
 
 export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -73,6 +89,7 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/campaigns/:id/discover', {
     config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+    preHandler: requireLeadGeneratorAccess(),
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     try {
@@ -96,6 +113,7 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/campaigns/:id/icp-run', {
     config: { rateLimit: { max: 3, timeWindow: '1 minute' } },
+    preHandler: requireLeadGeneratorAccess(),
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as {

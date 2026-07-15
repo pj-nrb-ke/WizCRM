@@ -3,6 +3,8 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
+import { bindOrgContext } from './lib/org-context.js';
+import { getOrgSettings } from './services/org-settings.service.js';
 import { authRoutes } from './routes/auth.js';
 import { leadRoutes } from './routes/leads.js';
 import { activityRoutes } from './routes/activities.js';
@@ -88,6 +90,11 @@ export async function buildApp() {
     } catch {
       return reply.status(401).send({ error: 'Unauthorized' });
     }
+    // Each org uses its own lead-gen integration accounts (Apollo/Apify/etc.) —
+    // bind them once here so provider code can resolve the caller's own keys
+    // without threading organizationId through every function signature.
+    const settings = await getOrgSettings(request.user.organizationId);
+    bindOrgContext(request.user.organizationId, settings.apiKeys ?? {});
   });
 
   await app.register(healthRoutes);

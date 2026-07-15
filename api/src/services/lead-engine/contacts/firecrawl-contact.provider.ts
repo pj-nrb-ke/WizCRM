@@ -1,7 +1,7 @@
 import { ContactProvider, type ContactProviderOpts } from './contact-provider.interface.js';
 import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 const EXTRACT_SCHEMA = {
   type: 'object',
@@ -45,7 +45,7 @@ export class FirecrawlContactProvider extends ContactProvider {
     domain: string | null,
     _opts?: ContactProviderOpts,
   ): Promise<ClassifiedContact[]> {
-    if (!config.firecrawlApiKey || !domain) return [];
+    if (!orgApiKeys.firecrawlApiKey() || !domain) return [];
 
     const urlsToTry = [
       `https://${domain}`,
@@ -76,7 +76,7 @@ export class FirecrawlContactProvider extends ContactProvider {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.firecrawlApiKey}`,
+          Authorization: `Bearer ${orgApiKeys.firecrawlApiKey()}`,
         },
         body: JSON.stringify({
           url,

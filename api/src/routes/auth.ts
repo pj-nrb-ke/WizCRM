@@ -2,12 +2,13 @@ import type { FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
 import zxcvbn from 'zxcvbn';
 import { config } from '../config.js';
-import { loginSchema } from '@wizcrm/shared';
+import { loginSchema, resolvePermissions } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrganizationEntitlements } from '../services/entitlements.service.js';
 import { requestGdprExport } from '../services/erp-sync.service.js';
 import { sendPasswordResetEmail } from '../services/auth-email.service.js';
 import { createPasswordResetToken, hashResetToken, FORGOT_PASSWORD_TTL_MS } from '../services/password-reset.service.js';
+import { getOrgSettings } from '../services/org-settings.service.js';
 
 // A valid bcrypt hash (of a random string) used as a constant-time decoy when
 // the email doesn't match any user, to equalize login response timing.
@@ -80,7 +81,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       role: user.role,
     });
 
-    const entitlements = await getOrganizationEntitlements(user.organizationId);
+    const [entitlements, settings] = await Promise.all([
+      getOrganizationEntitlements(user.organizationId),
+      getOrgSettings(user.organizationId),
+    ]);
+    const permissions = resolvePermissions(user.role, settings.rolePermissions);
 
     return {
       token,
@@ -92,6 +97,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         organizationId: user.organizationId,
       },
       entitlements,
+      permissions,
     };
   });
 
@@ -101,8 +107,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       select: { id: true, email: true, name: true, role: true, organizationId: true },
     });
     if (!user) return { user: null };
-    const entitlements = await getOrganizationEntitlements(user.organizationId);
-    return { user, entitlements };
+    const [entitlements, settings] = await Promise.all([
+      getOrganizationEntitlements(user.organizationId),
+      getOrgSettings(user.organizationId),
+    ]);
+    const permissions = resolvePermissions(user.role, settings.rolePermissions);
+    return { user, entitlements, permissions };
   });
 
   app.post('/change-password', { onRequest: [app.authenticate] }, async (request, reply) => {

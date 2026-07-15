@@ -43,6 +43,8 @@ import { InboundEmailsPage } from './pages/InboundEmailsPage';
 import { VsmRunsPage } from './pages/VsmRunsPage';
 import { EscalationsPage } from './pages/EscalationsPage';
 import { VsmPerformancePage } from './pages/VsmPerformancePage';
+import type { FeatureKey } from '@wizcrm/shared';
+import { RolePermissionsPage } from './pages/RolePermissionsPage';
 import { isAdmin, isManager } from './lib/roles';
 import { useAuth } from './lib/auth';
 
@@ -55,6 +57,14 @@ function AdminOnly({ children }: { children: React.ReactNode }) {
 function ManagerOnly({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   if (!isManager(user?.role)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+/** Manager-only page whose visibility an org admin can additionally toggle off per role. */
+function FeatureGated({ feature, children }: { feature: FeatureKey; children: React.ReactNode }) {
+  const { user, can } = useAuth();
+  if (!isManager(user?.role)) return <Navigate to="/" replace />;
+  if (!can(feature)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -109,25 +119,25 @@ export default function App() {
             <Route
               path="/reports"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="reports">
                   <ReportsPage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
               path="/targets"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="targets">
                   <TargetsPage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
               path="/data-hygiene"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="dataHygiene">
                   <DataHygienePage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
@@ -214,33 +224,33 @@ export default function App() {
             <Route
               path="/expos"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="expoFinder">
                   <ExposPage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
               path="/leads/import"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="bulkImport">
                   <BulkImportPage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
               path="/lead-generator"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="leadGenerator">
                   <LeadGeneratorPage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
               path="/contact-finder"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="contactFinder">
                   <ContactFinderPage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
@@ -254,9 +264,9 @@ export default function App() {
             <Route
               path="/lead-generator/:campaignId"
               element={
-                <ManagerOnly>
+                <FeatureGated feature="leadGenerator">
                   <CampaignDetailPage />
-                </ManagerOnly>
+                </FeatureGated>
               }
             />
             <Route
@@ -270,9 +280,9 @@ export default function App() {
             <Route
               path="/organization"
               element={
-                <ManagerOnly>
+                <AdminOnly>
                   <OrganizationPage />
-                </ManagerOnly>
+                </AdminOnly>
               }
             />
             <Route
@@ -280,6 +290,14 @@ export default function App() {
               element={
                 <AdminOnly>
                   <UsersPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/settings/permissions"
+              element={
+                <AdminOnly>
+                  <RolePermissionsPage />
                 </AdminOnly>
               }
             />

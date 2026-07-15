@@ -7,12 +7,16 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { Entitlements } from '@wizcrm/shared';
+import type { Entitlements, FeatureKey } from '@wizcrm/shared';
 import { api, clearStoredToken, getStoredToken, setStoredToken, TOKEN_KEY, type AuthUser } from './api';
+
+type Permissions = Record<FeatureKey, boolean>;
 
 type AuthState = {
   user: AuthUser | null;
   entitlements: Entitlements | null;
+  permissions: Permissions | null;
+  can: (key: FeatureKey) => boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -23,6 +27,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadMe = useCallback(async () => {
@@ -30,17 +35,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) {
       setUser(null);
       setEntitlements(null);
+      setPermissions(null);
       setLoading(false);
       return;
     }
     try {
-      const res = await api<{ user: AuthUser; entitlements: Entitlements }>('/auth/me');
+      const res = await api<{ user: AuthUser; entitlements: Entitlements; permissions: Permissions }>(
+        '/auth/me',
+      );
       setUser(res.user);
       setEntitlements(res.entitlements);
+      setPermissions(res.permissions);
     } catch {
       clearStoredToken();
       setUser(null);
       setEntitlements(null);
+      setPermissions(null);
     } finally {
       setLoading(false);
     }
@@ -65,28 +75,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadMe]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await api<{ token: string; user: AuthUser; entitlements: Entitlements }>(
-      '/auth/login',
-      {
-        method: 'POST',
-        body: { email, password },
-        auth: false,
-      },
-    );
+    const data = await api<{
+      token: string;
+      user: AuthUser;
+      entitlements: Entitlements;
+      permissions: Permissions;
+    }>('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+      auth: false,
+    });
     setStoredToken(data.token);
     setUser(data.user);
     setEntitlements(data.entitlements);
+    setPermissions(data.permissions);
   }, []);
 
   const logout = useCallback(() => {
     clearStoredToken();
     setUser(null);
     setEntitlements(null);
+    setPermissions(null);
   }, []);
 
+  const can = useCallback((key: FeatureKey) => permissions?.[key] ?? true, [permissions]);
+
   const value = useMemo(
-    () => ({ user, entitlements, loading, login, logout }),
-    [user, entitlements, loading, login, logout],
+    () => ({ user, entitlements, permissions, can, loading, login, logout }),
+    [user, entitlements, permissions, can, loading, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

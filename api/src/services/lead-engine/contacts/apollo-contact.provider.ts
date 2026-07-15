@@ -1,7 +1,7 @@
 import { ContactProvider, type ContactProviderOpts } from './contact-provider.interface.js';
 import { classifyContact } from '../kdpa.js';
 import type { ClassifiedContact } from '../types.js';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 
 const DECISION_TITLES = [
   'Purchasing Manager', 'Procurement Officer', 'Procurement Manager',
@@ -37,7 +37,8 @@ export class ApolloContactProvider extends ContactProvider {
     domain: string | null,
     opts?: ContactProviderOpts,
   ): Promise<ClassifiedContact[]> {
-    if (!config.apolloApiKey) return [];
+    const apolloApiKey = orgApiKeys.apolloApiKey();
+    if (!apolloApiKey) return [];
 
     const titles = opts?.positionHint
       ? [opts.positionHint, ...DECISION_TITLES]
@@ -63,7 +64,7 @@ export class ApolloContactProvider extends ContactProvider {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': config.apolloApiKey,
+          'x-api-key': apolloApiKey,
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(15_000),

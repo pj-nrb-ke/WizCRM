@@ -5,6 +5,7 @@ import {
   orgSettingsSchema,
   updateAdminUserSchema,
   updateOrganizationSchema,
+  type OrgSettings,
 } from '@wizcrm/shared';
 import { config } from '../config.js';
 import { getErrorReport } from '../lib/error-recorder.js';
@@ -89,7 +90,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.get('/organization', { preHandler: requireManager() }, async (request) => {
+  app.get('/organization', { preHandler: requireAdmin() }, async (request) => {
     const org = await prisma.organization.findUnique({
       where: { id: request.user.organizationId },
       select: { id: true, name: true, settings: true, createdAt: true },
@@ -366,14 +367,16 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // ─── Lead Engine — Data Sources settings ────────────────────────────────────
+  // Each org supplies its own provider accounts (api-keys sub-object below) —
+  // there is no shared/global key any org can silently inherit.
 
-  const PROVIDER_ENV_KEYS: Record<string, string> = {
-    apify: 'APIFY_TOKEN',
-    firecrawl: 'FIRECRAWL_API_KEY',
-    apollo: 'APOLLO_API_KEY',
-    hunter: 'HUNTER_API_KEY',
-    tavily: 'TAVILY_API_KEY',
-    opencorporates: 'OPENCORPORATES_API_KEY',
+  const PROVIDER_KEY_FIELDS: Record<string, keyof NonNullable<OrgSettings['apiKeys']>> = {
+    apify: 'apifyToken',
+    firecrawl: 'firecrawlApiKey',
+    apollo: 'apolloApiKey',
+    hunter: 'hunterApiKey',
+    tavily: 'tavilyApiKey',
+    opencorporates: 'openCorporatesApiKey',
   };
 
   const PROVIDER_DEFAULTS: Record<string, boolean> = {
@@ -386,17 +389,18 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   };
 
   app.get('/settings/lead-engine', { preHandler: requireAdmin() }, async (request) => {
+    const settings = await getOrgSettings(request.user.organizationId);
     const org = await prisma.organization.findUnique({
       where: { id: request.user.organizationId },
       select: { settings: true },
     });
-    const settings = (org?.settings ?? {}) as Record<string, unknown>;
-    const stored = (settings.leadEngine ?? {}) as Record<string, unknown>;
+    const rawSettings = (org?.settings ?? {}) as Record<string, unknown>;
+    const stored = (rawSettings.leadEngine ?? {}) as Record<string, unknown>;
     const storedProviders = (stored.providers ?? {}) as Record<string, { enabled: boolean }>;
 
     const providers: Record<string, { enabled: boolean; configured: boolean }> = {};
-    for (const [id, envKey] of Object.entries(PROVIDER_ENV_KEYS)) {
-      const configured = Boolean(process.env[envKey]);
+    for (const [id, field] of Object.entries(PROVIDER_KEY_FIELDS)) {
+      const configured = Boolean(settings.apiKeys?.[field]);
       const defaultOn = PROVIDER_DEFAULTS[id] ?? false;
       const storedEnabled = storedProviders[id]?.enabled ?? defaultOn;
       providers[id] = { enabled: storedEnabled && configured, configured };
@@ -405,6 +409,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return {
       providers,
       globalLimit: (stored.globalLimit as number | undefined) ?? 20,
+      apiKeys: settings.apiKeys ?? {},
     };
   });
 
@@ -412,21 +417,35 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const body = request.body as {
       providers?: Record<string, { enabled: boolean }>;
       globalLimit?: number;
+      apiKeys?: Record<string, string>;
     };
     if (!body || typeof body !== 'object') {
       return reply.status(400).send({ error: 'Invalid body' });
     }
 
+    const apiKeysPatch: Record<string, string> = {};
+    if (body.apiKeys && typeof body.apiKeys === 'object') {
+      for (const field of Object.values(PROVIDER_KEY_FIELDS)) {
+        if (typeof body.apiKeys[field] === 'string') {
+          apiKeysPatch[field] = body.apiKeys[field].trim().slice(0, 500);
+        }
+      }
+    }
+    const mergedSettings = await mergeOrgSettings(request.user.organizationId, {
+      apiKeys: apiKeysPatch,
+    });
+
     const safeProviders: Record<string, { enabled: boolean }> = {};
-    for (const id of Object.keys(PROVIDER_ENV_KEYS)) {
+    for (const [id, field] of Object.entries(PROVIDER_KEY_FIELDS)) {
       if (body.providers && id in body.providers) {
-        const configured = Boolean(process.env[PROVIDER_ENV_KEYS[id]]);
+        const configured = Boolean(mergedSettings.apiKeys?.[field]);
         safeProviders[id] = { enabled: Boolean(body.providers[id].enabled) && configured };
       }
     }
 
     const globalLimit = Math.min(Math.max(Number(body.globalLimit ?? 20), 1), 100);
 
+    // Re-fetch after the apiKeys merge above so this write doesn't clobber it.
     const org = await prisma.organization.findUnique({
       where: { id: request.user.organizationId },
       select: { settings: true },
@@ -442,7 +461,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
-    return { providers: safeProviders, globalLimit };
+    return { providers: safeProviders, globalLimit, apiKeys: mergedSettings.apiKeys ?? {} };
   });
 
 };

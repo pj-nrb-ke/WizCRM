@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { config } from '../../../config.js';
+import { orgApiKeys } from '../../../lib/org-context.js';
 import { SignalProvider, type IntentSignalRaw } from './signal-provider.interface.js';
 
 export const KENYA_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -164,7 +164,7 @@ export async function tavilySearch(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      api_key:             config.tavilyApiKey,
+      api_key:             orgApiKeys.tavilyApiKey(),
       query,
       search_depth:        'basic',
       max_results:         opts.maxResults ?? 5,
@@ -190,7 +190,7 @@ export class TavilyProvider extends SignalProvider {
   readonly name = 'tavily';
 
   async search(productKeywords: string[], locations: string[]): Promise<IntentSignalRaw[]> {
-    if (!config.tavilyApiKey) return [];
+    if (!orgApiKeys.tavilyApiKey()) return [];
 
     const queries  = buildQueries(productKeywords, locations);
     const signals: IntentSignalRaw[] = [];

@@ -1,8 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { hasFeatureAccess } from '@wizcrm/shared';
 import {
   findContactsForCompanies,
   type CompanyInput,
 } from '../services/contact-finder/contact-finder.service.js';
+import { getOrgSettings } from '../services/org-settings.service.js';
 
 export const contactFinderRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -10,7 +12,12 @@ export const contactFinderRoutes: FastifyPluginAsync = async (app) => {
   app.post('/', {
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, async (request, reply) => {
-    const { organizationId } = request.user;
+    const { organizationId, role } = request.user;
+
+    const settings = await getOrgSettings(organizationId);
+    if (!hasFeatureAccess(role, settings.rolePermissions, 'contactFinder')) {
+      return reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
+    }
 
     const body = request.body as {
       companies?: Array<string | { name: string; website?: string }>;
