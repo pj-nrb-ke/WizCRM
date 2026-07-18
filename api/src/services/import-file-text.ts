@@ -1,7 +1,10 @@
 import * as XLSX from 'xlsx';
 
 const SPREADSHEET_EXTS = ['.xlsx', '.xls', '.xlsm'];
-const MAX_TEXT_CHARS = 60_000; // keeps token cost bounded on very large files
+// The 14MB base64 upload cap (see leadImportExtractSchema/prospectImportExtractSchema)
+// already bounds the absolute worst case — this just guards against pathological
+// single-cell content, not against large-but-legitimate contact lists.
+const MAX_TEXT_CHARS = 1_000_000;
 
 function isSpreadsheet(fileName: string, mimeType: string): boolean {
   const lower = fileName.toLowerCase();
@@ -31,4 +34,21 @@ export function buildExtractionText(fileName: string, mimeType: string, dataBase
 
   // CSV / JSON / plain text — already human/LLM-readable as-is.
   return buffer.toString('utf-8').slice(0, MAX_TEXT_CHARS);
+}
+
+/**
+ * Splits a large text blob into line-bounded chunks small enough that the model's JSON
+ * reply for any one chunk reliably finishes instead of getting cut off mid-object — that
+ * truncation is what throws "Expected property name or '}' in JSON" on big imports.
+ * Multi-sheet merge-by-company-name (see extraction prompts) only sees within one chunk;
+ * an acceptable tradeoff for large single-purpose lists, which rarely span sheets anyway.
+ */
+export function chunkExtractionText(text: string, linesPerChunk = 120): string[] {
+  const lines = text.split('\n');
+  if (lines.length <= linesPerChunk) return [text];
+  const chunks: string[] = [];
+  for (let i = 0; i < lines.length; i += linesPerChunk) {
+    chunks.push(lines.slice(i, i + linesPerChunk).join('\n'));
+  }
+  return chunks;
 }

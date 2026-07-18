@@ -224,7 +224,7 @@ export function BulkImportPage() {
         title={destination === 'leads' ? 'Bulk import leads' : 'Bulk import prospect list'}
         subtitle={
           destination === 'leads'
-            ? 'Upload an Excel, CSV, JSON, or text file — AI reads it, merges multi-sheet data by company, and maps it to leads. Up to 500 leads.'
+            ? 'Upload an Excel, CSV, JSON, or text file — AI reads it, merges multi-sheet data by company, and maps it to leads. Up to 3,000 leads.'
             : "Upload a cold contact list — AI reads it, merges multi-sheet data by company, and files it as a separate list your team hasn't contacted yet. Promote each one to a real lead once someone makes contact."
         }
       />

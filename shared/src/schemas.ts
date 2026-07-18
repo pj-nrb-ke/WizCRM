@@ -113,7 +113,7 @@ export const bulkImportLeadsSchema = z.object({
       }),
     )
     .min(1)
-    .max(500),
+    .max(3000),
   ownerId: z.string().uuid().optional(),
 });
 
@@ -176,7 +176,7 @@ export type ProspectCandidate = z.infer<typeof prospectCandidateSchema>;
 
 /** Commit step: rows the user reviewed/edited in the preview table, plus which list to file them under. */
 export const prospectImportCommitSchema = z.object({
-  rows: z.array(prospectCandidateSchema).min(1).max(500),
+  rows: z.array(prospectCandidateSchema).min(1).max(3000),
 });
 
 /** Reorder cards within one pipeline column (manager board). */

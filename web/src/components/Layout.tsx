@@ -300,7 +300,7 @@ export function Layout() {
             <CollapsibleNavGroup label="Sales" storageKey="sales" defaultOpen expanded={expanded}>
               <NavItem to="/manager" icon="dashboard" label="Manager view" expanded={expanded} />
               <NavItem to="/pipeline" icon="pipeline" label="Pipeline" expanded={expanded} />
-              <NavItem to="/leads" icon="leads" label="Leads" expanded={expanded} />
+              <NavItem to="/leads" end icon="leads" label="Leads" expanded={expanded} />
               {can('bulkImport') && <NavItem to="/leads/import" icon="leads" label="Bulk import" expanded={expanded} />}
               {can('leadGenerator') && <NavItem to="/lead-generator" icon="ai" label="Lead Generator" expanded={expanded} />}
               {can('contactFinder') && <NavItem to="/contact-finder" icon="leads" label="Contact Finder" expanded={expanded} />}

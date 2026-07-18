@@ -1,6 +1,6 @@
 import { LEAD_PRIORITIES, type ExtractedLeadRow, type LeadPriority } from '@wizcrm/shared';
 import { createOpenAIClient, chatJson } from './ai/openai.provider.js';
-import { buildExtractionText } from './import-file-text.js';
+import { buildExtractionText, chunkExtractionText } from './import-file-text.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -41,7 +41,7 @@ function sanitizeRow(item: Record<string, unknown>): ExtractedLeadRow | null {
   };
 }
 
-const MAX_CANDIDATES = 500;
+const MAX_CANDIDATES = 3000;
 
 export class LeadImportUnavailableError extends Error {
   readonly code = 'LEAD_IMPORT_UNAVAILABLE';
@@ -101,32 +101,55 @@ export async function extractLeadsFromImport(
     return { candidates: [], warnings: ['The file appeared to be empty.'], truncated: false };
   }
 
-  const raw = await chatJson<{ leads?: unknown[]; warnings?: unknown[] }>(
-    client,
-    SYSTEM_PROMPT,
-    `File: ${fileName}\n\n${text}`,
-    { temperature: 0.2 },
-  );
-
-  const items = Array.isArray(raw.leads) ? raw.leads : [];
+  // Chunked so a big file's AI reply can't get cut off mid-JSON (that truncation is what
+  // used to throw "Expected property name or '}' in JSON" on 2,000+ row imports) — each
+  // chunk is small enough to reliably finish in one response.
+  const chunks = chunkExtractionText(text);
   const candidates: ExtractedLeadRow[] = [];
+  const warnings: string[] = [];
   let dropped = 0;
-  for (const item of items) {
+  let itemsSeen = 0;
+  let chunksFailed = 0;
+
+  for (const chunk of chunks) {
     if (candidates.length >= MAX_CANDIDATES) break;
-    if (typeof item !== 'object' || item === null) {
-      dropped++;
+    let raw: { leads?: unknown[]; warnings?: unknown[] };
+    try {
+      raw = await chatJson<{ leads?: unknown[]; warnings?: unknown[] }>(
+        client,
+        SYSTEM_PROMPT,
+        `File: ${fileName}\n\n${chunk}`,
+        { temperature: 0.2, maxTokens: 16_000 },
+      );
+    } catch {
+      chunksFailed++;
       continue;
     }
-    const sanitized = sanitizeRow(item as Record<string, unknown>);
-    if (sanitized) candidates.push(sanitized);
-    else dropped++;
+
+    const items = Array.isArray(raw.leads) ? raw.leads : [];
+    itemsSeen += items.length;
+    for (const item of items) {
+      if (candidates.length >= MAX_CANDIDATES) break;
+      if (typeof item !== 'object' || item === null) {
+        dropped++;
+        continue;
+      }
+      const sanitized = sanitizeRow(item as Record<string, unknown>);
+      if (sanitized) candidates.push(sanitized);
+      else dropped++;
+    }
+    warnings.push(...(raw.warnings ?? []).filter((w): w is string => typeof w === 'string'));
   }
 
-  const warnings = (raw.warnings ?? []).filter((w): w is string => typeof w === 'string');
   if (dropped > 0) {
     warnings.push(`${dropped} row${dropped === 1 ? '' : 's'} had no usable name and were skipped.`);
   }
-  const truncated = items.length > MAX_CANDIDATES;
+  if (chunksFailed > 0) {
+    warnings.push(
+      `${chunksFailed} section${chunksFailed === 1 ? '' : 's'} of the file could not be read by AI and ${chunksFailed === 1 ? 'was' : 'were'} skipped — try re-uploading if leads seem missing.`,
+    );
+  }
+  const truncated = itemsSeen > MAX_CANDIDATES || candidates.length >= MAX_CANDIDATES;
 
   return { candidates, warnings, truncated };
 }
