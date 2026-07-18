@@ -54,6 +54,15 @@
   box-sizing: border-box;
 }
 
+/*
+ * Every size below is in rem, deliberately, so this one line rescales the
+ * whole app. Browser default (16px) read as oversized for a dense,
+ * data-heavy CRM — 14px matches the density of Salesforce/HubSpot/Linear.
+ */
+html {
+  font-size: 14px;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -306,13 +315,13 @@ textarea {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text);
@@ -320,9 +329,9 @@ textarea {
 }
 
 .page-subtitle {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.875rem;
   max-width: 52ch;
 }
 
@@ -534,7 +543,8 @@ h2,
 .workspace textarea,
 .login-card input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
+  font-size: 0.875rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: #fff;
@@ -567,7 +577,8 @@ button {
   cursor: pointer;
   border: none;
   border-radius: var(--radius-sm);
-  padding: 10px 16px;
+  padding: 8px 14px;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
@@ -666,8 +677,9 @@ table {
 th,
 td {
   text-align: left;
-  padding: 12px 10px;
+  padding: 10px;
   border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
 }
 
 th {
