@@ -137,6 +137,48 @@ export const extractedLeadRowSchema = z.object({
 
 export type ExtractedLeadRow = z.infer<typeof extractedLeadRowSchema>;
 
+/** Upload a file (or pasted text, base64-encoded client-side) for AI-assisted prospect-list extraction. */
+export const prospectImportExtractSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(200),
+  dataBase64: z.string().min(1).max(14_000_000),
+  /** Opt-in: for companies with no usable contact, try Contact Finder before giving up. Capped server-side. */
+  research: z.boolean().optional(),
+});
+
+export const prospectContactCandidateSchema = z.object({
+  name: z.string().max(200).optional(),
+  title: z.string().max(120).optional(),
+  email: emailField.optional(),
+  phone: phoneField.optional(),
+});
+
+export const prospectDuplicateFlagSchema = z.object({
+  type: z.enum(['lead', 'prospect', 'batch']),
+  label: z.string(),
+  leadId: z.string().uuid().optional(),
+  prospectId: z.string().uuid().optional(),
+});
+
+export const prospectCandidateSchema = z.object({
+  companyName: z.string().min(1).max(300),
+  industry: z.string().max(120).optional(),
+  address: z.string().max(500).optional(),
+  website: z.string().max(500).optional(),
+  source: z.string().max(100).optional(),
+  contacts: z.array(prospectContactCandidateSchema).max(10).default([]),
+  duplicate: prospectDuplicateFlagSchema.optional(),
+});
+
+export type ProspectContactCandidate = z.infer<typeof prospectContactCandidateSchema>;
+export type ProspectDuplicateFlag = z.infer<typeof prospectDuplicateFlagSchema>;
+export type ProspectCandidate = z.infer<typeof prospectCandidateSchema>;
+
+/** Commit step: rows the user reviewed/edited in the preview table, plus which list to file them under. */
+export const prospectImportCommitSchema = z.object({
+  rows: z.array(prospectCandidateSchema).min(1).max(500),
+});
+
 /** Reorder cards within one pipeline column (manager board). */
 export const pipelineReorderSchema = z.object({
   stage: z.enum(LEAD_STAGES),

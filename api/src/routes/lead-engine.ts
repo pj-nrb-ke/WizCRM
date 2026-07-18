@@ -28,6 +28,12 @@ import {
   countEligibleForStep,
   verifyUnsubToken,
 } from '../services/lead-engine/email-sequence.service.js';
+import {
+  extractProspectsFromImport,
+  commitProspectImport,
+  ProspectImportUnavailableError,
+} from '../services/lead-engine/prospect-import.service.js';
+import { prospectImportExtractSchema, prospectImportCommitSchema } from '@wizcrm/shared';
 
 /** Discovery/ICP runs spend web-search and LLM credits, so they are restricted to managers with the feature enabled. */
 function requireLeadGeneratorAccess() {
@@ -41,6 +47,22 @@ function requireLeadGeneratorAccess() {
       return reply.status(403).send({ error: 'This feature has been disabled for your role by your admin.' });
     }
   };
+}
+
+/** Pick the best contact as a Lead's primary, and carry every other captured contact along as extras. */
+function splitPrimaryAndExtraContacts(
+  contacts: { email: string | null; phone: string | null; fullName: string | null }[],
+  prospectPhone: string | null,
+) {
+  const primary = contacts.find((c) => c.email || c.phone) ?? contacts[0];
+  const others = contacts.filter((c) => c !== primary);
+  const extraEmails = [...new Set(others.map((c) => c.email).filter((e): e is string => Boolean(e)))].slice(0, 5);
+  const extraPhones = [
+    ...new Set(
+      [prospectPhone, ...others.map((c) => c.phone)].filter((p): p is string => Boolean(p) && p !== primary?.phone),
+    ),
+  ].slice(0, 5);
+  return { primary, extraEmails, extraPhones };
 }
 
 export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
@@ -309,6 +331,59 @@ export const leadEngineRoutes: FastifyPluginAsync = async (app) => {
     return reply.status(201).send(prospect);
   });
 
+  // ── Bulk prospect-list upload (file/paste, AI-extracted, previewed before commit) ──
+
+  /** Step 1: extract + optionally research + dedupe-check a whole file. Nothing is saved yet. */
+  app.post(
+    '/prospects/import/extract',
+    { preHandler: requireLeadGeneratorAccess(), config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const { organizationId } = request.user;
+      const parsed = prospectImportExtractSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      try {
+        const result = await extractProspectsFromImport(
+          parsed.data.fileName,
+          parsed.data.mimeType,
+          parsed.data.dataBase64,
+          organizationId,
+          parsed.data.research ?? false,
+        );
+        return result;
+      } catch (e) {
+        if (e instanceof ProspectImportUnavailableError) {
+          return reply.status(503).send({ error: e.message, code: e.code });
+        }
+        return reply.status(500).send({
+          error: e instanceof Error ? e.message : 'Could not extract prospects from this file.',
+        });
+      }
+    },
+  );
+
+  /** Step 2: commit the (possibly edited) preview rows into a list as Prospects. */
+  app.post(
+    '/campaigns/:id/prospects/import',
+    { preHandler: requireLeadGeneratorAccess() },
+    async (request, reply) => {
+      const { id: campaignId } = request.params as { id: string };
+      const { organizationId } = request.user;
+      const parsed = prospectImportCommitSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.flatten() });
+      }
+      try {
+        const result = await commitProspectImport(organizationId, campaignId, parsed.data.rows);
+        return reply.status(201).send(result);
+      } catch (e) {
+        const err = e as Error & { statusCode?: number };
+        return reply.status(err.statusCode ?? 500).send({ error: err.message });
+      }
+    },
+  );
+
   /** For prospect lists a rep already has (email exports, corporate directory) — not AI discovery. */
   app.post('/campaigns/:id/prospects/import-text', { preHandler: requireLeadGeneratorAccess() }, async (request, reply) => {
     const { id: campaignId } = request.params as { id: string };
@@ -474,12 +549,12 @@ Return JSON: {"contacts":[{"companyName","contactName","email","phone","title","
 
   // ── Import to pipeline ─────────────────────────────────────────────────────
 
-  app.post('/prospects/:id/import', async (request, reply) => {
+  app.post('/prospects/:id/import', { preHandler: requireLeadGeneratorAccess() }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     const prospect = await prisma.prospect.findFirst({
       where: { id, campaign: { organizationId: request.user.organizationId } },
-      include: { contacts: { take: 1 }, campaign: { select: { id: true } } },
+      include: { contacts: true, campaign: { select: { id: true } } },
     });
     if (!prospect) return reply.status(404).send({ error: 'Prospect not found' });
 
@@ -487,16 +562,19 @@ Return JSON: {"contacts":[{"companyName","contactName","email","phone","title","
       return reply.status(409).send({ error: 'Already imported', leadId: prospect.importedLeadId });
     }
 
-    const contact = prospect.contacts[0];
+    // Prefer the first named contact with a real email/phone as the lead's primary contact;
+    // every other captured contact still rides along via extraEmails/extraPhones below.
+    const { primary, extraEmails, extraPhones } = splitPrimaryAndExtraContacts(prospect.contacts, prospect.phone);
 
     // Duplicate guard
-    if (contact?.email || prospect.phone) {
+    if (primary?.email || prospect.phone || primary?.phone) {
       const dupe = await prisma.lead.findFirst({
         where: {
           organizationId: request.user.organizationId,
           OR: [
-            ...(contact?.email ? [{ emailNormalized: contact.email.toLowerCase() }] : []),
+            ...(primary?.email ? [{ emailNormalized: primary.email.toLowerCase() }] : []),
             ...(prospect.phone ? [{ phoneNormalized: prospect.phone.replace(/\D/g, '') }] : []),
+            ...(primary?.phone ? [{ phoneNormalized: primary.phone.replace(/\D/g, '') }] : []),
           ],
         },
       });
@@ -511,12 +589,14 @@ Return JSON: {"contacts":[{"companyName","contactName","email","phone","title","
       data: {
         organizationId: request.user.organizationId,
         ownerId: request.user.sub,
-        name: contact?.fullName ?? prospect.companyName,
+        name: primary?.fullName ?? prospect.companyName,
         company: prospect.companyName,
-        email: contact?.email ?? null,
-        emailNormalized: contact?.email?.toLowerCase() ?? null,
-        phone: prospect.phone ?? null,
-        phoneNormalized: prospect.phone?.replace(/\D/g, '') ?? null,
+        email: primary?.email ?? null,
+        emailNormalized: primary?.email?.toLowerCase() ?? null,
+        phone: primary?.phone ?? prospect.phone ?? null,
+        phoneNormalized: (primary?.phone ?? prospect.phone)?.replace(/\D/g, '') ?? null,
+        extraEmails,
+        extraPhones,
         address: prospect.address ?? null,
         googleMapsUrl:
           prospect.lat && prospect.lng
@@ -538,7 +618,7 @@ Return JSON: {"contacts":[{"companyName","contactName","email","phone","title","
 
   // ── Bulk import ────────────────────────────────────────────────────────────
 
-  app.post('/campaigns/:id/bulk-import', async (request, reply) => {
+  app.post('/campaigns/:id/bulk-import', { preHandler: requireLeadGeneratorAccess() }, async (request, reply) => {
     const { id: campaignId } = request.params as { id: string };
     const { prospectIds } = request.body as { prospectIds?: string[] };
 
@@ -557,20 +637,21 @@ Return JSON: {"contacts":[{"companyName","contactName","email","phone","title","
       try {
         const prospect = await prisma.prospect.findFirst({
           where: { id: prospectId, campaignId, organizationId: request.user.organizationId },
-          include: { contacts: { take: 1 } },
+          include: { contacts: true },
         });
         if (!prospect) { result.skipped++; continue; }
         if (prospect.importedLeadId) { result.skipped++; continue; }
 
-        const contact = prospect.contacts[0];
+        const { primary, extraEmails, extraPhones } = splitPrimaryAndExtraContacts(prospect.contacts, prospect.phone);
 
-        const dupe = contact?.email || prospect.phone
+        const dupe = primary?.email || prospect.phone || primary?.phone
           ? await prisma.lead.findFirst({
               where: {
                 organizationId: request.user.organizationId,
                 OR: [
-                  ...(contact?.email ? [{ emailNormalized: contact.email.toLowerCase() }] : []),
+                  ...(primary?.email ? [{ emailNormalized: primary.email.toLowerCase() }] : []),
                   ...(prospect.phone ? [{ phoneNormalized: prospect.phone.replace(/\D/g, '') }] : []),
+                  ...(primary?.phone ? [{ phoneNormalized: primary.phone.replace(/\D/g, '') }] : []),
                 ],
               },
             })
@@ -586,12 +667,14 @@ Return JSON: {"contacts":[{"companyName","contactName","email","phone","title","
           data: {
             organizationId: request.user.organizationId,
             ownerId: request.user.sub,
-            name: contact?.fullName ?? prospect.companyName,
+            name: primary?.fullName ?? prospect.companyName,
             company: prospect.companyName,
-            email: contact?.email ?? null,
-            emailNormalized: contact?.email?.toLowerCase() ?? null,
-            phone: prospect.phone ?? null,
-            phoneNormalized: prospect.phone?.replace(/\D/g, '') ?? null,
+            email: primary?.email ?? null,
+            emailNormalized: primary?.email?.toLowerCase() ?? null,
+            phone: primary?.phone ?? prospect.phone ?? null,
+            phoneNormalized: (primary?.phone ?? prospect.phone)?.replace(/\D/g, '') ?? null,
+            extraEmails,
+            extraPhones,
             address: prospect.address ?? null,
             googleMapsUrl: prospect.lat && prospect.lng
               ? `https://maps.google.com/?q=${prospect.lat},${prospect.lng}`
