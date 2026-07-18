@@ -253,69 +253,73 @@ export function BulkImportPage() {
           </button>
         </div>
 
-        {destination === 'leads' ? (
-          <label>
-            Default owner (optional)
-            <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-              <option value="">Me (current user)</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email})
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <>
+        <div className="form-grid-2">
+          {destination === 'leads' ? (
             <label>
-              List
-              <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)}>
-                <option value="">Choose a list…</option>
-                {campaigns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+              Default owner (optional)
+              <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+                <option value="">Me (current user)</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email})
                   </option>
                 ))}
-                <option value={NEW_LIST_VALUE}>+ New list…</option>
               </select>
             </label>
-            {campaignId === NEW_LIST_VALUE ? (
+          ) : (
+            <>
               <label>
-                New list name
-                <input
-                  type="text"
-                  value={newListName}
-                  onChange={(e) => setNewListName(e.target.value)}
-                  placeholder="e.g. WETO — July 2026"
-                />
+                List
+                <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)}>
+                  <option value="">Choose a list…</option>
+                  {campaigns.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value={NEW_LIST_VALUE}>+ New list…</option>
+                </select>
               </label>
-            ) : null}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: 'row' }}>
-              <input type="checkbox" checked={research} onChange={(e) => setResearch(e.target.checked)} style={{ width: 'auto' }} />
-              <span>
-                Research missing contacts with AI (uses your connected Apollo/Hunter/Tavily — capped at 50 companies per
-                import)
-              </span>
-            </label>
-          </>
-        )}
+              {campaignId === NEW_LIST_VALUE ? (
+                <label>
+                  New list name
+                  <input
+                    type="text"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    placeholder="e.g. WETO — July 2026"
+                  />
+                </label>
+              ) : null}
+            </>
+          )}
+          <label>
+            File (Excel, CSV, JSON, or text)
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_EXT}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setPastedText('');
+              }}
+            />
+          </label>
+        </div>
+
+        {destination === 'prospects' ? (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: 'row' }}>
+            <input type="checkbox" checked={research} onChange={(e) => setResearch(e.target.checked)} style={{ width: 'auto' }} />
+            <span>
+              Research missing contacts with AI (uses your connected Apollo/Hunter/Tavily — capped at 50 companies per
+              import)
+            </span>
+          </label>
+        ) : null}
 
         {config?.leadSources?.length ? (
           <p className="muted">Known sources: {config.leadSources.join(', ')}</p>
         ) : null}
-
-        <label>
-          File (Excel, CSV, JSON, or text)
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED_EXT}
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
-              setPastedText('');
-            }}
-          />
-        </label>
         {file ? (
           <p className="muted">
             {file.name} ({Math.round(file.size / 1024)} KB){' '}
