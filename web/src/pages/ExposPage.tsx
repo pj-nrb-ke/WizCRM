@@ -599,9 +599,11 @@ function ExpoCard({
         >
           {e.calendarEventId ? 'On the calendar' : 'Add to calendar'}
         </button>
-        <button type="button" className="btn-secondary btn-sm" onClick={onToggleDismiss}>
-          {e.dismissedAt ? 'Restore' : 'Not interested'}
-        </button>
+        {e.calendarEventId && !e.dismissedAt ? null : (
+          <button type="button" className="btn-secondary btn-sm" onClick={onToggleDismiss}>
+            {e.dismissedAt ? 'Restore' : 'Not interested'}
+          </button>
+        )}
       </div>
     </div>
   );
