@@ -229,8 +229,8 @@ export function Layout() {
                 >
                   {brandName}
                 </span>
-                <span className="text-[11px]" style={{ color: '#64748b' }}>
-                  Enterprise CRM
+                <span className="text-[11px] truncate" style={{ color: '#64748b' }} title={user?.organizationName ?? undefined}>
+                  {user?.organizationName || 'Enterprise CRM'}
                 </span>
               </div>
               <div className="relative flex-shrink-0">

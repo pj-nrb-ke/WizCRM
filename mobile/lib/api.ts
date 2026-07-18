@@ -81,6 +81,7 @@ export type User = {
   name: string;
   role: string;
   organizationId: string;
+  organizationName?: string | null;
 };
 
 export type LeadOwner = {

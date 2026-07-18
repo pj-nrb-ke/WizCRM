@@ -173,7 +173,9 @@ export default function HomeScreen() {
     >
       <LicenseBanner entitlements={entitlements} />
       <Text style={styles.greeting}>Hello, {firstName}</Text>
-      <Text style={styles.sub}>Your field command center</Text>
+      <Text style={styles.sub}>
+        {user?.organizationName ? `${user.organizationName} · Your field command center` : 'Your field command center'}
+      </Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading && !metrics ? (
         <ActivityIndicator color="#38bdf8" style={{ marginVertical: 24 }} />

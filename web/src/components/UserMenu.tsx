@@ -66,6 +66,11 @@ export function UserMenu() {
           <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{user?.name}</div>
             <div style={{ fontSize: 11, color: '#94a3b8' }}>{roleLabel}</div>
+            {user?.organizationName ? (
+              <div style={{ fontSize: 11, color: '#1A56DB', fontWeight: 600, marginTop: 4 }}>
+                {user.organizationName}
+              </div>
+            ) : null}
           </div>
           <button
             type="button"

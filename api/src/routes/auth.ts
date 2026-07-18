@@ -81,9 +81,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       role: user.role,
     });
 
-    const [entitlements, settings] = await Promise.all([
+    const [entitlements, settings, org] = await Promise.all([
       getOrganizationEntitlements(user.organizationId),
       getOrgSettings(user.organizationId),
+      prisma.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } }),
     ]);
     const permissions = resolvePermissions(user.role, settings.rolePermissions);
 
@@ -95,6 +96,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         name: user.name,
         role: user.role,
         organizationId: user.organizationId,
+        organizationName: org?.name ?? null,
       },
       entitlements,
       permissions,
@@ -107,12 +109,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       select: { id: true, email: true, name: true, role: true, organizationId: true },
     });
     if (!user) return { user: null };
-    const [entitlements, settings] = await Promise.all([
+    const [entitlements, settings, org] = await Promise.all([
       getOrganizationEntitlements(user.organizationId),
       getOrgSettings(user.organizationId),
+      prisma.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } }),
     ]);
     const permissions = resolvePermissions(user.role, settings.rolePermissions);
-    return { user, entitlements, permissions };
+    return { user: { ...user, organizationName: org?.name ?? null }, entitlements, permissions };
   });
 
   app.post('/change-password', { onRequest: [app.authenticate] }, async (request, reply) => {

@@ -71,6 +71,7 @@ export type AuthUser = {
   name: string;
   role: string;
   organizationId: string;
+  organizationName?: string | null;
 };
 
 async function fetchAuthenticatedBlob(path: string): Promise<Blob> {
