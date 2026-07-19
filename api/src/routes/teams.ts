@@ -77,7 +77,7 @@ export const teamRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(403).send({ error: 'Managers only' });
     }
     const users = await prisma.user.findMany({
-      where: { organizationId, role: 'SALES' },
+      where: { organizationId, isActive: true },
       select: { id: true, name: true, email: true, teamId: true },
       orderBy: { name: 'asc' },
     });

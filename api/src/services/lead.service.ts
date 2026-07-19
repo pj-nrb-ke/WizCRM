@@ -155,9 +155,9 @@ export async function updateLead(
     }
     const newOwner = await prisma.user.findFirst({
       where: { id: input.ownerId, organizationId },
-      select: { id: true, name: true, role: true },
+      select: { id: true, name: true, role: true, isActive: true },
     });
-    if (!newOwner || !['SALES', 'MANAGER'].includes(newOwner.role)) {
+    if (!newOwner || !newOwner.isActive) {
       throw Object.assign(new Error('Invalid owner'), { statusCode: 400 });
     }
     const prevOwner = await prisma.user.findFirst({

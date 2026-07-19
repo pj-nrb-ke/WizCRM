@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -7,12 +8,14 @@ import {
   Key,
   Mail,
   MoreVertical,
+  Pencil,
   Power,
   Search,
   Trash2,
   User as UserIcon,
   UserPlus,
   Users as UsersIcon,
+  X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -128,6 +131,8 @@ export function UsersPage() {
   const [teamId, setTeamId] = useState('');
 
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -224,6 +229,41 @@ export function UsersPage() {
       setUsers((prev) => prev.map((row) => (row.id === u.id ? user : row)));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not change role');
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
+  function startEditName(u: UserRow) {
+    setError('');
+    setMessage('');
+    setEditingUserId(u.id);
+    setEditingName(u.name);
+  }
+
+  function cancelEditName() {
+    setEditingUserId(null);
+    setEditingName('');
+  }
+
+  async function onSaveName(u: UserRow) {
+    const trimmed = editingName.trim();
+    if (!trimmed || trimmed === u.name) {
+      cancelEditName();
+      return;
+    }
+    setError('');
+    setMessage('');
+    setBusyUserId(u.id);
+    try {
+      const { user } = await api<{ user: UserRow }>(`/admin/users/${u.id}`, {
+        method: 'PATCH',
+        body: { name: trimmed },
+      });
+      setUsers((prev) => prev.map((row) => (row.id === u.id ? user : row)));
+      cancelEditName();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not rename user');
     } finally {
       setBusyUserId(null);
     }
@@ -419,8 +459,47 @@ export function UsersPage() {
                       <div className="avatar-circle" style={{ background: avatarColor(u.id) }}>
                         {initials(u.name)}
                       </div>
-                      <span style={{ fontWeight: 600 }}>{u.name}</span>
-                      {!u.isActive ? <span className="badge badge-neutral">Deactivated</span> : null}
+                      {editingUserId === u.id ? (
+                        <>
+                          <input
+                            autoFocus
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void onSaveName(u);
+                              if (e.key === 'Escape') cancelEditName();
+                            }}
+                            style={{ padding: '5px 8px', fontSize: '0.9rem', width: 160 }}
+                            disabled={busy}
+                          />
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            title="Save"
+                            onClick={() => void onSaveName(u)}
+                            disabled={busy}
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button type="button" className="icon-btn" title="Cancel" onClick={cancelEditName} disabled={busy}>
+                            <X size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ fontWeight: 600 }}>{u.name}</span>
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            title="Edit name"
+                            onClick={() => startEditName(u)}
+                            disabled={busy}
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          {!u.isActive ? <span className="badge badge-neutral">Deactivated</span> : null}
+                        </>
+                      )}
                     </div>
                   </td>
                   <td className="muted">{u.email}</td>
