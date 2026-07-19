@@ -28,6 +28,7 @@ This file tracks features that have been scoped/agreed with PJ but not yet built
 - ✅ Roll-ups: lead-level (sum across its opportunities, shown above the opportunity list in `LeadDrawer.tsx`, Manager+ only) and org-level (`GET /reports/cost-rollup`, new "Opportunity cost centers" card on the Reports page listing any deals over budget).
 - ✅ **Permissions enforced server-side and UI-gated:** budget set/edit = Manager+ (`PATCH /opportunities/:id` 403s a non-manager `budgeted` change; `POST /opportunities` silently drops it); expense logging = opportunity owner only (403 otherwise); money view (summary + expense list) = owner + Manager+ (403 otherwise). Verified via direct API calls as a non-owner Sales rep — all three correctly returned 403.
 - Verified end-to-end against local dev DB as both Manager (owner) and Sales rep (non-owner): created an opportunity with a budget, logged an expense (summary strip updated live), uploaded an Invoice-tagged document with a total (revenue + margin updated live), confirmed the over-budget red flag and its row on the Reports rollup, and confirmed the non-owner rep is blocked from all three gated actions.
+- **Deployed to production 2026-07-19** (commit `5160580`): schema pushed to the prod DB via `prisma db push`, api + web rebuilt and restarted on the VPS, `https://api.wizcrm.app/health` confirmed `{"status":"ok","db":"up"}` post-deploy.
 
 ### Phase 3 — Commission engine
 **Confirmed logic (corrected from earlier drafts — commission is document-total-based, NOT tied to budget/forecast):**
