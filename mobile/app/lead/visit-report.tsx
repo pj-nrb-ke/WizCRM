@@ -64,7 +64,7 @@ function dueFromDays(days: number): string {
 }
 
 export default function VisitReportScreen() {
-  const { leadId, leadName } = useLocalSearchParams<{ leadId: string; leadName?: string }>();
+  const { leadId, leadName, visitId } = useLocalSearchParams<{ leadId: string; leadName?: string; visitId?: string }>();
   const [outcome, setOutcome] = useState('');
   const [whoMet, setWhoMet] = useState('');
   const [competitor, setCompetitor] = useState('');
@@ -227,6 +227,7 @@ export default function VisitReportScreen() {
         ? `${baseNotes}${baseNotes ? '\n\n' : ''}[Attached: ${attachSummary}]`
         : baseNotes || undefined;
       const payload = {
+        visitId: visitId || undefined,
         outcome: outcome.trim(),
         whoMet: whoMet.trim() || undefined,
         competitor: competitor.trim() || undefined,
@@ -240,8 +241,10 @@ export default function VisitReportScreen() {
 
       // 1) Save the report (falls back to the offline queue on a network error).
       let offline = false;
+      let savedVisitId = visitId;
       try {
-        await api(`/leads/${leadId}/visit-report`, { method: 'POST', body: payload });
+        const res = await api<{ visit?: { id: string } }>(`/leads/${leadId}/visit-report`, { method: 'POST', body: payload });
+        if (res.visit?.id) savedVisitId = res.visit.id;
       } catch (e) {
         const msg = e instanceof Error ? e.message : '';
         if (!isOfflineError(msg)) {
@@ -258,12 +261,12 @@ export default function VisitReportScreen() {
       let failed = 0;
       for (const file of attachments) {
         if (offline) {
-          await queueOfflineMutation({ type: 'ATTACHMENT', leadId, payload: attachmentPayload(file) });
+          await queueOfflineMutation({ type: 'ATTACHMENT', leadId, payload: attachmentPayload(file, savedVisitId) });
           queued += 1;
           continue;
         }
         try {
-          await uploadAttachment(leadId, file);
+          await uploadAttachment(leadId, file, savedVisitId);
           uploaded += 1;
         } catch (e) {
           const msg = e instanceof Error ? e.message : '';

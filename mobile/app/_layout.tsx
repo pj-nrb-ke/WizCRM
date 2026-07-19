@@ -77,6 +77,16 @@ function RootNavigator() {
           }}
         />
         <Stack.Screen
+          name="lead/visit/[visitId]"
+          options={{
+            headerShown: true,
+            title: 'Visit',
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#f8fafc',
+            headerRight: () => <HeaderActions />,
+          }}
+        />
+        <Stack.Screen
           name="lead/edit"
           options={{
             headerShown: true,

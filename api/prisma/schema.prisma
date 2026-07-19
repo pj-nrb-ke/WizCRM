@@ -21,6 +21,7 @@ model Organization {
   contactCaches    ContactFinderCache[]
   productDocuments ProductDocument[]
   expos            Expo[]
+  leadVisits       LeadVisit[]
 }
 
 model Team {
@@ -78,6 +79,7 @@ model User {
   notifications           Notification[]
   pushTokens              PushToken[]
   passwordResetTokens     PasswordResetToken[]
+  leadVisits              LeadVisit[]
 
   @@index([organizationId])
   @@index([teamId])
@@ -146,6 +148,7 @@ model Lead {
   attachments        LeadAttachment[]
   userReminders      UserReminder[]
   importedProspects  Prospect[]
+  visits             LeadVisit[]
 
   @@index([organizationId, stage])
   @@index([organizationId, stage, pipelineRank])
@@ -266,6 +269,12 @@ model LeadAttachment {
   lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
   messageId   String?
   message     LeadMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  /**
+   * Set when this photo/document/video/audio was captured during a specific field visit,
+   * rather than attached loosely via the lead thread.
+   */
+  visitId     String?
+  visit       LeadVisit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
   userId      String
   user        User         @relation(fields: [userId], references: [id])
   fileName    String
@@ -275,6 +284,41 @@ model LeadAttachment {
   createdAt   DateTime     @default(now())
 
   @@index([leadId, createdAt(sort: Desc)])
+  @@index([visitId])
+}
+
+/**
+ * One in-person (or remote) meeting logged against a lead — the "how much effort are we
+ * putting into this deal" record. Sequentially numbered per lead. GPS check-in is optional:
+ * a visit tied to a scheduled, checked-in CalendarEvent gets it automatically; an ad-hoc
+ * "Log a visit" does not require it. `hasReport` is false until an outcome is filed (via the
+ * existing AI/voice visit-report flow), which is what "visits missing a report" reports on.
+ */
+model LeadVisit {
+  id             String           @id @default(uuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String
+  lead           Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation(fields: [userId], references: [id])
+  visitNumber    Int
+  occurredAt     DateTime         @default(now())
+  checkInLat     Float?
+  checkInLng     Float?
+  calendarEventId String?
+  hasReport      Boolean          @default(false)
+  outcome        String?
+  whoMet         String?
+  nextStep       String?
+  activityId     String?          @unique
+  attachments    LeadAttachment[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([leadId, visitNumber])
+  @@index([organizationId, leadId])
+  @@index([organizationId, hasReport])
 }
 
 /// Org-wide catalog/brochure library (R7) — shared product documents, not per-lead.

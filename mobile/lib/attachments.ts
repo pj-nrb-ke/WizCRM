@@ -7,7 +7,7 @@ import { api, getToken } from './api';
  */
 export type CapturedAttachment = {
   id: string;
-  kind: 'photo' | 'voice';
+  kind: 'photo' | 'voice' | 'video' | 'document';
   fileName: string;
   mimeType: string;
   dataBase64: string;
@@ -84,6 +84,41 @@ export async function capturePhoto(source: 'camera' | 'gallery'): Promise<Captur
   };
 }
 
+export async function captureDocument(source: 'camera' | 'gallery'): Promise<CapturedAttachment | null> {
+  const photo = await capturePhoto(source);
+  if (!photo) return null;
+  return { ...photo, kind: 'document', fileName: photo.fileName.replace('visit-photo-', 'visit-doc-') };
+}
+
+// Short + low-res so a clip has a real chance of fitting the 5MB attachment cap.
+const VIDEO_OPTIONS = { videoMaxDuration: 12, quality: 0 as const, base64: false } as const;
+
+export async function captureVideo(): Promise<CapturedAttachment | null> {
+  const ImagePicker = await import('expo-image-picker');
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) {
+    throw new Error('Camera permission is required to record a video.');
+  }
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['videos'], ...VIDEO_OPTIONS });
+  if (result.canceled || !result.assets?.[0]) return null;
+
+  const asset = result.assets[0];
+  const data = await readBase64FromUri(asset.uri);
+  if (!data) throw new Error('Could not read the video. Try again.');
+  if (isAttachmentTooLarge(data)) {
+    throw new Error('That video is too large (over ~5MB) — try recording a shorter clip.');
+  }
+
+  return {
+    id: newId(),
+    kind: 'video',
+    fileName: `visit-video-${Date.now()}.mp4`,
+    mimeType: asset.mimeType ?? 'video/mp4',
+    dataBase64: data,
+    sizeLabel: sizeLabelFromBase64(data),
+  };
+}
+
 export function buildVoiceAttachment(dataBase64: string): CapturedAttachment {
   return {
     id: newId(),
@@ -99,22 +134,37 @@ export function buildVoiceAttachment(dataBase64: string): CapturedAttachment {
 export function summarizeAttachments(list: CapturedAttachment[]): string {
   const photos = list.filter((a) => a.kind === 'photo').length;
   const voices = list.filter((a) => a.kind === 'voice').length;
+  const videos = list.filter((a) => a.kind === 'video').length;
+  const docs = list.filter((a) => a.kind === 'document').length;
   const parts: string[] = [];
   if (photos) parts.push(`${photos} photo${photos > 1 ? 's' : ''}`);
+  if (docs) parts.push(`${docs} document${docs > 1 ? 's' : ''}`);
+  if (videos) parts.push(`${videos} video${videos > 1 ? 's' : ''}`);
   if (voices) parts.push(`${voices} voice note${voices > 1 ? 's' : ''}`);
   return parts.join(', ');
 }
 
 /** Payload shape shared by the live upload and the offline queue replay. */
-export function attachmentPayload(file: CapturedAttachment) {
-  return { fileName: file.fileName, mimeType: file.mimeType, dataBase64: file.dataBase64 };
+export function attachmentPayload(file: CapturedAttachment, visitId?: string) {
+  return { fileName: file.fileName, mimeType: file.mimeType, dataBase64: file.dataBase64, visitId };
 }
 
-export async function uploadAttachment(leadId: string, file: CapturedAttachment): Promise<void> {
-  await api(`/leads/${leadId}/attachments`, { method: 'POST', body: attachmentPayload(file) });
+export async function uploadAttachment(leadId: string, file: CapturedAttachment, visitId?: string): Promise<void> {
+  await api(`/leads/${leadId}/attachments`, { method: 'POST', body: attachmentPayload(file, visitId) });
 }
 
-export type LeadAttachmentMeta = { id: string; fileName: string; mimeType: string; createdAt: string };
+export type LeadAttachmentMeta = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  createdAt: string;
+  visitId?: string | null;
+};
+
+export async function listAttachmentsForVisit(leadId: string, visitId: string): Promise<LeadAttachmentMeta[]> {
+  const { attachments } = await api<{ attachments: LeadAttachmentMeta[] }>(`/leads/${leadId}/attachments`);
+  return attachments.filter((a) => a.visitId === visitId);
+}
 
 function isInlineViewable(mimeType: string): boolean {
   return mimeType === 'application/pdf' || mimeType.startsWith('image/');

@@ -4,6 +4,7 @@ import { createActivitySchema } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { cleanVoiceNote } from '../services/ai/orchestrator.js';
 import { resolveActivityNoteBody } from '../services/note-body.service.js';
+import { fileVisitReport } from '../services/lead-visit.service.js';
 
 export const activityRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -66,6 +67,7 @@ export const activityRoutes: FastifyPluginAsync = async (app) => {
     const { organizationId, sub: userId } = request.user;
     const { leadId } = request.params as { leadId: string };
     const input = (request.body ?? {}) as {
+      visitId?: string;
       outcome?: string;
       notes?: string;
       whoMet?: string;
@@ -147,6 +149,17 @@ export const activityRoutes: FastifyPluginAsync = async (app) => {
       data: { lastActivityAt: new Date() },
     });
 
-    return reply.status(201).send({ activity, task });
+    // Files this report against the visit it belongs to — the visit the caller was actively
+    // logging (visitId), otherwise the lead's oldest still-open visit, otherwise a new one.
+    // Either way, a filed report always has a matching LeadVisit with hasReport = true.
+    const visit = await fileVisitReport(organizationId, leadId, userId, {
+      visitId: input.visitId,
+      activityId: activity.id,
+      outcome,
+      whoMet,
+      nextStep,
+    });
+
+    return reply.status(201).send({ activity, task, visit });
   });
 };

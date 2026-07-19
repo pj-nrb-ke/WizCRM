@@ -13,6 +13,7 @@ import { getOrganizationEntitlements } from '../services/entitlements.service.js
 import { buildManagerBrief } from '../services/manager-brief.service.js';
 import { loadPipelineForecast } from '../services/pipeline-forecast.service.js';
 import { getOrgSettings } from '../services/org-settings.service.js';
+import { listVisitsMissingReport } from '../services/lead-visit.service.js';
 
 function isManagerRole(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
@@ -124,6 +125,15 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(403).send({ error: 'Pro plan required for data hygiene report' });
     }
     return loadDataHygieneReport(organizationId);
+  });
+
+  app.get('/visits-missing-report', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    if (await blockedByFeature(request, reply, 'dataHygiene')) return;
+    return listVisitsMissingReport(organizationId);
   });
 
   app.get('/forecast', async (request, reply) => {

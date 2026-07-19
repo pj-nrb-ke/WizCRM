@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import type { FastifyPluginAsync } from 'fastify';
-import { createLeadAttachmentSchema, createLeadMessageSchema } from '@wizcrm/shared';
+import { createLeadAttachmentSchema, createLeadMessageSchema, createLeadVisitSchema } from '@wizcrm/shared';
 import {
   createLeadAttachment,
   createLeadMessage,
@@ -8,6 +8,7 @@ import {
   listLeadAttachments,
   listLeadMessages,
 } from '../services/lead-thread.service.js';
+import { createLeadVisit, listLeadVisits } from '../services/lead-visit.service.js';
 
 export const leadThreadRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('onRequest', app.authenticate);
@@ -60,6 +61,26 @@ export const leadThreadRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(status).send({ error: code });
     }
     return reply.status(201).send({ attachment: result.attachment });
+  });
+
+  app.get('/:leadId/visits', async (request, reply) => {
+    const { organizationId } = request.user;
+    const { leadId } = request.params as { leadId: string };
+    const visits = await listLeadVisits(organizationId, leadId);
+    if (!visits) return reply.status(404).send({ error: 'Lead not found' });
+    return { visits };
+  });
+
+  app.post('/:leadId/visits', async (request, reply) => {
+    const { organizationId, sub: userId } = request.user;
+    const { leadId } = request.params as { leadId: string };
+    const parsed = createLeadVisitSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const visit = await createLeadVisit(organizationId, leadId, userId, parsed.data);
+    if (!visit) return reply.status(404).send({ error: 'Lead not found' });
+    return reply.status(201).send({ visit });
   });
 
   app.get('/:leadId/attachments/:attachmentId', async (request, reply) => {

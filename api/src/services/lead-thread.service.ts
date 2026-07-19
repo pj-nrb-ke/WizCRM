@@ -96,7 +96,7 @@ export async function createLeadAttachment(
   organizationId: string,
   leadId: string,
   userId: string,
-  input: { fileName: string; mimeType: string; dataBase64: string; messageId?: string },
+  input: { fileName: string; mimeType: string; dataBase64: string; messageId?: string; visitId?: string },
 ) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
   if (!lead) return null;
@@ -106,6 +106,11 @@ export async function createLeadAttachment(
       where: { id: input.messageId, leadId },
     });
     if (!msg) return { error: 'MESSAGE_NOT_FOUND' as const };
+  }
+
+  if (input.visitId) {
+    const visit = await prisma.leadVisit.findFirst({ where: { id: input.visitId, leadId } });
+    if (!visit) return { error: 'VISIT_NOT_FOUND' as const };
   }
 
   let buf: Buffer;
@@ -129,6 +134,7 @@ export async function createLeadAttachment(
     data: {
       leadId,
       messageId: input.messageId,
+      visitId: input.visitId,
       userId,
       fileName: safeName,
       mimeType: input.mimeType,

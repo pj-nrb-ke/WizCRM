@@ -37,6 +37,7 @@ import { isManagerRole } from '../../lib/roles';
 import { LeadQuotations } from '../../components/LeadQuotations';
 import { LeadOpportunities } from '../../components/LeadOpportunities';
 import { loadLeadDetailCache, saveLeadDetailCache } from '../../lib/offline-leads-cache';
+import { listVisits, logVisit, type LeadVisit } from '../../lib/lead-visits';
 
 type Activity = {
   id: string;
@@ -97,6 +98,8 @@ export default function LeadDetailScreen() {
   const [closeSaving, setCloseSaving] = useState(false);
   const [showLogActivity, setShowLogActivity] = useState(false);
   const [logSaving, setLogSaving] = useState(false);
+  const [visits, setVisits] = useState<LeadVisit[]>([]);
+  const [loggingVisit, setLoggingVisit] = useState(false);
 
   function formatDue(iso: string) {
     const d = new Date(iso);
@@ -115,13 +118,15 @@ export default function LeadDetailScreen() {
     setFromCache(false);
     setLoadError('');
     try {
-      const [leadRes, taskRes, insightRes, pending, crm] = await Promise.all([
+      const [leadRes, taskRes, insightRes, pending, crm, visitRows] = await Promise.all([
         api<{ lead: Lead }>(`/leads/${id}`),
         api<{ tasks: Task[] }>(`/leads/${id}/tasks`),
         api<{ insights: LeadInsights }>(`/leads/${id}/insights`).catch(() => ({ insights: null })),
         listPendingMutations(),
         fetchCrmConfig(),
+        listVisits(id).catch(() => []),
       ]);
+      setVisits(visitRows);
       const leadData = leadRes.lead;
       let activityRows: Activity[];
       if (leadData.activities?.length) {
@@ -187,6 +192,23 @@ export default function LeadDetailScreen() {
       load();
     }, [load]),
   );
+
+  async function onLogVisit() {
+    if (!id) return;
+    setLoggingVisit(true);
+    try {
+      const visit = await logVisit(id);
+      setVisits((prev) => [visit, ...prev]);
+      router.push({
+        pathname: '/lead/visit/[visitId]',
+        params: { visitId: visit.id, leadId: id, leadName: lead?.name ?? '', visitNumber: String(visit.visitNumber) },
+      });
+    } catch (e) {
+      Alert.alert('Could not log visit', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setLoggingVisit(false);
+    }
+  }
 
   async function loadAi() {
     if (!id || !lead) return;
@@ -655,6 +677,46 @@ export default function LeadDetailScreen() {
         </Pressable>
       ) : null}
 
+      <View style={styles.visitsBox}>
+        <View style={styles.visitsHeaderRow}>
+          <Text style={styles.section}>Visits ({visits.length})</Text>
+          {!readOnly ? (
+            <Pressable style={styles.logVisitBtn} disabled={loggingVisit} onPress={() => void onLogVisit()}>
+              <Text style={styles.logVisitBtnText}>{loggingVisit ? '…' : '+ Log a visit'}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {visits.length === 0 ? (
+          <Text style={styles.muted}>No visits logged yet — how much field effort is going into this deal?</Text>
+        ) : (
+          visits.map((v) => (
+            <Pressable
+              key={v.id}
+              style={styles.visitRow}
+              onPress={() =>
+                router.push({
+                  pathname: '/lead/visit/[visitId]',
+                  params: {
+                    visitId: v.id,
+                    leadId: id,
+                    leadName: lead.name,
+                    visitNumber: String(v.visitNumber),
+                  },
+                })
+              }
+            >
+              <Text style={styles.visitRowTitle}>
+                Visit {v.visitNumber} · {new Date(v.occurredAt).toLocaleDateString()}
+              </Text>
+              <Text style={styles.muted}>
+                {v.hasReport ? (v.outcome ?? 'Reported').slice(0, 80) : 'No report yet'}
+                {v._count.attachments > 0 ? ` · ${v._count.attachments} file${v._count.attachments === 1 ? '' : 's'}` : ''}
+              </Text>
+            </Pressable>
+          ))
+        )}
+      </View>
+
       {!readOnly && isClosed ? (
         <Pressable style={styles.reopenBtn} onPress={reopenLead}>
           <Text style={styles.reopenBtnText}>Reopen lead (Qualified)</Text>
@@ -988,6 +1050,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   visitReportBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
+  muted: { color: '#64748b', fontSize: 13 },
+  visitsBox: { marginTop: 4, marginBottom: 8 },
+  visitsHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 8 },
+  logVisitBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+  },
+  logVisitBtnText: { color: '#38bdf8', fontWeight: '600', fontSize: 13 },
+  visitRow: {
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  visitRowTitle: { color: '#f8fafc', fontWeight: '600', fontSize: 14, marginBottom: 4 },
   reopenBtn: {
     marginBottom: 8,
     padding: 12,

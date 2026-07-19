@@ -426,6 +426,13 @@ export const createLeadAttachmentSchema = z.object({
   /** Base64 payload (no data: prefix). Max ~5MB decoded enforced server-side. */
   dataBase64: z.string().min(1).max(7_000_000),
   messageId: z.string().uuid().optional(),
+  visitId: z.string().uuid().optional(),
+});
+
+export const createLeadVisitSchema = z.object({
+  checkInLat: z.number().optional(),
+  checkInLng: z.number().optional(),
+  calendarEventId: z.string().uuid().optional(),
 });
 
 export type OrgSettings = z.infer<typeof orgSettingsSchema>;
