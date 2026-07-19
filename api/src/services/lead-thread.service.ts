@@ -1,21 +1,27 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { mergeMentionIds, type MentionableUser } from '@wizcrm/shared';
+import { mergeMentionIds, stripMentionMarkup, type MentionableUser } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { notifyMentionedUsers } from './notification-email.service.js';
+import { notifyUser } from './notification.service.js';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 const userSelect = { id: true, name: true, email: true } as const;
 
-export async function listLeadMessages(organizationId: string, leadId: string, limit = 100) {
+export async function listLeadMessages(
+  organizationId: string,
+  leadId: string,
+  limit = 100,
+  opportunityId?: string,
+) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
   if (!lead) return null;
 
   const messages = await prisma.leadMessage.findMany({
-    where: { leadId },
+    where: { leadId, ...(opportunityId ? { opportunityId } : {}) },
     orderBy: { createdAt: 'asc' },
     take: limit,
     include: {
@@ -39,12 +45,18 @@ export async function createLeadMessage(
   leadId: string,
   userId: string,
   body: string,
+  opportunityId?: string,
 ) {
   const lead = await prisma.lead.findFirst({
     where: { id: leadId, organizationId },
     select: { id: true, name: true },
   });
   if (!lead) return null;
+
+  if (opportunityId) {
+    const opp = await prisma.salesOpportunity.findFirst({ where: { id: opportunityId, leadId } });
+    if (!opp) return { error: 'OPPORTUNITY_NOT_FOUND' as const };
+  }
 
   const orgUsers = await prisma.user.findMany({
     where: { organizationId },
@@ -57,6 +69,7 @@ export async function createLeadMessage(
   const message = await prisma.leadMessage.create({
     data: {
       leadId,
+      opportunityId,
       userId,
       body,
       mentionedUserIds,
@@ -68,25 +81,45 @@ export async function createLeadMessage(
   });
 
   if (mentionedUserIds.length && actor) {
+    const plainBody = stripMentionMarkup(body);
+
     notifyMentionedUsers({
       actorUserId: userId,
       actorName: actor.name,
       leadId,
       leadName: lead.name,
       mentionedUserIds,
-      excerpt: body,
+      excerpt: plainBody,
     });
+
+    const uniqueMentioned = [...new Set(mentionedUserIds)].filter((id) => id !== userId);
+    for (const mentionedUserId of uniqueMentioned) {
+      notifyUser({
+        organizationId,
+        userId: mentionedUserId,
+        kind: 'LEAD_MENTION',
+        title: `${actor.name} mentioned you on ${lead.name}`,
+        body: plainBody.slice(0, 200),
+        linkPath: `/leads?open=${leadId}`,
+      }).catch((e) => {
+        console.warn('[createLeadMessage] mention notification failed', mentionedUserId, e instanceof Error ? e.message : e);
+      });
+    }
   }
 
   return message;
 }
 
-export async function listLeadAttachments(organizationId: string, leadId: string) {
+export async function listLeadAttachments(
+  organizationId: string,
+  leadId: string,
+  opportunityId?: string,
+) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
   if (!lead) return null;
 
   return prisma.leadAttachment.findMany({
-    where: { leadId },
+    where: { leadId, ...(opportunityId ? { opportunityId } : {}) },
     orderBy: { createdAt: 'desc' },
     include: { user: { select: userSelect } },
   });
@@ -96,7 +129,15 @@ export async function createLeadAttachment(
   organizationId: string,
   leadId: string,
   userId: string,
-  input: { fileName: string; mimeType: string; dataBase64: string; messageId?: string; visitId?: string },
+  input: {
+    fileName: string;
+    mimeType: string;
+    dataBase64: string;
+    messageId?: string;
+    visitId?: string;
+    opportunityId?: string;
+    documentType?: string;
+  },
 ) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
   if (!lead) return null;
@@ -111,6 +152,15 @@ export async function createLeadAttachment(
   if (input.visitId) {
     const visit = await prisma.leadVisit.findFirst({ where: { id: input.visitId, leadId } });
     if (!visit) return { error: 'VISIT_NOT_FOUND' as const };
+  }
+
+  let opportunity: { id: string; referenceNumber: string } | null = null;
+  if (input.opportunityId) {
+    opportunity = await prisma.salesOpportunity.findFirst({
+      where: { id: input.opportunityId, leadId },
+      select: { id: true, referenceNumber: true },
+    });
+    if (!opportunity) return { error: 'OPPORTUNITY_NOT_FOUND' as const };
   }
 
   let buf: Buffer;
@@ -135,6 +185,8 @@ export async function createLeadAttachment(
       leadId,
       messageId: input.messageId,
       visitId: input.visitId,
+      opportunityId: input.opportunityId,
+      documentType: (input.documentType as any) ?? 'GENERAL',
       userId,
       fileName: safeName,
       mimeType: input.mimeType,
@@ -143,6 +195,26 @@ export async function createLeadAttachment(
     },
     include: { user: { select: userSelect } },
   });
+
+  if (opportunity && input.documentType === 'LPO') {
+    const uploader = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    const recipients = await prisma.user.findMany({
+      where: { organizationId, isActive: true, role: { in: ['MANAGER', 'ADMIN'] } },
+      select: { id: true },
+    });
+    for (const recipient of recipients) {
+      notifyUser({
+        organizationId,
+        userId: recipient.id,
+        kind: 'OPPORTUNITY_LPO_UPLOADED',
+        title: `LPO uploaded for ${opportunity.referenceNumber}`,
+        body: `${uploader?.name ?? 'A salesperson'} uploaded a customer LPO on "${lead.name}" — the customer has committed, review the opportunity.`,
+        linkPath: `/leads?open=${leadId}&opportunity=${opportunity.id}`,
+      }).catch((e) => {
+        console.warn('[createLeadAttachment] LPO notification failed', recipient.id, e instanceof Error ? e.message : e);
+      });
+    }
+  }
 
   return { attachment };
 }

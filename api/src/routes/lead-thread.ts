@@ -16,7 +16,8 @@ export const leadThreadRoutes: FastifyPluginAsync = async (app) => {
   app.get('/:leadId/messages', async (request, reply) => {
     const { organizationId } = request.user;
     const { leadId } = request.params as { leadId: string };
-    const messages = await listLeadMessages(organizationId, leadId);
+    const { opportunityId } = request.query as { opportunityId?: string };
+    const messages = await listLeadMessages(organizationId, leadId, 100, opportunityId);
     if (!messages) return reply.status(404).send({ error: 'Lead not found' });
     return { messages };
   });
@@ -33,15 +34,18 @@ export const leadThreadRoutes: FastifyPluginAsync = async (app) => {
       leadId,
       userId,
       parsed.data.body,
+      parsed.data.opportunityId,
     );
     if (!message) return reply.status(404).send({ error: 'Lead not found' });
+    if ('error' in message) return reply.status(400).send({ error: message.error });
     return reply.status(201).send({ message });
   });
 
   app.get('/:leadId/attachments', async (request, reply) => {
     const { organizationId } = request.user;
     const { leadId } = request.params as { leadId: string };
-    const attachments = await listLeadAttachments(organizationId, leadId);
+    const { opportunityId } = request.query as { opportunityId?: string };
+    const attachments = await listLeadAttachments(organizationId, leadId, opportunityId);
     if (!attachments) return reply.status(404).send({ error: 'Lead not found' });
     return { attachments };
   });

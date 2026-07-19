@@ -11,6 +11,7 @@ export const quotationLineSchema = z.object({
 
 export const createQuotationSchema = z.object({
   leadId: z.string().uuid(),
+  opportunityId: z.string().uuid().optional(),
   referenceNumber: z.string().min(1).max(40).optional(),
   status: z.enum(QUOTATION_STATUSES).optional(),
   taxRatePct: z.number().min(0).max(100).optional(),

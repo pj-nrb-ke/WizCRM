@@ -19,21 +19,36 @@ type Message = {
   user: { name: string };
 };
 
+const DOC_TYPES: { value: string; label: string }[] = [
+  { value: 'GENERAL', label: 'General' },
+  { value: 'QUOTATION', label: 'Quotation' },
+  { value: 'PROFORMA_INVOICE', label: 'Proforma' },
+  { value: 'INVOICE', label: 'Invoice' },
+  { value: 'LPO', label: 'LPO' },
+];
+
 type Props = {
   leadId: string;
   readOnly?: boolean;
+  /** Scope the thread + documents to one Sales Opportunity instead of the whole lead. */
+  opportunityId?: string;
+  /** Show the document-type tag picker on upload — only meaningful for an opportunity thread. */
+  showDocumentTypeTag?: boolean;
 };
 
-export function LeadTeamChat({ leadId, readOnly }: Props) {
+export function LeadTeamChat({ leadId, readOnly, opportunityId, showDocumentTypeTag }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [docType, setDocType] = useState('GENERAL');
+
+  const scopeQuery = opportunityId ? `?opportunityId=${opportunityId}` : '';
 
   const load = useCallback(async () => {
     try {
       const [msgRes, userRes] = await Promise.all([
-        api<{ messages: Message[] }>(`/leads/${leadId}/messages`),
+        api<{ messages: Message[] }>(`/leads/${leadId}/messages${scopeQuery}`),
         api<{ users: OrgUser[] }>('/teams/org-members'),
       ]);
       setMessages(msgRes.messages);
@@ -41,7 +56,7 @@ export function LeadTeamChat({ leadId, readOnly }: Props) {
     } catch {
       /* silent when offline */
     }
-  }, [leadId]);
+  }, [leadId, scopeQuery]);
 
   useEffect(() => {
     void load();
@@ -56,7 +71,10 @@ export function LeadTeamChat({ leadId, readOnly }: Props) {
     if (!text) return;
     setSending(true);
     try {
-      await api(`/leads/${leadId}/messages`, { method: 'POST', body: { body: text } });
+      await api(`/leads/${leadId}/messages`, {
+        method: 'POST',
+        body: { body: text, opportunityId },
+      });
       setBody('');
       await load();
     } catch (e) {
@@ -88,9 +106,12 @@ export function LeadTeamChat({ leadId, readOnly }: Props) {
           fileName: asset.name,
           mimeType: asset.mimeType ?? 'application/octet-stream',
           dataBase64,
+          opportunityId,
+          documentType: opportunityId ? docType : undefined,
         },
       });
       Alert.alert('Uploaded', asset.name);
+      setDocType('GENERAL');
       await load();
     } catch (e) {
       Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload');
@@ -112,8 +133,8 @@ export function LeadTeamChat({ leadId, readOnly }: Props) {
 
   return (
     <View style={styles.box}>
-      <Text style={styles.title}>Team chat</Text>
-      <Text style={styles.hint}>Internal only — @mention sends email via Brevo</Text>
+      <Text style={styles.title}>{opportunityId ? 'Opportunity notes' : 'Team chat'}</Text>
+      <Text style={styles.hint}>Internal only — @mention sends a push notification + email</Text>
       {messages.length === 0 ? (
         <Text style={styles.muted}>No messages yet.</Text>
       ) : (
@@ -141,6 +162,19 @@ export function LeadTeamChat({ leadId, readOnly }: Props) {
               {suggestions.map((u) => (
                 <Pressable key={u.id} style={styles.suggestChip} onPress={() => insertMention(u)}>
                   <Text style={styles.suggestText}>{u.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {showDocumentTypeTag ? (
+            <View style={styles.suggestRow}>
+              {DOC_TYPES.map((t) => (
+                <Pressable
+                  key={t.value}
+                  style={[styles.suggestChip, docType === t.value && styles.suggestChipActive]}
+                  onPress={() => setDocType(t.value)}
+                >
+                  <Text style={styles.suggestText}>{t.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -186,6 +220,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  suggestChipActive: {
+    backgroundColor: '#2563eb',
   },
   suggestText: { color: '#e2e8f0', fontSize: 12 },
   row: { flexDirection: 'row', gap: 8, marginTop: 8 },

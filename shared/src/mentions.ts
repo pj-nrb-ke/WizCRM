@@ -38,3 +38,8 @@ export function mergeMentionIds(body: string, users: MentionableUser[]): string[
   const fromTokens = extractMentionIdsFromBody(body);
   return resolveMentionIdsFromText(body, users, fromTokens);
 }
+
+/** Renders `@[Name](uuid)` composer tokens as plain `@Name` for notifications and previews. */
+export function stripMentionMarkup(body: string): string {
+  return body.replace(/@\[([^\]]+)\]\([0-9a-f-]{36}\)/gi, '@$1');
+}

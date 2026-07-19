@@ -4,11 +4,15 @@ import { computeQuotationTotals } from '@wizcrm/shared';
 import { prisma } from '../lib/prisma.js';
 import { getOrgSettings } from './org-settings.service.js';
 
-export async function listQuotationsForLead(leadId: string, organizationId: string) {
+export async function listQuotationsForLead(
+  leadId: string,
+  organizationId: string,
+  opportunityId?: string,
+) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
   if (!lead) return null;
   return prisma.quotation.findMany({
-    where: { leadId, organizationId },
+    where: { leadId, organizationId, ...(opportunityId ? { opportunityId } : {}) },
     orderBy: { updatedAt: 'desc' },
     include: { owner: { select: { id: true, name: true } } },
   });
@@ -30,6 +34,13 @@ export async function createQuotation(
   });
   if (!lead) return null;
 
+  if (input.opportunityId) {
+    const opp = await prisma.salesOpportunity.findFirst({
+      where: { id: input.opportunityId, leadId: input.leadId, organizationId },
+    });
+    if (!opp) return null;
+  }
+
   const taxRatePct = input.taxRatePct ?? 0;
   const totals = computeQuotationTotals(input.lines, taxRatePct);
   const ref = input.referenceNumber?.trim() || (await nextReference(organizationId));
@@ -38,6 +49,7 @@ export async function createQuotation(
     data: {
       organizationId,
       leadId: input.leadId,
+      opportunityId: input.opportunityId,
       ownerId: userId,
       referenceNumber: ref,
       status: input.status ?? 'DRAFT',

@@ -7,6 +7,7 @@ export const createUserReminderSchema = z.object({
   remindAt: z.string().datetime(),
   tags: leadTagsField,
   leadId: z.string().uuid().optional(),
+  opportunityId: z.string().uuid().optional(),
   calendarEventId: z.string().uuid().optional(),
 });
 

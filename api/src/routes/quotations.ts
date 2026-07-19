@@ -17,7 +17,8 @@ export const quotationRoutes: FastifyPluginAsync = async (app) => {
   app.get('/lead/:leadId', async (request, reply) => {
     const { organizationId } = request.user;
     const { leadId } = request.params as { leadId: string };
-    const rows = await listQuotationsForLead(leadId, organizationId);
+    const { opportunityId } = request.query as { opportunityId?: string };
+    const rows = await listQuotationsForLead(leadId, organizationId, opportunityId);
     if (!rows) return reply.status(404).send({ error: 'Lead not found' });
     return { quotations: rows };
   });

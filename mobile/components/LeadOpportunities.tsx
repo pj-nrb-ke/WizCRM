@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { api } from '../lib/api';
 import { SALES_OPP_STAGE_LABELS, SALES_OPP_STATUS_LABELS } from '../lib/opportunity-labels';
 import { SalesOpportunitySheet } from './SalesOpportunitySheet';
+import { LeadTeamChat } from './LeadTeamChat';
+import { OpportunityTasks } from './OpportunityTasks';
 
 type Opportunity = {
   id: string;
@@ -25,6 +27,7 @@ export function LeadOpportunities({ leadId, leadName, readOnly }: Props) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -46,18 +49,31 @@ export function LeadOpportunities({ leadId, leadName, readOnly }: Props) {
       ) : rows.length === 0 ? (
         <Text style={styles.muted}>No opportunities yet.</Text>
       ) : (
-        rows.map((o) => (
-          <View key={o.id} style={styles.row}>
-            <Text style={styles.ref}>{o.referenceNumber}</Text>
-            <Text style={styles.desc} numberOfLines={2}>
-              {o.description}
-            </Text>
-            <Text style={styles.meta}>
-              {SALES_OPP_STAGE_LABELS[o.oppStage] ?? o.oppStage} ·{' '}
-              {SALES_OPP_STATUS_LABELS[o.oppStatus] ?? o.oppStatus} · {o.probabilityPct}%
-            </Text>
-          </View>
-        ))
+        rows.map((o) => {
+          const expanded = expandedId === o.id;
+          return (
+            <View key={o.id} style={styles.row}>
+              <Pressable onPress={() => setExpandedId(expanded ? null : o.id)}>
+                <Text style={styles.ref}>
+                  {expanded ? '▾' : '▸'} {o.referenceNumber}
+                </Text>
+                <Text style={styles.desc} numberOfLines={2}>
+                  {o.description}
+                </Text>
+                <Text style={styles.meta}>
+                  {SALES_OPP_STAGE_LABELS[o.oppStage] ?? o.oppStage} ·{' '}
+                  {SALES_OPP_STATUS_LABELS[o.oppStatus] ?? o.oppStatus} · {o.probabilityPct}%
+                </Text>
+              </Pressable>
+              {expanded ? (
+                <View style={{ marginTop: 8 }}>
+                  <LeadTeamChat leadId={leadId} opportunityId={o.id} showDocumentTypeTag readOnly={readOnly} />
+                  <OpportunityTasks opportunityId={o.id} />
+                </View>
+              ) : null}
+            </View>
+          );
+        })
       )}
       {!readOnly ? (
         <Pressable style={styles.addBtn} onPress={() => setShowForm(true)}>

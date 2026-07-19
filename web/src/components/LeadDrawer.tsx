@@ -18,6 +18,7 @@ import { LeadNextActionPanel } from './LeadNextActionPanel';
 import { DecisionMakersPanel } from './DecisionMakersPanel';
 import { LeadTeamChat } from './LeadTeamChat';
 import { EditLeadModal } from './EditLeadModal';
+import { OpportunityTasks } from './OpportunityTasks';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -88,6 +89,7 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
   >([]);
   const [showOppForm, setShowOppForm] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [expandedOppId, setExpandedOppId] = useState<string | null>(null);
 
   async function reloadLead(id: string) {
     const d = await api<{ lead: LeadDetail }>(`/leads/${id}`);
@@ -396,17 +398,39 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                   </button>
                 )}
                 {opportunities.length > 0 ? (
-                  <ul className="mini-list">
-                    {opportunities.map((o) => (
-                      <li key={o.id}>
-                        <strong>{o.referenceNumber}</strong> — {o.description.slice(0, 80)}
-                        <span className="muted">
-                          {' '}
-                          · {SALES_OPP_STAGE_LABELS[o.oppStage] ?? o.oppStage} ·{' '}
-                          {SALES_OPP_STATUS_LABELS[o.oppStatus] ?? o.oppStatus}
-                        </span>
-                      </li>
-                    ))}
+                  <ul className="mini-list opportunity-list">
+                    {opportunities.map((o) => {
+                      const expanded = expandedOppId === o.id;
+                      return (
+                        <li key={o.id}>
+                          <button
+                            type="button"
+                            className="link-btn"
+                            style={{ textAlign: 'left', width: '100%' }}
+                            onClick={() => setExpandedOppId(expanded ? null : o.id)}
+                            aria-expanded={expanded}
+                          >
+                            {expanded ? '▾' : '▸'} <strong>{o.referenceNumber}</strong> — {o.description.slice(0, 80)}
+                            <span className="muted">
+                              {' '}
+                              · {SALES_OPP_STAGE_LABELS[o.oppStage] ?? o.oppStage} ·{' '}
+                              {SALES_OPP_STATUS_LABELS[o.oppStatus] ?? o.oppStatus}
+                            </span>
+                          </button>
+                          {expanded ? (
+                            <div className="opportunity-card" style={{ padding: '12px 0 0 20px' }}>
+                              <LeadTeamChat
+                                leadId={lead.id}
+                                leadName={lead.name}
+                                opportunityId={o.id}
+                                showDocumentTypeTag
+                              />
+                              <OpportunityTasks opportunityId={o.id} />
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="muted">No sales opportunities yet.</p>

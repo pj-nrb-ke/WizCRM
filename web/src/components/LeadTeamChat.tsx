@@ -18,15 +18,28 @@ type AttachmentRow = {
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+  documentType?: string;
   user: { name: string };
+};
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  GENERAL: 'General file',
+  QUOTATION: 'Quotation',
+  PROFORMA_INVOICE: 'Proforma invoice',
+  INVOICE: 'Invoice',
+  LPO: 'LPO (customer order)',
 };
 
 type Props = {
   leadId: string;
   leadName: string;
+  /** Scope the thread + documents to one Sales Opportunity instead of the whole lead. */
+  opportunityId?: string;
+  /** Show the document-type tag picker on upload — only meaningful for an opportunity thread. */
+  showDocumentTypeTag?: boolean;
 };
 
-export function LeadTeamChat({ leadId, leadName }: Props) {
+export function LeadTeamChat({ leadId, leadName, opportunityId, showDocumentTypeTag }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<AttachmentRow[]>([]);
   const [users, setUsers] = useState<OrgUser[]>([]);
@@ -34,14 +47,17 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [docType, setDocType] = useState('GENERAL');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const scopeQuery = opportunityId ? `?opportunityId=${opportunityId}` : '';
 
   const load = useCallback(async () => {
     setError('');
     try {
       const [msgRes, attRes, userRes] = await Promise.all([
-        api<{ messages: Message[] }>(`/leads/${leadId}/messages`),
-        api<{ attachments: AttachmentRow[] }>(`/leads/${leadId}/attachments`),
+        api<{ messages: Message[] }>(`/leads/${leadId}/messages${scopeQuery}`),
+        api<{ attachments: AttachmentRow[] }>(`/leads/${leadId}/attachments${scopeQuery}`),
         api<{ users: OrgUser[] }>('/teams/org-members'),
       ]);
       setMessages(msgRes.messages);
@@ -50,7 +66,7 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load team chat');
     }
-  }, [leadId]);
+  }, [leadId, scopeQuery]);
 
   useEffect(() => {
     void load();
@@ -68,7 +84,10 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
     setSending(true);
     setError('');
     try {
-      await api(`/leads/${leadId}/messages`, { method: 'POST', body: { body: text } });
+      await api(`/leads/${leadId}/messages`, {
+        method: 'POST',
+        body: { body: text, opportunityId },
+      });
       setBody('');
       await load();
     } catch (err) {
@@ -94,9 +113,12 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
           fileName: file.name,
           mimeType: file.type || 'application/octet-stream',
           dataBase64,
+          opportunityId,
+          documentType: opportunityId ? docType : undefined,
         },
       });
       if (fileRef.current) fileRef.current.value = '';
+      setDocType('GENERAL');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -117,8 +139,12 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
 
   return (
     <section className="lead-team-chat">
-      <h3 className="section-title">Team chat</h3>
-      <p className="muted">Internal thread for {leadName} — @mention teammates (they get email).</p>
+      <h3 className="section-title">{opportunityId ? 'Opportunity notes' : 'Team chat'}</h3>
+      <p className="muted">
+        {opportunityId
+          ? `Notes and documents for this opportunity on ${leadName} — @mention teammates (they get a push notification + email).`
+          : `Internal thread for ${leadName} — @mention teammates (they get a push notification + email).`}
+      </p>
       {error ? <p className="error">{error}</p> : null}
 
       <div className="lead-team-chat-messages">
@@ -154,7 +180,7 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
 
       {attachments.length > 0 ? (
         <div className="lead-team-chat-attachments">
-          <h4>Files on lead</h4>
+          <h4>{opportunityId ? 'Documents on this opportunity' : 'Files on lead'}</h4>
           <ul>
             {attachments.map((a) => (
               <li key={a.id}>
@@ -165,6 +191,11 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
                 >
                   {a.fileName}
                 </button>{' '}
+                {a.documentType && a.documentType !== 'GENERAL' ? (
+                  <span className={`badge badge-${a.documentType === 'LPO' ? 'success' : 'info'}`}>
+                    {DOC_TYPE_LABELS[a.documentType] ?? a.documentType}
+                  </span>
+                ) : null}{' '}
                 <span className="muted">
                   ({Math.round(a.sizeBytes / 1024)} KB · {a.user.name})
                 </span>
@@ -196,6 +227,20 @@ export function LeadTeamChat({ leadId, leadName }: Props) {
           <button type="submit" className="btn-primary btn-sm" disabled={sending || !body.trim()}>
             {sending ? 'Sending…' : 'Post'}
           </button>
+          {showDocumentTypeTag ? (
+            <select
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              disabled={uploading}
+              aria-label="Document type"
+            >
+              {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <button
             type="button"
             className="btn-secondary btn-sm"

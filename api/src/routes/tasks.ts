@@ -9,8 +9,14 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/', async (request) => {
     const { organizationId, sub: userId } = request.user;
+    const { opportunityId } = request.query as { opportunityId?: string };
     const tasks = await prisma.task.findMany({
-      where: { organizationId, userId, completedAt: null },
+      where: {
+        organizationId,
+        userId,
+        completedAt: null,
+        ...(opportunityId ? { opportunityId } : {}),
+      },
       orderBy: { dueAt: 'asc' },
       include: { lead: { select: { id: true, name: true } } },
     });
@@ -29,11 +35,18 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       });
       if (!lead) return reply.status(404).send({ error: 'Lead not found' });
     }
+    if (parsed.data.opportunityId) {
+      const opp = await prisma.salesOpportunity.findFirst({
+        where: { id: parsed.data.opportunityId, organizationId },
+      });
+      if (!opp) return reply.status(404).send({ error: 'Opportunity not found' });
+    }
     const task = await prisma.task.create({
       data: {
         organizationId,
         userId,
         leadId: parsed.data.leadId,
+        opportunityId: parsed.data.opportunityId,
         title: parsed.data.title,
         dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
         tags: normalizeLeadTags(parsed.data.tags),

@@ -250,41 +250,65 @@ model Activity {
 
 /// Internal team thread per lead (FR-NTH-011) — not customer SMS.
 model LeadMessage {
-  id               String           @id @default(uuid())
+  id               String            @id @default(uuid())
   leadId           String
-  lead             Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead             Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  /**
+   * Set when this note was posted from an Opportunity's own thread rather than
+   * the lead-wide chat. Still lead-scoped underneath — an opportunity note is
+   * just a filtered view of the same thread.
+   */
+  opportunityId    String?
+  opportunity      SalesOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   userId           String
-  user             User             @relation(fields: [userId], references: [id])
+  user             User              @relation(fields: [userId], references: [id])
   body             String
-  mentionedUserIds String[]         @default([])
-  createdAt        DateTime         @default(now())
+  mentionedUserIds String[]          @default([])
+  createdAt        DateTime          @default(now())
   attachments      LeadAttachment[]
 
   @@index([leadId, createdAt(sort: Desc)])
+  @@index([opportunityId, createdAt(sort: Desc)])
+}
+
+enum LeadAttachmentDocType {
+  GENERAL
+  QUOTATION
+  PROFORMA_INVOICE
+  INVOICE
+  LPO
 }
 
 model LeadAttachment {
-  id          String       @id @default(uuid())
-  leadId      String
-  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  messageId   String?
-  message     LeadMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  id            String                @id @default(uuid())
+  leadId        String
+  lead          Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messageId     String?
+  message       LeadMessage?          @relation(fields: [messageId], references: [id], onDelete: SetNull)
   /**
    * Set when this photo/document/video/audio was captured during a specific field visit,
    * rather than attached loosely via the lead thread.
    */
-  visitId     String?
-  visit       LeadVisit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
-  userId      String
-  user        User         @relation(fields: [userId], references: [id])
-  fileName    String
-  mimeType    String
-  sizeBytes   Int
-  storagePath String
-  createdAt   DateTime     @default(now())
+  visitId       String?
+  visit         LeadVisit?            @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  /**
+   * Set when this document belongs to a specific Sales Opportunity's cost-center
+   * tracking (quotation/proforma/invoice/LPO), rather than a loose lead-wide file.
+   */
+  opportunityId String?
+  opportunity   SalesOpportunity?     @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  documentType  LeadAttachmentDocType @default(GENERAL)
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id])
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  storagePath   String
+  createdAt     DateTime              @default(now())
 
   @@index([leadId, createdAt(sort: Desc)])
   @@index([visitId])
+  @@index([opportunityId, createdAt(sort: Desc)])
 }
 
 /**
@@ -295,26 +319,26 @@ model LeadAttachment {
  * existing AI/voice visit-report flow), which is what "visits missing a report" reports on.
  */
 model LeadVisit {
-  id             String           @id @default(uuid())
-  organizationId String
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  leadId         String
-  lead           Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User             @relation(fields: [userId], references: [id])
-  visitNumber    Int
-  occurredAt     DateTime         @default(now())
-  checkInLat     Float?
-  checkInLng     Float?
+  id              String           @id @default(uuid())
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId          String
+  lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  visitNumber     Int
+  occurredAt      DateTime         @default(now())
+  checkInLat      Float?
+  checkInLng      Float?
   calendarEventId String?
-  hasReport      Boolean          @default(false)
-  outcome        String?
-  whoMet         String?
-  nextStep       String?
-  activityId     String?          @unique
-  attachments    LeadAttachment[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  hasReport       Boolean          @default(false)
+  outcome         String?
+  whoMet          String?
+  nextStep        String?
+  activityId      String?          @unique
+  attachments     LeadAttachment[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([leadId, visitNumber])
   @@index([organizationId, leadId])
@@ -368,6 +392,11 @@ model SalesOpportunity {
   isClosed        Boolean               @default(false)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
+  attachments     LeadAttachment[]
+  messages        LeadMessage[]
+  tasks           Task[]
+  userReminders   UserReminder[]
+  quotations      Quotation[]
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId, leadId])
@@ -397,18 +426,24 @@ enum ErpSyncStatus {
 }
 
 model Quotation {
-  id              String          @id @default(uuid())
+  id              String            @id @default(uuid())
   organizationId  String
   leadId          String
-  lead            Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead            Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  /**
+   * Set when this quotation belongs to a specific Sales Opportunity, feeding
+   * that opportunity's forecasted/due commission (see FeatureList.md Phase 3).
+   */
+  opportunityId   String?
+  opportunity     SalesOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   ownerId         String
-  owner           User            @relation(fields: [ownerId], references: [id])
+  owner           User              @relation(fields: [ownerId], references: [id])
   referenceNumber String
-  status          QuotationStatus @default(DRAFT)
-  taxRatePct      Float           @default(0)
-  subtotal        Decimal         @db.Decimal(14, 2)
-  taxAmount       Decimal         @db.Decimal(14, 2)
-  total           Decimal         @db.Decimal(14, 2)
+  status          QuotationStatus   @default(DRAFT)
+  taxRatePct      Float             @default(0)
+  subtotal        Decimal           @db.Decimal(14, 2)
+  taxAmount       Decimal           @db.Decimal(14, 2)
+  total           Decimal           @db.Decimal(14, 2)
   lines           Json
   notes           String?
   validUntil      DateTime?
@@ -416,16 +451,17 @@ model Quotation {
    * When to follow up on a SENT quote (PRO-011).
    */
   followUpAt      DateTime?
-  erpSyncStatus   ErpSyncStatus   @default(NONE)
+  erpSyncStatus   ErpSyncStatus     @default(NONE)
   erpReference    String?
   erpSyncedAt     DateTime?
   erpLastError    String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   erpSyncLogs     ErpSyncLog[]
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId, leadId])
+  @@index([opportunityId])
 }
 
 model ErpSyncLog {
@@ -613,45 +649,51 @@ model CalendarEvent {
 }
 
 model UserReminder {
-  id              String   @id @default(uuid())
+  id              String            @id @default(uuid())
   organizationId  String
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   title           String
   notes           String?
   remindAt        DateTime
-  tags            String[] @default([])
+  tags            String[]          @default([])
   leadId          String?
-  lead            Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lead            Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  opportunityId   String?
+  opportunity     SalesOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   calendarEventId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([organizationId, userId, remindAt])
+  @@index([opportunityId])
 }
 
 model Task {
-  id             String         @id @default(uuid())
+  id             String            @id @default(uuid())
   organizationId String
-  tags           String[]       @default([])
+  tags           String[]          @default([])
   leadId         String?
-  lead           Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lead           Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  opportunityId  String?
+  opportunity    SalesOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   userId         String
-  user           User           @relation(fields: [userId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
   title          String
   description    String?
-  source         TaskSource     @default(USER)
+  source         TaskSource        @default(USER)
   reason         String?
   evidence       Json?
   priority       TaskPriority?
   dueAt          DateTime?
   completedAt    DateTime?
-  createdAt      DateTime       @default(now())
+  createdAt      DateTime          @default(now())
   updates        TaskUpdate[]
   inboundEmails  InboundEmail[]
 
   @@index([userId, dueAt])
   @@index([organizationId])
+  @@index([opportunityId])
 }
 
 enum TaskSource {

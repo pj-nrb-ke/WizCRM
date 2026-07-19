@@ -195,6 +195,7 @@ export const createTaskSchema = z.object({
   title: z.string().min(1).max(300),
   dueAt: z.string().datetime().optional(),
   leadId: z.string().uuid().optional(),
+  opportunityId: z.string().uuid().optional(),
   tags: leadTagsField,
 });
 
@@ -418,7 +419,16 @@ export const sendLeadEmailSchema = z.object({
 
 export const createLeadMessageSchema = z.object({
   body: z.string().min(1).max(10000),
+  opportunityId: z.string().uuid().optional(),
 });
+
+export const leadAttachmentDocTypes = [
+  'GENERAL',
+  'QUOTATION',
+  'PROFORMA_INVOICE',
+  'INVOICE',
+  'LPO',
+] as const;
 
 export const createLeadAttachmentSchema = z.object({
   fileName: z.string().min(1).max(255),
@@ -427,6 +437,8 @@ export const createLeadAttachmentSchema = z.object({
   dataBase64: z.string().min(1).max(7_000_000),
   messageId: z.string().uuid().optional(),
   visitId: z.string().uuid().optional(),
+  opportunityId: z.string().uuid().optional(),
+  documentType: z.enum(leadAttachmentDocTypes).optional(),
 });
 
 export const createLeadVisitSchema = z.object({

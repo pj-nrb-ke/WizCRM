@@ -12,8 +12,8 @@ export const reminderRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/', async (request) => {
     const { organizationId, sub: userId } = request.user;
-    const q = request.query as { from?: string; to?: string };
-    const reminders = await listUserReminders(organizationId, userId, q.from, q.to);
+    const q = request.query as { from?: string; to?: string; opportunityId?: string };
+    const reminders = await listUserReminders(organizationId, userId, q.from, q.to, q.opportunityId);
     return { reminders };
   });
 

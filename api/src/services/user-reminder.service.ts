@@ -6,7 +6,13 @@ import { prisma } from '../lib/prisma.js';
 type CreateInput = z.infer<typeof createUserReminderSchema>;
 type UpdateInput = z.infer<typeof updateUserReminderSchema>;
 
-export async function listUserReminders(organizationId: string, userId: string, from?: string, to?: string) {
+export async function listUserReminders(
+  organizationId: string,
+  userId: string,
+  from?: string,
+  to?: string,
+  opportunityId?: string,
+) {
   const start = from ? new Date(from) : new Date();
   start.setDate(start.getDate() - 1);
   const end = to ? new Date(to) : new Date(start.getTime() + 60 * 86400000);
@@ -15,6 +21,7 @@ export async function listUserReminders(organizationId: string, userId: string, 
       organizationId,
       userId,
       remindAt: { gte: start, lte: end },
+      ...(opportunityId ? { opportunityId } : {}),
     },
     include: { lead: { select: { id: true, name: true } } },
     orderBy: { remindAt: 'asc' },
@@ -29,6 +36,12 @@ export async function createUserReminder(
   if (input.leadId) {
     const lead = await prisma.lead.findFirst({ where: { id: input.leadId, organizationId } });
     if (!lead) return null;
+  }
+  if (input.opportunityId) {
+    const opp = await prisma.salesOpportunity.findFirst({
+      where: { id: input.opportunityId, organizationId },
+    });
+    if (!opp) return null;
   }
   if (input.calendarEventId) {
     const ev = await prisma.calendarEvent.findFirst({
@@ -45,6 +58,7 @@ export async function createUserReminder(
       remindAt: new Date(input.remindAt),
       tags: normalizeLeadTags(input.tags),
       leadId: input.leadId,
+      opportunityId: input.opportunityId,
       calendarEventId: input.calendarEventId,
     },
     include: { lead: { select: { id: true, name: true } } },
