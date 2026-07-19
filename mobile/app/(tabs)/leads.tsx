@@ -143,11 +143,9 @@ export default function LeadsScreen() {
       <View style={styles.header}>
         <Text style={styles.screenTitle}>{screenTitle}</Text>
         <View style={styles.headerRight}>
-          {!isManager ? (
-            <Pressable style={styles.addBtn} onPress={() => router.push('/lead/new')}>
-              <Text style={styles.addBtnText}>+ New lead</Text>
-            </Pressable>
-          ) : null}
+          <Pressable style={styles.addBtn} onPress={() => router.push('/lead/new')}>
+            <Text style={styles.addBtnText}>+ New lead</Text>
+          </Pressable>
         </View>
       </View>
       <TextInput
