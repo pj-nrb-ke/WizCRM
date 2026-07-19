@@ -69,6 +69,10 @@ export function ReportsPage() {
     margin: number;
     overBudgetOpportunities: { id: string; referenceNumber: string; leadName: string; budgeted: number; spent: number }[];
   } | null>(null);
+  const [commissionLiability, setCommissionLiability] = useState<{
+    enabled: boolean;
+    bySalesperson: { salespersonId: string; salespersonName: string; forecasted: number; due: number; collectible: number; paid: number; pending: number }[];
+  } | null>(null);
   const [teams, setTeams] = useState<TeamsResponse['teams']>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -113,6 +117,12 @@ export function ReportsPage() {
     api<typeof costRollup>('/reports/cost-rollup')
       .then(setCostRollup)
       .catch(() => setCostRollup(null));
+  }, []);
+
+  useEffect(() => {
+    api<typeof commissionLiability>('/commission/liability')
+      .then(setCommissionLiability)
+      .catch(() => setCommissionLiability(null));
   }, []);
 
   async function exportCsv() {
@@ -444,6 +454,41 @@ export function ReportsPage() {
                     No deals are currently over budget.
                   </p>
                 )}
+              </ChartCard>
+            ) : null}
+
+            {commissionLiability?.enabled && commissionLiability.bySalesperson.length > 0 ? (
+              <ChartCard
+                title="Commission liability"
+                subtitle="Forecasted, due, collectible, paid, and pending by salesperson."
+                className="analytics-span-2"
+              >
+                <div className="report-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Salesperson</th>
+                        <th scope="col">Forecasted</th>
+                        <th scope="col">Due</th>
+                        <th scope="col">Collectible</th>
+                        <th scope="col">Paid</th>
+                        <th scope="col">Pending</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {commissionLiability.bySalesperson.map((row) => (
+                        <tr key={row.salespersonId}>
+                          <td>{row.salespersonName}</td>
+                          <td>{row.forecasted.toLocaleString()}</td>
+                          <td>{row.due.toLocaleString()}</td>
+                          <td>{row.collectible.toLocaleString()}</td>
+                          <td>{row.paid.toLocaleString()}</td>
+                          <td>{row.pending.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </ChartCard>
             ) : null}
 

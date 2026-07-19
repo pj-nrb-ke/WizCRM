@@ -5,6 +5,7 @@ import { mergeMentionIds, stripMentionMarkup, type MentionableUser } from '@wizc
 import { prisma } from '../lib/prisma.js';
 import { notifyMentionedUsers } from './notification-email.service.js';
 import { notifyUser } from './notification.service.js';
+import { recomputeCommissionBasis, stampLpoCollectible } from './commission.service.js';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -220,6 +221,15 @@ export async function createLeadAttachment(
         console.warn('[createLeadAttachment] LPO notification failed', recipient.id, e instanceof Error ? e.message : e);
       });
     }
+    stampLpoCollectible(opportunity.id, organizationId).catch((e) => {
+      console.warn('[createLeadAttachment] LPO commission stamp failed', opportunity.id, e instanceof Error ? e.message : e);
+    });
+  }
+
+  if (opportunity && amountEligible && input.amount !== undefined) {
+    recomputeCommissionBasis(opportunity.id, organizationId).catch((e) => {
+      console.warn('[createLeadAttachment] commission recompute failed', opportunity.id, e instanceof Error ? e.message : e);
+    });
   }
 
   return { attachment };

@@ -36,6 +36,7 @@ export default function HomeScreen() {
 
   const [metrics, setMetrics] = useState<PersonalDashboardMetrics | null>(null);
   const [pacing, setPacing] = useState<MyPacing | null>(null);
+  const [pendingCommission, setPendingCommission] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -101,6 +102,15 @@ export default function HomeScreen() {
     }, [load]),
   );
 
+  useRefreshOnFocus(
+    useCallback(() => {
+      if (!user?.id) return Promise.resolve();
+      return api<{ pendingCommission: number; hidden: boolean }>('/commission/my-pending')
+        .then((d) => setPendingCommission(d.hidden ? null : d.pendingCommission))
+        .catch(() => setPendingCommission(null));
+    }, [user?.id]),
+  );
+
   const firstName = user?.name?.split(/\s+/)[0] ?? 'there';
   const kpiItems: KpiItem[] = metrics
     ? [
@@ -125,6 +135,9 @@ export default function HomeScreen() {
           value: metrics.upcomingEvents,
           onPress: () => router.push('/(tabs)/calendar'),
         },
+        ...(pendingCommission != null
+          ? [{ key: 'commission', label: 'Pending commission', value: pendingCommission }]
+          : []),
       ]
     : [];
 

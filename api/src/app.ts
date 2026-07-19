@@ -17,6 +17,7 @@ import { adminRoutes } from './routes/admin.js';
 import { reportRoutes } from './routes/reports.js';
 import { emailRoutes } from './routes/email.js';
 import { opportunityRoutes } from './routes/opportunities.js';
+import { commissionRoutes } from './routes/commission.js';
 import { calendarRoutes } from './routes/calendar.js';
 import { expoRoutes } from './routes/expos.js';
 import { elevenLabsVoiceRoutes } from './routes/elevenlabs-voice.js';
@@ -110,6 +111,7 @@ export async function buildApp() {
   await app.register(reportRoutes, { prefix: '/reports' });
   await app.register(emailRoutes, { prefix: '/email' });
   await app.register(opportunityRoutes, { prefix: '/opportunities' });
+  await app.register(commissionRoutes);
   await app.register(calendarRoutes, { prefix: '/calendar' });
   await app.register(expoRoutes, { prefix: '/expos' });
   await app.register(reminderRoutes, { prefix: '/reminders' });

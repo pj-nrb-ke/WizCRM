@@ -1807,6 +1807,13 @@ tbody tr:last-child td {
   margin-top: 8px;
 }
 
+.commission-manage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
 .opportunity-summary-strip {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

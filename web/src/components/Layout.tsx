@@ -322,6 +322,7 @@ export function Layout() {
             <CollapsibleNavGroup label="Organisation" storageKey="organisation" defaultOpen={false} expanded={expanded}>
               {admin && <NavItem to="/organization" icon="org" label="Profile" expanded={expanded} />}
               <NavItem to="/settings/crm" icon="org" label="CRM lists" expanded={expanded} />
+              <NavItem to="/settings/commission" icon="org" label="Commission" expanded={expanded} />
               <NavItem to="/teams" icon="teams" label="Teams" expanded={expanded} />
               <NavItem to="/business" icon="org" label="Business checklist" expanded={expanded} />
             </CollapsibleNavGroup>

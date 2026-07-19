@@ -351,6 +351,9 @@ export const orgSettingsSchema = z.object({
   meetingGraceMinutes: z.number().int().min(0).max(120).optional(),
   /** Default days after SENT before quote follow-up if followUpAt not set (PRO-011) */
   quoteFollowUpDays: z.number().int().min(1).max(90).optional(),
+  /** Phase 3: org-wide commission switch and default rate (per-salesperson rate overrides this). */
+  commissionEnabled: z.boolean().optional(),
+  commissionDefaultRatePct: z.number().min(0).max(100).optional(),
   /** Granular per-role feature access, configured by an org admin. */
   rolePermissions: rolePermissionsSchema,
   /** Org-owned integration credentials for lead-gen data sources — each org uses its own account. */

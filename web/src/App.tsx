@@ -28,6 +28,7 @@ import { BulkImportPage } from './pages/BulkImportPage';
 import { LeadGeneratorPage } from './pages/LeadGeneratorPage';
 import { CampaignDetailPage } from './pages/CampaignDetailPage';
 import { CrmSettingsPage } from './pages/CrmSettingsPage';
+import { CommissionSettingsPage } from './pages/CommissionSettingsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { TargetsPage } from './pages/TargetsPage';
 import { DataHygienePage } from './pages/DataHygienePage';
@@ -274,6 +275,14 @@ export default function App() {
               element={
                 <ManagerOnly>
                   <CrmSettingsPage />
+                </ManagerOnly>
+              }
+            />
+            <Route
+              path="/settings/commission"
+              element={
+                <ManagerOnly>
+                  <CommissionSettingsPage />
                 </ManagerOnly>
               }
             />

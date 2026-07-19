@@ -30,7 +30,7 @@ This file tracks features that have been scoped/agreed with PJ but not yet built
 - Verified end-to-end against local dev DB as both Manager (owner) and Sales rep (non-owner): created an opportunity with a budget, logged an expense (summary strip updated live), uploaded an Invoice-tagged document with a total (revenue + margin updated live), confirmed the over-budget red flag and its row on the Reports rollup, and confirmed the non-owner rep is blocked from all three gated actions.
 - **Deployed to production 2026-07-19** (commit `5160580`): schema pushed to the prod DB via `prisma db push`, api + web rebuilt and restarted on the VPS, `https://api.wizcrm.app/health` confirmed `{"status":"ok","db":"up"}` post-deploy.
 
-### Phase 3 — Commission engine
+### Phase 3 — Commission engine ✅ Done (2026-07-19)
 **Confirmed logic (corrected from earlier drafts — commission is document-total-based, NOT tied to budget/forecast):**
 
 | Document uploaded | Effect |
@@ -40,17 +40,19 @@ This file tracks features that have been scoped/agreed with PJ but not yet built
 | Invoice (actual) | **Commission due** = rate × invoice total. Replaces the forecast. |
 | LPO | No amount effect — stamps `collectibleFromDate`. From this date the salesperson is eligible to collect, **subject to customer payment**. |
 
-- ⬜ **Customer payment log** (admin-entered: amount + date, against the invoice) — commission is **collectible only in proportion to what's been paid** by the customer (e.g. customer paid 60% → up to 60% of commission is collectible). This is the deliberate incentive for the salesperson to chase payment.
-- ⬜ **Commission payout log** (admin-entered, partial/full) — capped at whatever is currently collectible.
-- ⬜ Salesperson view per opportunity, one of: *No commission yet* / *Forecasted: X* / *Due: Y — collectible from [LPO date], pending customer payment* / *Collectible now: Z of Y* / *Paid: A · Pending: B*.
-- ⬜ Salesperson dashboard number: running "pending commission across my deals."
-- ⬜ Admin/Manager view: org-wide commission liability — forecasted, due, collectible, paid, pending — broken down by salesperson (Reports page).
+- ✅ New `OpportunityCommission` model (1:1 per opportunity), recomputed on every Quotation/Proforma/Invoice upload — an Invoice always wins over a Quotation/Proforma, latest document wins within a tier. `commission.service.ts`.
+- ✅ **Customer payment log** (`OpportunityCustomerPayment`, admin-entered: amount + date) — commission is collectible only in proportion to payment **against the invoice total** (e.g. customer paid 50% of a 20,000 invoice → 50% of the commission due is collectible, not 50% of the commission amount itself — this distinction was a real bug caught during verification and fixed before shipping).
+- ✅ **Commission payout log** (`OpportunityCommissionPayout`, admin-entered) — server-side capped at what's currently collectible minus what's already been paid out; over-payout attempts 400.
+- ✅ Salesperson view per opportunity (`OpportunityCommission.tsx` web + mobile, mounted in the expanded opportunity card): *No commission yet* / *Forecast: X — not owed yet* / *Due: Y — collectible once an LPO is uploaded* / *Due: Y — collectible from [LPO date], pending customer payment* / *Collectible now: Z of Y* / *Paid: A · Pending: B*.
+- ✅ Salesperson dashboard number: "Pending commission" tile on the home dashboard (web `HomePage.tsx`, mobile `home.tsx`), summed across all of the user's opportunities via `GET /commission/my-pending`.
+- ✅ Admin/Manager view: org-wide commission liability by salesperson — forecasted/due/collectible/paid/pending — new "Commission liability" card on the Reports page, via `GET /commission/liability`.
 
-**Settings → Commission** (Admin/Manager only):
-- ⬜ **Org-wide on/off switch** — when off, no forecast/due/collectible shown anywhere for anyone; existing history is preserved, not deleted.
-- ⬜ **Per-salesperson on/off** — even with the org switch on, individual people can be excluded (new hires without a negotiated arrangement, house accounts, etc).
-- ⬜ **Per-salesperson rate** — freely editable percentage per person (reflects individually negotiated deals at hiring), org default fallback for anyone without one set.
-- ⬜ Rate changes are **never retroactive** — every opportunity locks in whatever rate was active at the moment its commission was computed (quotation/invoice upload time), so editing someone's rate later only affects their future deals.
+**Settings → Commission** (`/settings/commission`, Manager+ — new dedicated `commission.ts` routes, not the Admin-only `/admin/users`):
+- ✅ **Org-wide on/off switch** — when off, `getOpportunityCommissionView`/`getMyPendingCommission`/`getOrgCommissionLiability` all return hidden/empty; verified turning it back on restores the exact same historical numbers (nothing is deleted, only hidden).
+- ✅ **Per-salesperson on/off** (`User.commissionEnabled`, default true) — excluded people are hidden the same way as the org switch.
+- ✅ **Per-salesperson rate** (`User.commissionRatePct`, nullable) — falls back to `Organization.settings.commissionDefaultRatePct` when unset.
+- ✅ Rate changes are **never retroactive** — `ratePctLocked` is snapshotted onto the `OpportunityCommission` row at the moment of each recomputation (next Quotation/Proforma/Invoice upload), never rewritten by a later rate edit.
+- Verified end-to-end: quotation upload → forecast; invoice upload → forecast replaced by due; LPO upload → `collectibleFromDate` stamped once (idempotent); partial customer payment → proportional collectible; payout capped at collectible (over-payout correctly 400s); org toggle off/on hides/restores history; non-owner, non-manager rep correctly 403'd on money-view, payment logging, payout logging, and settings.
 
 ### Phase 4 — Deferred / later
 - ⏸ Structured invoice generation in-app (line items, status) — mirrors how Quotations work today. Today invoices are just uploaded documents.

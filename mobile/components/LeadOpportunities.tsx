@@ -9,6 +9,7 @@ import { LeadTeamChat } from './LeadTeamChat';
 import { OpportunityTasks } from './OpportunityTasks';
 import { OpportunityExpenses } from './OpportunityExpenses';
 import { OpportunitySummaryStrip } from './OpportunitySummaryStrip';
+import { OpportunityCommission } from './OpportunityCommission';
 
 type Opportunity = {
   id: string;
@@ -92,6 +93,11 @@ export function LeadOpportunities({ leadId, leadName, readOnly }: Props) {
                     opportunityId={o.id}
                     canLog={o.owner?.id === user?.id}
                     onChanged={() => setExpenseRefreshKey((k) => k + 1)}
+                  />
+                  <OpportunityCommission
+                    opportunityId={o.id}
+                    canManage={manager}
+                    refreshKey={expenseRefreshKey}
                   />
                 </View>
               ) : null}

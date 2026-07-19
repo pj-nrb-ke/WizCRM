@@ -21,6 +21,7 @@ import { EditLeadModal } from './EditLeadModal';
 import { OpportunityTasks } from './OpportunityTasks';
 import { OpportunityExpenses } from './OpportunityExpenses';
 import { OpportunitySummaryStrip } from './OpportunitySummaryStrip';
+import { OpportunityCommission } from './OpportunityCommission';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -467,6 +468,11 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                                 opportunityId={o.id}
                                 canLog={o.owner?.id === user?.id}
                                 onChanged={() => setExpenseRefreshKey((k) => k + 1)}
+                              />
+                              <OpportunityCommission
+                                opportunityId={o.id}
+                                canManage={manager}
+                                refreshKey={expenseRefreshKey}
                               />
                             </div>
                           ) : null}

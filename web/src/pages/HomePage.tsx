@@ -13,6 +13,7 @@ import {
   Zap,
   ArrowRight,
   Server,
+  Wallet,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -153,6 +154,7 @@ export function HomePage() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [brief, setBrief] = useState<{ bullets: string[]; aiSummary: string | null } | null>(null);
+  const [pendingCommission, setPendingCommission] = useState<number | null>(null);
 
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null);
   const [drillLeads, setDrillLeads] = useState<DrilldownLead[]>([]);
@@ -160,6 +162,14 @@ export function HomePage() {
   const [drillLoading, setDrillLoading] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Pending commission across my deals
+  useEffect(() => {
+    if (!user?.id) return;
+    api<{ pendingCommission: number; hidden: boolean }>('/commission/my-pending')
+      .then((d) => setPendingCommission(d.hidden ? null : d.pendingCommission))
+      .catch(() => setPendingCommission(null));
+  }, [user?.id]);
 
   // Personal data
   useEffect(() => {
@@ -330,6 +340,15 @@ export function HomePage() {
         { label: 'Tasks today', value: personal.tasksDue, icon: Clock, warn: personal.tasksDue > 0 },
         { label: 'Stale leads', value: personal.staleLeads, icon: AlertTriangle, warn: personal.staleLeads > 0 },
         { label: 'Meetings this week', value: personal.upcomingEvents, icon: Calendar },
+        ...(pendingCommission != null
+          ? [
+              {
+                label: 'Pending commission',
+                value: pendingCommission.toLocaleString(),
+                icon: Wallet,
+              },
+            ]
+          : []),
       ]
     : [];
 

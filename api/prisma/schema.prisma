@@ -81,6 +81,17 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   leadVisits              LeadVisit[]
   loggedExpenses          OpportunityExpense[]
+  /**
+   * Phase 3 commission engine — per-salesperson on/off (default on) and a
+   * freely-editable rate; null rate falls back to the org default. Neither
+   * field affects commission already computed and stored on past documents
+   * (rate changes are never retroactive — see OpportunityCommission).
+   */
+  commissionEnabled       Boolean                 @default(true)
+  commissionRatePct       Float?
+  commissions             OpportunityCommission[]  @relation("CommissionSalesperson")
+  loggedCustomerPayments  OpportunityCustomerPayment[]
+  loggedCommissionPayouts OpportunityCommissionPayout[]
 
   @@index([organizationId])
   @@index([teamId])
@@ -433,10 +444,80 @@ model SalesOpportunity {
   userReminders   UserReminder[]
   quotations      Quotation[]
   expenses        OpportunityExpense[]
+  commission      OpportunityCommission?
+  customerPayments   OpportunityCustomerPayment[]
+  commissionPayouts  OpportunityCommissionPayout[]
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId, leadId])
   @@index([organizationId, ownerId])
+}
+
+enum CommissionBasisType {
+  QUOTATION
+  PROFORMA_INVOICE
+  INVOICE
+}
+
+/**
+ * Phase 3 commission engine — one row per Opportunity, recomputed whenever a
+ * Quotation/Proforma Invoice/Invoice document is uploaded (using the latest
+ * qualifying document; an Invoice always wins over a Quotation/Proforma).
+ * `ratePctLocked` snapshots whatever rate (per-salesperson or org default)
+ * was in effect at that moment — later rate edits never rewrite history,
+ * only future recomputations. An LPO upload stamps `collectibleFromDate`
+ * without touching the amount fields. Collectible/paid/pending amounts are
+ * derived at read time from `customerPayments`/`commissionPayouts` on the
+ * parent opportunity, not stored here.
+ */
+model OpportunityCommission {
+  id                  String               @id @default(uuid())
+  organizationId      String
+  opportunityId       String               @unique
+  opportunity         SalesOpportunity     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  salespersonId       String
+  salesperson         User                 @relation("CommissionSalesperson", fields: [salespersonId], references: [id])
+  basisType           CommissionBasisType?
+  basisAmount         Decimal?             @db.Decimal(14, 2)
+  basisAttachmentId   String?
+  ratePctLocked       Float?
+  forecastedAmount    Decimal?             @db.Decimal(14, 2)
+  dueAmount           Decimal?             @db.Decimal(14, 2)
+  collectibleFromDate DateTime?
+  computedAt          DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([organizationId, salespersonId])
+}
+
+/// Admin-entered log of what the customer has actually paid against the invoice — commission is collectible only in proportion to this.
+model OpportunityCustomerPayment {
+  id             String           @id @default(uuid())
+  organizationId String
+  opportunityId  String
+  opportunity    SalesOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  amount         Decimal          @db.Decimal(14, 2)
+  date           DateTime         @default(now())
+  loggedById     String
+  loggedBy       User             @relation(fields: [loggedById], references: [id])
+  createdAt      DateTime         @default(now())
+
+  @@index([organizationId, opportunityId])
+}
+
+/// Admin-entered log of commission actually paid out to the salesperson (partial or full), capped at what's currently collectible.
+model OpportunityCommissionPayout {
+  id             String           @id @default(uuid())
+  organizationId String
+  opportunityId  String
+  opportunity    SalesOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  amount         Decimal          @db.Decimal(14, 2)
+  date           DateTime         @default(now())
+  loggedById     String
+  loggedBy       User             @relation(fields: [loggedById], references: [id])
+  createdAt      DateTime         @default(now())
+
+  @@index([organizationId, opportunityId])
 }
 
 enum AttendanceStatus {
