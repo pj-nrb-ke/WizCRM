@@ -53,6 +53,7 @@ This file tracks features that have been scoped/agreed with PJ but not yet built
 - ✅ **Per-salesperson rate** (`User.commissionRatePct`, nullable) — falls back to `Organization.settings.commissionDefaultRatePct` when unset.
 - ✅ Rate changes are **never retroactive** — `ratePctLocked` is snapshotted onto the `OpportunityCommission` row at the moment of each recomputation (next Quotation/Proforma/Invoice upload), never rewritten by a later rate edit.
 - Verified end-to-end: quotation upload → forecast; invoice upload → forecast replaced by due; LPO upload → `collectibleFromDate` stamped once (idempotent); partial customer payment → proportional collectible; payout capped at collectible (over-payout correctly 400s); org toggle off/on hides/restores history; non-owner, non-manager rep correctly 403'd on money-view, payment logging, payout logging, and settings.
+- **Deployed to production 2026-07-19** (commit `9992c12`): schema pushed to the prod DB via `prisma db push`, api + web rebuilt and restarted on the VPS, `https://api.wizcrm.app/health` confirmed `{"status":"ok","db":"up"}` post-deploy.
 
 ### Phase 4 — Deferred / later
 - ⏸ Structured invoice generation in-app (line items, status) — mirrors how Quotations work today. Today invoices are just uploaded documents.
