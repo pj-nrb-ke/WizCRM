@@ -16,10 +16,11 @@ This file tracks features that have been scoped/agreed with PJ but not yet built
 - ✅ Added optional `opportunityId` to `LeadAttachment`, `LeadMessage`, `Task`, `UserReminder`, and `Quotation` (`api/prisma/schema.prisma`), plus reverse relations on `SalesOpportunity`.
 - ✅ Document **type tag** on upload: `GENERAL` / `QUOTATION` / `PROFORMA_INVOICE` / `INVOICE` / `LPO` (new `LeadAttachmentDocType` enum, defaults to `GENERAL`).
 - ✅ Opportunity card: web `LeadDrawer.tsx` opportunity rows are now expandable, mounting an opportunity-scoped `LeadTeamChat` (notes + documents, filtered by `opportunityId`, with the doc-type picker) and a new `OpportunityTasks` component. Mobile `LeadOpportunities.tsx` rows are tappable, mounting the same scoped `LeadTeamChat` + new `OpportunityTasks` component.
-- ✅ Notification when an **LPO** is uploaded → notifies all active Admin/Manager users via `notifyUser()` (push + in-app), from `lead-thread.service.ts`'s `createLeadAttachment`.
+- ✅ Notification when an **LPO** is uploaded → notifies all active Admin/Manager users via `notifyUser()` (push + in-app), from `lead-thread.service.ts`'s `createLeadAttachment` — same push+in-app pipeline used for @mention notifications (commit `b0da32b`).
 - Verified end-to-end against local dev DB: created an opportunity, expanded its card, posted a note, uploaded via the doc-type picker, added a task — all three scoped endpoints (`/leads/:id/messages`, `/leads/:id/attachments`, `/tasks`, each with `?opportunityId=`) returned 200/201 with no console errors.
+- **Deployed to production 2026-07-19** (commits `97309c7`, `b0da32b`): schema pushed to the prod DB via `prisma db push`, api + web rebuilt and restarted on the VPS, `https://api.wizcrm.app/health` confirmed `{"status":"ok","db":"up"}` post-deploy.
 
-### Phase 2 — Cost center (budget / expenses / revenue / margin)
+### Phase 2 — Cost center (budget / expenses / revenue / margin) — up next
 - ⬜ Surface existing `SalesOpportunity.budgeted` and `forecastedExcl` fields in the UI (already in the DB, just never exposed — no schema change needed for these two).
 - ⬜ New `OpportunityExpense` model: description, category (travel/samples/labor/other), amount, date, logged-by, optional receipt attachment.
 - ⬜ Summary strip per opportunity: **Budget → Spent → Remaining → Revenue → Margin**, flagged red when `Spent > Budget` (same visual treatment as Data Hygiene warnings).
