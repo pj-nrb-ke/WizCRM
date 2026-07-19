@@ -134,6 +134,7 @@ export default function HomeScreen() {
     { title: 'Pipeline', subtitle: 'Stages and follow-ups', route: '/(tabs)/pipeline' },
     { title: 'Calendar', subtitle: 'Week & month schedule', route: '/(tabs)/calendar' },
     { title: 'Capture', subtitle: 'Photo → lead (exhibitions, billboards)', route: '/lead/photo-capture' },
+    { title: 'Business card', subtitle: 'Scan a card → new lead', route: '/lead/new' },
     { title: 'Reminders', subtitle: 'Custom alerts', route: '/reminders' },
   ];
   if (isManager) {

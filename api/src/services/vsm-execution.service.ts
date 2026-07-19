@@ -117,7 +117,7 @@ export async function getOrCreateMorningRun(organizationId: string, opts: { from
     return sendMorningRun(run.id, null);
   }
 
-  await notifyCeosDraftReady(run.id, vsmConfig, plan);
+  await notifyCeosDraftReady(run.id, organizationId, vsmConfig, plan);
   return run;
 }
 
@@ -127,6 +127,7 @@ export async function getOrCreateMorningRun(organizationId: string, opts: { from
  * run — and therefore a second email — on repeat cron polls same day). */
 async function notifyCeosDraftReady(
   runId: string,
+  organizationId: string,
   vsmConfig: { ceoUserIds: string[]; personaName: string },
   plan: { people: PersonPlan[] },
 ) {
@@ -173,7 +174,7 @@ async function notifyCeosDraftReady(
     (htmlBlocks.join('') || '<p>No one has anything today.</p>') +
     `<p><strong>Reply APPROVE</strong> to send it to the team now, or <strong>reply SKIP</strong> to hold it back today.</p>`;
 
-  const ceos = await prisma.user.findMany({ where: { id: { in: vsmConfig.ceoUserIds } }, select: { email: true, name: true } });
+  const ceos = await prisma.user.findMany({ where: { id: { in: vsmConfig.ceoUserIds } }, select: { id: true, email: true, name: true } });
   for (const ceo of ceos) {
     await safeSend({
       toEmail: ceo.email,
@@ -183,7 +184,69 @@ async function notifyCeosDraftReady(
       html,
       replyTo: { email: runReplyAddress(runId), name: vsmConfig.personaName },
     });
+    // Email is a single point of failure (deliverability, spam folder, wrong address)
+    // with zero confirmation it landed. In-app + push is a second, independent channel
+    // that doesn't depend on Brevo/inbox at all — approving in the app works either way.
+    await notifyUser({
+      organizationId,
+      userId: ceo.id,
+      kind: 'vsm_morning_draft_ready',
+      title: `${vsmConfig.personaName}'s morning plan is ready — ${totalTasks} task${totalTasks === 1 ? '' : 's'}`,
+      body: `${peopleLabel} covered. Open to review and approve.`,
+      linkPath: '/settings/vsm-runs',
+    }).catch(() => {}); // best-effort — a failed in-app notify must not break the email path above
   }
+}
+
+/**
+ * Failsafe: if a morning draft has sat unapproved for hours, the CEO likely never saw the
+ * original notice (missed email, dismissed push). Re-sends once via every channel — email
+ * + in-app + push — and marks it reminded so this doesn't repeat every 15-minute cron tick.
+ */
+export async function remindIfMorningRunUnapproved(organizationId: string, staleAfterHours = 3): Promise<void> {
+  const run = await prisma.vsmRun.findUnique({
+    where: { organizationId_date_kind: { organizationId, date: todayDateOnly(), kind: 'MORNING' } },
+  });
+  if (!run || run.status !== 'DRAFT') return;
+
+  const snapshot = (run.contextSnapshot as Record<string, unknown>) ?? {};
+  if (snapshot.reminderSentAt) return;
+
+  const ageHours = (Date.now() - run.createdAt.getTime()) / (1000 * 60 * 60);
+  if (ageHours < staleAfterHours) return;
+
+  const vsmConfig = await prisma.vsmConfig.findUnique({ where: { organizationId } });
+  if (!vsmConfig || vsmConfig.ceoUserIds.length === 0) return;
+
+  const ceos = await prisma.user.findMany({ where: { id: { in: vsmConfig.ceoUserIds } }, select: { id: true, email: true, name: true } });
+  const totalTasks = (run.contextSnapshot as { totalItems?: number } | null)?.totalItems ?? 0;
+  const subject = `Reminder: ${vsmConfig.personaName}'s morning plan is still waiting for your OK`;
+  const text = `${vsmConfig.personaName} drafted this morning's plan (${totalTasks} task${totalTasks === 1 ? '' : 's'}) ${Math.round(ageHours)}h ago and it hasn't been approved yet — nothing has gone out to the team.\n\nReply APPROVE to send it now, or open WizCRM to review.`;
+  const html = `<p>${escapeHtml(vsmConfig.personaName)} drafted this morning's plan (${totalTasks} task${totalTasks === 1 ? '' : 's'}) ${Math.round(ageHours)}h ago and it hasn't been approved yet — nothing has gone out to the team.</p><p><strong>Reply APPROVE</strong> to send it now, or open WizCRM to review.</p>`;
+
+  for (const ceo of ceos) {
+    await safeSend({
+      toEmail: ceo.email,
+      toName: ceo.name,
+      subject,
+      text,
+      html,
+      replyTo: { email: runReplyAddress(run.id), name: vsmConfig.personaName },
+    }).catch(() => {});
+    await notifyUser({
+      organizationId,
+      userId: ceo.id,
+      kind: 'vsm_morning_draft_reminder',
+      title: subject,
+      body: `${totalTasks} task${totalTasks === 1 ? '' : 's'} waiting, ${Math.round(ageHours)}h so far.`,
+      linkPath: '/settings/vsm-runs',
+    }).catch(() => {});
+  }
+
+  await prisma.vsmRun.update({
+    where: { id: run.id },
+    data: { contextSnapshot: { ...snapshot, reminderSentAt: new Date().toISOString() } },
+  });
 }
 
 /** Stamps `edited: true` onto contextSnapshot — the cheap signal

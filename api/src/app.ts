@@ -33,7 +33,7 @@ import { notificationRoutes } from './routes/notifications.js';
 import { pushTokenRoutes } from './routes/push-tokens.js';
 import { handleBrevoEvent } from './services/lead-engine/webhook.service.js';
 import { processBrevoInboundPayload } from './services/inbound-email.service.js';
-import { getOrCreateEodRun, getOrCreateMorningRun } from './services/vsm-execution.service.js';
+import { getOrCreateEodRun, getOrCreateMorningRun, remindIfMorningRunUnapproved } from './services/vsm-execution.service.js';
 import { getOrCreateWeeklyRun } from './services/vsm-weekly.service.js';
 import { prisma } from './lib/prisma.js';
 import { EmailUnavailableError } from './services/brevo-mail.js';
@@ -180,8 +180,20 @@ export async function buildApp() {
         } else {
           results.push({ organizationId: cfg.organizationId, runId: run.id, status: run.status });
         }
+        // Same 15-min poll also checks for a still-unapproved morning draft, so a missed
+        // approval notice gets a second, louder chance instead of silently stalling all day.
+        if (job === 'morning') {
+          await remindIfMorningRunUnapproved(cfg.organizationId).catch((err) => {
+            app.log.error({ organizationId: cfg.organizationId, err: err instanceof Error ? err.message : String(err) }, 'vsm morning reminder failed');
+          });
+        }
       } catch (err) {
-        results.push({ organizationId: cfg.organizationId, error: err instanceof Error ? err.message : String(err) });
+        const message = err instanceof Error ? err.message : String(err);
+        // The crontab that hits this route discards stdout/stderr (`>/dev/null 2>&1`), so
+        // an error only captured in the response body — never logged server-side — is
+        // invisible until someone notices the downstream silence days later. Log it here too.
+        app.log.error({ job, organizationId: cfg.organizationId, err: message }, 'vsm cron job failed');
+        results.push({ organizationId: cfg.organizationId, error: message });
       }
     }
     return reply.send({ job, ranFor: results.length, results });
