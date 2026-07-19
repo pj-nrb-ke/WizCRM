@@ -14,6 +14,7 @@ import { buildManagerBrief } from '../services/manager-brief.service.js';
 import { loadPipelineForecast } from '../services/pipeline-forecast.service.js';
 import { getOrgSettings } from '../services/org-settings.service.js';
 import { listVisitsMissingReport } from '../services/lead-visit.service.js';
+import { getOrgCostRollup } from '../services/opportunity-rollup.service.js';
 
 function isManagerRole(role: string) {
   return role === 'MANAGER' || role === 'ADMIN';
@@ -160,6 +161,15 @@ export const reportRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(403).send({ error: 'Pro plan required for manager brief' });
     }
     return buildManagerBrief(organizationId);
+  });
+
+  app.get('/cost-rollup', async (request, reply) => {
+    const { organizationId, role } = request.user;
+    if (!isManagerRole(role)) {
+      return reply.status(403).send({ error: 'Managers only' });
+    }
+    if (await blockedByFeature(request, reply, 'reports')) return;
+    return getOrgCostRollup(organizationId);
   });
 
   app.get('/export.csv', async (request, reply) => {

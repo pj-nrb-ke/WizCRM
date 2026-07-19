@@ -439,6 +439,8 @@ export const createLeadAttachmentSchema = z.object({
   visitId: z.string().uuid().optional(),
   opportunityId: z.string().uuid().optional(),
   documentType: z.enum(leadAttachmentDocTypes).optional(),
+  /** Document total — only stored when documentType is QUOTATION/PROFORMA_INVOICE/INVOICE. */
+  amount: z.number().min(0).max(999_999_999).optional(),
 });
 
 export const createLeadVisitSchema = z.object({

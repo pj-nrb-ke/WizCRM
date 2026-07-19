@@ -34,14 +34,24 @@ type Props = {
   opportunityId?: string;
   /** Show the document-type tag picker on upload — only meaningful for an opportunity thread. */
   showDocumentTypeTag?: boolean;
+  /** Called after a file finishes uploading — lets a parent refresh cost summaries fed by document totals. */
+  onAttachmentUploaded?: () => void;
 };
 
-export function LeadTeamChat({ leadId, readOnly, opportunityId, showDocumentTypeTag }: Props) {
+export function LeadTeamChat({
+  leadId,
+  readOnly,
+  opportunityId,
+  showDocumentTypeTag,
+  onAttachmentUploaded,
+}: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [docType, setDocType] = useState('GENERAL');
+  const [docAmount, setDocAmount] = useState('');
+  const amountEligible = ['QUOTATION', 'PROFORMA_INVOICE', 'INVOICE'].includes(docType);
 
   const scopeQuery = opportunityId ? `?opportunityId=${opportunityId}` : '';
 
@@ -108,11 +118,14 @@ export function LeadTeamChat({ leadId, readOnly, opportunityId, showDocumentType
           dataBase64,
           opportunityId,
           documentType: opportunityId ? docType : undefined,
+          amount: opportunityId && amountEligible && docAmount ? Number(docAmount) : undefined,
         },
       });
       Alert.alert('Uploaded', asset.name);
       setDocType('GENERAL');
+      setDocAmount('');
       await load();
+      onAttachmentUploaded?.();
     } catch (e) {
       Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload');
     }
@@ -167,17 +180,29 @@ export function LeadTeamChat({ leadId, readOnly, opportunityId, showDocumentType
             </View>
           ) : null}
           {showDocumentTypeTag ? (
-            <View style={styles.suggestRow}>
-              {DOC_TYPES.map((t) => (
-                <Pressable
-                  key={t.value}
-                  style={[styles.suggestChip, docType === t.value && styles.suggestChipActive]}
-                  onPress={() => setDocType(t.value)}
-                >
-                  <Text style={styles.suggestText}>{t.label}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <>
+              <View style={styles.suggestRow}>
+                {DOC_TYPES.map((t) => (
+                  <Pressable
+                    key={t.value}
+                    style={[styles.suggestChip, docType === t.value && styles.suggestChipActive]}
+                    onPress={() => setDocType(t.value)}
+                  >
+                    <Text style={styles.suggestText}>{t.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              {amountEligible ? (
+                <TextInput
+                  style={[styles.input, { minHeight: undefined, marginTop: 6 }]}
+                  placeholder="Document total"
+                  placeholderTextColor="#64748b"
+                  keyboardType="decimal-pad"
+                  value={docAmount}
+                  onChangeText={setDocAmount}
+                />
+              ) : null}
+            </>
           ) : null}
           <View style={styles.row}>
             <Pressable

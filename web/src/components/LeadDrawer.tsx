@@ -19,6 +19,8 @@ import { DecisionMakersPanel } from './DecisionMakersPanel';
 import { LeadTeamChat } from './LeadTeamChat';
 import { EditLeadModal } from './EditLeadModal';
 import { OpportunityTasks } from './OpportunityTasks';
+import { OpportunityExpenses } from './OpportunityExpenses';
+import { OpportunitySummaryStrip } from './OpportunitySummaryStrip';
 
 type LeadDetail = LeadSummary & {
   createdAt?: string;
@@ -85,8 +87,17 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
       probabilityPct: number;
       expectedValue: number | null;
       isClosed: boolean;
+      owner?: { id: string; name: string };
     }[]
   >([]);
+  const [expenseRefreshKey, setExpenseRefreshKey] = useState(0);
+  const [leadCostRollup, setLeadCostRollup] = useState<{
+    budgeted: number;
+    spent: number;
+    revenue: number;
+    margin: number;
+    opportunityCount: number;
+  } | null>(null);
   const [showOppForm, setShowOppForm] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [expandedOppId, setExpandedOppId] = useState<string | null>(null);
@@ -122,6 +133,16 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
     }
     setShowOppForm(false);
   }, [leadId, user?.role]);
+
+  useEffect(() => {
+    if (!leadId || !manager) {
+      setLeadCostRollup(null);
+      return;
+    }
+    api<typeof leadCostRollup>(`/opportunities/lead/${leadId}/cost-rollup`)
+      .then(setLeadCostRollup)
+      .catch(() => setLeadCostRollup(null));
+  }, [leadId, manager, expenseRefreshKey]);
 
   if (!leadId) return null;
 
@@ -374,10 +395,20 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                 ) : null}
 
                 <h3>Sales opportunities</h3>
+                {leadCostRollup && leadCostRollup.opportunityCount > 0 ? (
+                  <p className="muted">
+                    Across {leadCostRollup.opportunityCount} opportunit
+                    {leadCostRollup.opportunityCount === 1 ? 'y' : 'ies'} on this lead: budget{' '}
+                    {leadCostRollup.budgeted.toLocaleString()} · spent {leadCostRollup.spent.toLocaleString()} ·
+                    revenue {leadCostRollup.revenue.toLocaleString()} · margin{' '}
+                    {leadCostRollup.margin.toLocaleString()}
+                  </p>
+                ) : null}
                 {showOppForm ? (
                   <SalesOpportunityForm
                     leadId={lead.id}
                     leadName={lead.name}
+                    canSetBudget={manager}
                     onCreated={() => {
                       setShowOppForm(false);
                       onUpdated?.();
@@ -419,13 +450,24 @@ export function LeadDrawer({ leadId, onClose, onUpdated }: Props) {
                           </button>
                           {expanded ? (
                             <div className="opportunity-card" style={{ padding: '12px 0 0 20px' }}>
+                              <OpportunitySummaryStrip
+                                opportunityId={o.id}
+                                canView={manager || o.owner?.id === user?.id}
+                                refreshKey={expenseRefreshKey}
+                              />
                               <LeadTeamChat
                                 leadId={lead.id}
                                 leadName={lead.name}
                                 opportunityId={o.id}
                                 showDocumentTypeTag
+                                onAttachmentUploaded={() => setExpenseRefreshKey((k) => k + 1)}
                               />
                               <OpportunityTasks opportunityId={o.id} />
+                              <OpportunityExpenses
+                                opportunityId={o.id}
+                                canLog={o.owner?.id === user?.id}
+                                onChanged={() => setExpenseRefreshKey((k) => k + 1)}
+                              />
                             </div>
                           ) : null}
                         </li>

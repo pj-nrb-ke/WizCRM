@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { isManagerRole } from '../lib/roles';
 import { SALES_OPP_STAGE_LABELS, SALES_OPP_STATUS_LABELS } from '../lib/opportunity-labels';
 import { SalesOpportunitySheet } from './SalesOpportunitySheet';
 import { LeadTeamChat } from './LeadTeamChat';
 import { OpportunityTasks } from './OpportunityTasks';
+import { OpportunityExpenses } from './OpportunityExpenses';
+import { OpportunitySummaryStrip } from './OpportunitySummaryStrip';
 
 type Opportunity = {
   id: string;
@@ -14,6 +18,7 @@ type Opportunity = {
   oppStatus: string;
   probabilityPct: number;
   expectedValue: number | null;
+  owner?: { id: string; name: string };
 };
 
 type Props = {
@@ -23,11 +28,14 @@ type Props = {
 };
 
 export function LeadOpportunities({ leadId, leadName, readOnly }: Props) {
+  const { user } = useAuth();
+  const manager = isManagerRole(user?.role);
   const [rows, setRows] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expenseRefreshKey, setExpenseRefreshKey] = useState(0);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -67,8 +75,24 @@ export function LeadOpportunities({ leadId, leadName, readOnly }: Props) {
               </Pressable>
               {expanded ? (
                 <View style={{ marginTop: 8 }}>
-                  <LeadTeamChat leadId={leadId} opportunityId={o.id} showDocumentTypeTag readOnly={readOnly} />
+                  <OpportunitySummaryStrip
+                    opportunityId={o.id}
+                    canView={manager || o.owner?.id === user?.id}
+                    refreshKey={expenseRefreshKey}
+                  />
+                  <LeadTeamChat
+                    leadId={leadId}
+                    opportunityId={o.id}
+                    showDocumentTypeTag
+                    readOnly={readOnly}
+                    onAttachmentUploaded={() => setExpenseRefreshKey((k) => k + 1)}
+                  />
                   <OpportunityTasks opportunityId={o.id} />
+                  <OpportunityExpenses
+                    opportunityId={o.id}
+                    canLog={o.owner?.id === user?.id}
+                    onChanged={() => setExpenseRefreshKey((k) => k + 1)}
+                  />
                 </View>
               ) : null}
             </View>

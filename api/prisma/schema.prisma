@@ -80,6 +80,7 @@ model User {
   pushTokens              PushToken[]
   passwordResetTokens     PasswordResetToken[]
   leadVisits              LeadVisit[]
+  loggedExpenses          OpportunityExpense[]
 
   @@index([organizationId])
   @@index([teamId])
@@ -298,6 +299,12 @@ model LeadAttachment {
   opportunityId String?
   opportunity   SalesOpportunity?     @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   documentType  LeadAttachmentDocType @default(GENERAL)
+  /**
+   * Document total — only meaningful when documentType is QUOTATION,
+   * PROFORMA_INVOICE, or INVOICE. Feeds the opportunity's revenue (from
+   * INVOICE totals) and, later, the Phase 3 commission engine.
+   */
+  amount        Decimal?              @db.Decimal(14, 2)
   userId        String
   user          User                  @relation(fields: [userId], references: [id])
   fileName      String
@@ -305,10 +312,38 @@ model LeadAttachment {
   sizeBytes     Int
   storagePath   String
   createdAt     DateTime              @default(now())
+  expenseReceipts OpportunityExpense[]
 
   @@index([leadId, createdAt(sort: Desc)])
   @@index([visitId])
   @@index([opportunityId, createdAt(sort: Desc)])
+}
+
+enum ExpenseCategory {
+  TRAVEL
+  SAMPLES
+  LABOR
+  OTHER
+}
+
+/// Phase 2 cost center — one logged spend item against an Opportunity's budget.
+model OpportunityExpense {
+  id                 String            @id @default(uuid())
+  organizationId     String
+  opportunityId      String
+  opportunity        SalesOpportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  description        String
+  category           ExpenseCategory   @default(OTHER)
+  amount             Decimal           @db.Decimal(14, 2)
+  date               DateTime          @default(now())
+  loggedById         String
+  loggedBy           User              @relation(fields: [loggedById], references: [id])
+  receiptAttachmentId String?
+  receiptAttachment  LeadAttachment?   @relation(fields: [receiptAttachmentId], references: [id], onDelete: SetNull)
+  createdAt          DateTime          @default(now())
+
+  @@index([organizationId, opportunityId])
+  @@index([opportunityId, date(sort: Desc)])
 }
 
 /**
@@ -397,6 +432,7 @@ model SalesOpportunity {
   tasks           Task[]
   userReminders   UserReminder[]
   quotations      Quotation[]
+  expenses        OpportunityExpense[]
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId, leadId])

@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { isManagerRole } from '../lib/roles';
 import {
   SALES_OPP_STAGES,
   SALES_OPP_STATUSES,
@@ -33,12 +35,15 @@ export function SalesOpportunitySheet({
   onClose,
   onCreated,
 }: Props) {
+  const { user } = useAuth();
+  const canSetBudget = isManagerRole(user?.role);
   const [description, setDescription] = useState('');
   const [contactPerson, setContactPerson] = useState(leadName);
   const [oppStage, setOppStage] = useState('NEW_OPPORTUNITY');
   const [oppStatus, setOppStatus] = useState('NOT_STARTED');
   const [probabilityPct, setProbabilityPct] = useState('25');
   const [forecastedExcl, setForecastedExcl] = useState('');
+  const [budgeted, setBudgeted] = useState('');
   const [error, setError] = useState('');
 
   async function submit() {
@@ -62,6 +67,7 @@ export function SalesOpportunitySheet({
           sourceType: 'OTHER',
           closeBy: closeBy.toISOString(),
           forecastedExcl: forecastedExcl ? Number(forecastedExcl) : undefined,
+          budgeted: canSetBudget && budgeted ? Number(budgeted) : undefined,
         },
       });
       onCreated();
@@ -136,6 +142,18 @@ export function SalesOpportunitySheet({
               onChangeText={setForecastedExcl}
               placeholderTextColor="#64748b"
             />
+            {canSetBudget ? (
+              <>
+                <Text style={styles.label}>Budgeted</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  value={budgeted}
+                  onChangeText={setBudgeted}
+                  placeholderTextColor="#64748b"
+                />
+              </>
+            ) : null}
             <View style={styles.actions}>
               <Pressable style={styles.cancel} onPress={onClose}>
                 <Text style={styles.cancelText}>Cancel</Text>

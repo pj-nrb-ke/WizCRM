@@ -20,12 +20,14 @@ This file tracks features that have been scoped/agreed with PJ but not yet built
 - Verified end-to-end against local dev DB: created an opportunity, expanded its card, posted a note, uploaded via the doc-type picker, added a task — all three scoped endpoints (`/leads/:id/messages`, `/leads/:id/attachments`, `/tasks`, each with `?opportunityId=`) returned 200/201 with no console errors.
 - **Deployed to production 2026-07-19** (commits `97309c7`, `b0da32b`): schema pushed to the prod DB via `prisma db push`, api + web rebuilt and restarted on the VPS, `https://api.wizcrm.app/health` confirmed `{"status":"ok","db":"up"}` post-deploy.
 
-### Phase 2 — Cost center (budget / expenses / revenue / margin) — up next
-- ⬜ Surface existing `SalesOpportunity.budgeted` and `forecastedExcl` fields in the UI (already in the DB, just never exposed — no schema change needed for these two).
-- ⬜ New `OpportunityExpense` model: description, category (travel/samples/labor/other), amount, date, logged-by, optional receipt attachment.
-- ⬜ Summary strip per opportunity: **Budget → Spent → Remaining → Revenue → Margin**, flagged red when `Spent > Budget` (same visual treatment as Data Hygiene warnings).
-- ⬜ Roll-ups: Lead level (sum across its opportunities) and org level (new line on Reports page: total budget vs spend vs revenue, "which deals are over budget").
-- **Permissions:** budget set/edit = Manager+; expense logging = opportunity owner; money view = owner + Manager+.
+### Phase 2 — Cost center (budget / expenses / revenue / margin) ✅ Done (2026-07-19)
+- ✅ Surfaced `SalesOpportunity.budgeted`/`forecastedExcl` in the create form, gated to Manager+ (web `SalesOpportunityForm.tsx`, mobile `SalesOpportunitySheet.tsx`).
+- ✅ **Revenue source decision (PJ, 2026-07-19): Invoice totals.** Added an optional `amount` (Decimal) to `LeadAttachment`, captured only when a document is tagged Quotation/Proforma Invoice/Invoice on upload (web `LeadTeamChat.tsx` "Document total" field, mobile equivalent). Revenue = sum of `amount` across an opportunity's `INVOICE`-tagged attachments.
+- ✅ New `OpportunityExpense` model + `ExpenseCategory` enum (TRAVEL/SAMPLES/LABOR/OTHER): description, category, amount, date, logged-by, optional receipt attachment link. CRUD under `/opportunities/:id/expenses` (`opportunity-expense.service.ts`).
+- ✅ Summary strip per opportunity — **Budget → Spent → Remaining → Revenue → Margin**, flagged red (`over-budget` class + alert) when `Spent > Budget` — web `OpportunitySummaryStrip.tsx`, mobile equivalent, mounted in the expanded opportunity card.
+- ✅ Roll-ups: lead-level (sum across its opportunities, shown above the opportunity list in `LeadDrawer.tsx`, Manager+ only) and org-level (`GET /reports/cost-rollup`, new "Opportunity cost centers" card on the Reports page listing any deals over budget).
+- ✅ **Permissions enforced server-side and UI-gated:** budget set/edit = Manager+ (`PATCH /opportunities/:id` 403s a non-manager `budgeted` change; `POST /opportunities` silently drops it); expense logging = opportunity owner only (403 otherwise); money view (summary + expense list) = owner + Manager+ (403 otherwise). Verified via direct API calls as a non-owner Sales rep — all three correctly returned 403.
+- Verified end-to-end against local dev DB as both Manager (owner) and Sales rep (non-owner): created an opportunity with a budget, logged an expense (summary strip updated live), uploaded an Invoice-tagged document with a total (revenue + margin updated live), confirmed the over-budget red flag and its row on the Reports rollup, and confirmed the non-owner rep is blocked from all three gated actions.
 
 ### Phase 3 — Commission engine
 **Confirmed logic (corrected from earlier drafts — commission is document-total-based, NOT tied to budget/forecast):**

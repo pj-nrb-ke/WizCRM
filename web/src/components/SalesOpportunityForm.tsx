@@ -13,9 +13,11 @@ type Props = {
   leadName: string;
   onCreated: () => void;
   onCancel: () => void;
+  /** Budget set/edit is Manager+ only. */
+  canSetBudget: boolean;
 };
 
-export function SalesOpportunityForm({ leadId, leadName, onCreated, onCancel }: Props) {
+export function SalesOpportunityForm({ leadId, leadName, onCreated, onCancel, canSetBudget }: Props) {
   const [description, setDescription] = useState('');
   const [contactPerson, setContactPerson] = useState(leadName);
   const [isPublic, setIsPublic] = useState(true);
@@ -134,16 +136,18 @@ export function SalesOpportunityForm({ leadId, leadName, onCreated, onCancel }: 
       </label>
 
       <div className="form-row">
-        <label>
-          Budgeted
-          <input
-            type="number"
-            min={0}
-            value={budgeted}
-            onChange={(e) => setBudgeted(e.target.value)}
-            placeholder="0"
-          />
-        </label>
+        {canSetBudget ? (
+          <label>
+            Budgeted
+            <input
+              type="number"
+              min={0}
+              value={budgeted}
+              onChange={(e) => setBudgeted(e.target.value)}
+              placeholder="0"
+            />
+          </label>
+        ) : null}
         <label>
           Forecasted (excl.)
           <input

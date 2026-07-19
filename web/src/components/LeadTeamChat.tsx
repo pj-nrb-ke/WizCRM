@@ -19,6 +19,7 @@ type AttachmentRow = {
   sizeBytes: number;
   createdAt: string;
   documentType?: string;
+  amount?: number | string | null;
   user: { name: string };
 };
 
@@ -37,9 +38,17 @@ type Props = {
   opportunityId?: string;
   /** Show the document-type tag picker on upload — only meaningful for an opportunity thread. */
   showDocumentTypeTag?: boolean;
+  /** Called after a file finishes uploading — lets a parent refresh cost summaries fed by document totals. */
+  onAttachmentUploaded?: () => void;
 };
 
-export function LeadTeamChat({ leadId, leadName, opportunityId, showDocumentTypeTag }: Props) {
+export function LeadTeamChat({
+  leadId,
+  leadName,
+  opportunityId,
+  showDocumentTypeTag,
+  onAttachmentUploaded,
+}: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<AttachmentRow[]>([]);
   const [users, setUsers] = useState<OrgUser[]>([]);
@@ -48,7 +57,9 @@ export function LeadTeamChat({ leadId, leadName, opportunityId, showDocumentType
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [docType, setDocType] = useState('GENERAL');
+  const [docAmount, setDocAmount] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const amountEligible = ['QUOTATION', 'PROFORMA_INVOICE', 'INVOICE'].includes(docType);
 
   const scopeQuery = opportunityId ? `?opportunityId=${opportunityId}` : '';
 
@@ -115,11 +126,14 @@ export function LeadTeamChat({ leadId, leadName, opportunityId, showDocumentType
           dataBase64,
           opportunityId,
           documentType: opportunityId ? docType : undefined,
+          amount: opportunityId && amountEligible && docAmount ? Number(docAmount) : undefined,
         },
       });
       if (fileRef.current) fileRef.current.value = '';
       setDocType('GENERAL');
+      setDocAmount('');
       await load();
+      onAttachmentUploaded?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -194,6 +208,7 @@ export function LeadTeamChat({ leadId, leadName, opportunityId, showDocumentType
                 {a.documentType && a.documentType !== 'GENERAL' ? (
                   <span className={`badge badge-${a.documentType === 'LPO' ? 'success' : 'info'}`}>
                     {DOC_TYPE_LABELS[a.documentType] ?? a.documentType}
+                    {a.amount != null ? ` · ${Number(a.amount).toLocaleString()}` : ''}
                   </span>
                 ) : null}{' '}
                 <span className="muted">
@@ -228,18 +243,33 @@ export function LeadTeamChat({ leadId, leadName, opportunityId, showDocumentType
             {sending ? 'Sending…' : 'Post'}
           </button>
           {showDocumentTypeTag ? (
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              disabled={uploading}
-              aria-label="Document type"
-            >
-              {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+                disabled={uploading}
+                aria-label="Document type"
+              >
+                {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {amountEligible ? (
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="Document total"
+                  value={docAmount}
+                  onChange={(e) => setDocAmount(e.target.value)}
+                  disabled={uploading}
+                  aria-label="Document total"
+                  style={{ width: 120 }}
+                />
+              ) : null}
+            </>
           ) : null}
           <button
             type="button"

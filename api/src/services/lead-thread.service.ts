@@ -137,6 +137,7 @@ export async function createLeadAttachment(
     visitId?: string;
     opportunityId?: string;
     documentType?: string;
+    amount?: number;
   },
 ) {
   const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
@@ -180,6 +181,10 @@ export async function createLeadAttachment(
   const storagePath = path.join(dir, storageName);
   await writeFile(storagePath, buf);
 
+  const amountEligible = ['QUOTATION', 'PROFORMA_INVOICE', 'INVOICE'].includes(
+    input.documentType ?? '',
+  );
+
   const attachment = await prisma.leadAttachment.create({
     data: {
       leadId,
@@ -187,6 +192,7 @@ export async function createLeadAttachment(
       visitId: input.visitId,
       opportunityId: input.opportunityId,
       documentType: (input.documentType as any) ?? 'GENERAL',
+      amount: amountEligible && input.amount !== undefined ? input.amount : undefined,
       userId,
       fileName: safeName,
       mimeType: input.mimeType,

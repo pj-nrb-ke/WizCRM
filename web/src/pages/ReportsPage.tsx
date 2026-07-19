@@ -62,6 +62,13 @@ export function ReportsPage() {
     openOpportunities: number;
     openLeads: number;
   } | null>(null);
+  const [costRollup, setCostRollup] = useState<{
+    budgeted: number;
+    spent: number;
+    revenue: number;
+    margin: number;
+    overBudgetOpportunities: { id: string; referenceNumber: string; leadName: string; budgeted: number; spent: number }[];
+  } | null>(null);
   const [teams, setTeams] = useState<TeamsResponse['teams']>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -101,6 +108,12 @@ export function ReportsPage() {
       .then(setForecast)
       .catch(() => setForecast(null));
   }, [pro]);
+
+  useEffect(() => {
+    api<typeof costRollup>('/reports/cost-rollup')
+      .then(setCostRollup)
+      .catch(() => setCostRollup(null));
+  }, []);
 
   async function exportCsv() {
     setExporting(true);
@@ -388,6 +401,51 @@ export function ReportsPage() {
                 </dl>
               </div>
             </ChartCard>
+
+            {costRollup ? (
+              <ChartCard
+                title="Opportunity cost centers"
+                subtitle="Budget, spend, and revenue (invoice totals) across all opportunities."
+                className="analytics-span-2"
+              >
+                <ReportKpiRow
+                  items={[
+                    { label: 'Budget', value: costRollup.budgeted.toLocaleString(), tone: 'default' },
+                    { label: 'Spent', value: costRollup.spent.toLocaleString(), tone: 'warn' },
+                    { label: 'Revenue', value: costRollup.revenue.toLocaleString(), tone: 'success' },
+                    { label: 'Margin', value: costRollup.margin.toLocaleString(), tone: 'info' },
+                  ]}
+                />
+                {costRollup.overBudgetOpportunities.length > 0 ? (
+                  <div className="report-table-wrap" style={{ marginTop: 12 }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">Opportunity</th>
+                          <th scope="col">Lead</th>
+                          <th scope="col">Budget</th>
+                          <th scope="col">Spent</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {costRollup.overBudgetOpportunities.map((o) => (
+                          <tr key={o.id}>
+                            <td>{o.referenceNumber}</td>
+                            <td>{o.leadName}</td>
+                            <td>{o.budgeted.toLocaleString()}</td>
+                            <td className="error">{o.spent.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="muted" style={{ marginTop: 12 }}>
+                    No deals are currently over budget.
+                  </p>
+                )}
+              </ChartCard>
+            ) : null}
 
             {lossReasonData.length > 0 ? (
               <ChartCard title="Loss reasons" subtitle="Why deals were marked lost in this period.">
