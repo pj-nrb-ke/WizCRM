@@ -453,7 +453,7 @@ export function UsersPage() {
               const busy = busyUserId === u.id;
               const rs = ROLE_STYLE[u.role];
               return (
-                <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
+                <tr key={u.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div className="avatar-circle" style={{ background: avatarColor(u.id) }}>
