@@ -1,18 +1,30 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { getApiUrl } from './api-url-file';
 import { formatNetworkError } from './network-message';
 
 const TOKEN_KEY = 'wizcrm_token';
 
+// expo-secure-store has no web implementation (no OS keychain in a browser) —
+// fall back to localStorage so `expo start --web` is usable for local preview.
 export async function getToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return window.localStorage.getItem(TOKEN_KEY);
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
 
 export async function setToken(token: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    window.localStorage.setItem(TOKEN_KEY, token);
+    return;
+  }
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
+  if (Platform.OS === 'web') {
+    window.localStorage.removeItem(TOKEN_KEY);
+    return;
+  }
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
